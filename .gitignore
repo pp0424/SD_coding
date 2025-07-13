@@ -1,0 +1,6 @@
+# 忽略缓存和虚拟环境
+__pycache__/
+*.pyc
+*.db
+venv/
+.env
