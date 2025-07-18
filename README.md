@@ -23,3 +23,24 @@ sd_project/
 ├── finance/            # 财务模块
 └── tests/              # 单元测试
 ```
+## 文件结构
+/customer/
+    ├── models.py
+    ├── views.py
+    ├── forms.py
+/templates/
+    └── customer/
+        ├── list.html
+        └── create.html
+
+## 开发说明（代码组通用）
+
+- 每个模块文件结构：
+  /<模块名>/
+      models.py
+      views.py
+      forms.py
+
+- 请每人复制 `customer` 模块作为开发模板。
+- 蓝图注册麻烦和我说一下，我来统一加进 `app.py`~
+

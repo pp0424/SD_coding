@@ -10,3 +10,4 @@ def db_init(app):
     with app.app_context():
         db.create_all()
     return db
+
