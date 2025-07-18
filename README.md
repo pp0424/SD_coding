@@ -41,6 +41,6 @@ sd_project/
       views.py
       forms.py
 
-- 请每人复制 `customer` 模块作为开发模板。
+- 大家可以参考 `customer` 模块作为开发模板。
 - 蓝图注册麻烦和我说一下，我来统一加进 `app.py`~
 
