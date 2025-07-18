@@ -14,12 +14,14 @@ def list_customers():
 @bp.route('/create', methods=['GET', 'POST'])
 def create_customer():
     if request.method == 'POST':
-        # TODO: 获取表单数据并构造模型对象
-        item = Customer(...)  
-        db.session.add(item)
+        name = request.form['name']
+        info = request.form['info']
+        new_customer = Customer(name=name, info=info)
+        db.session.add(new_customer)
         db.session.commit()
         return redirect(url_for('customer.list_customers'))
     return render_template('customer/create.html')
+
 
 # 编辑（GET + POST）
 @bp.route('/edit/<int:id>', methods=['GET', 'POST'])
