@@ -1,3 +1,4 @@
+# 大家在本地写完代码之后可以通过github desktop实时fetch到仓库里
 # SD 项目结构初始化
 
 ## 快速开始
@@ -17,10 +18,10 @@ sd_project/
 ├── database.py         # 数据库初始化
 ├── templates/          # HTML模板
 ├── static/             # 静态资源
-├── customer/           # 客户管理模块
-├── order/              # 订单管理模块
-├── delivery/           # 发货模块
-├── finance/            # 财务模块
+├── customer/           # 客户管理模块  负责成员：陈超然 张诣佳
+├── order/              # 订单管理模块  负责成员：黄藝萍 何嘉
+├── delivery/           # 发货模块      负责成员：李兰 周星贞
+├── finance/            # 财务模块      负责成员：邹一凡 成小东
 └── tests/              # 单元测试
 ```
 ## 文件结构
@@ -28,7 +29,7 @@ sd_project/
     ├── models.py
     ├── views.py
     ├── forms.py
-/templates/
+/templates/             #每个模块的html文件存放在这个文件夹里
     └── customer/
         ├── list.html
         └── create.html
