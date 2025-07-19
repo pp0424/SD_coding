@@ -1,0 +1,7 @@
+<h2>订单列表</h2>
+<ul>
+  {% for c in customers %}
+    <li>{{ c.name }} - {{ c.email }}</li>
+  {% endfor %}
+</ul>
+<a href="{{ url_for('customer.create_customer') }}">新增订单</a>
