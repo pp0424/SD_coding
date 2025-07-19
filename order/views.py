@@ -1,33 +1,43 @@
-from flask import Blueprint, render_template, request, redirect, url_for
-from .models import Order
-from database import db
+from flask import Blueprint, render_template
 
-bp = Blueprint('order', __name__, url_prefix='/order')
+order_bp = Blueprint('order', __name__, template_folder='templates')
 
-# 查询全部（列表页）
-@bp.route('/')
-def list_orders():
-    items = Order.query.all()
-    return render_template('order/list.html', orders=items)
+@order_bp.route('/')
+def order_home():
+    return render_template('order/index.html')
 
-# 创建（GET + POST）
-@bp.route('/create', methods=['GET', 'POST'])
+@order_bp.route('/create-inquiry')
+def create_inquiry():
+    return render_template('order/create_inquiry.html')
+
+@order_bp.route('/edit-inquiry')
+def edit_inquiry():
+    return render_template('order/edit_inquiry.html')
+
+@order_bp.route('/query-inquiry')
+def query_inquiry():
+    return render_template('order/query_inquiry.html')
+
+@order_bp.route('/create-quote')
+def create_quote():
+    return render_template('order/create_quote.html')
+
+@order_bp.route('/edit-quote')
+def edit_quote():
+    return render_template('order/edit_quote.html')
+
+@order_bp.route('/query-quote')
+def query_quote():
+    return render_template('order/query_quote.html')
+
+@order_bp.route('/create-order')
 def create_order():
-    if request.method == 'POST':
-        # TODO: 获取表单数据并构造模型对象
-        item = Order(...)  
-        db.session.add(item)
-        db.session.commit()
-        return redirect(url_for('order.list_orders'))
-    return render_template('order/create.html')
+    return render_template('order/create_order.html')
 
-# 编辑（GET + POST）
-@bp.route('/edit/<int:id>', methods=['GET', 'POST'])
-def edit_order(id):
-    item = Order.query.get_or_404(id)
-    if request.method == 'POST':
-        # TODO: 更新对象字段
-        # item.xxx = request.form['xxx']
-        db.session.commit()
-        return redirect(url_for('order.list_orders'))
-    return render_template('order/edit.html', order=item)
+@order_bp.route('/edit-order')
+def edit_order():
+    return render_template('order/edit_order.html')
+
+@order_bp.route('/query-order')
+def query_order():
+    return render_template('order/query_order.html')

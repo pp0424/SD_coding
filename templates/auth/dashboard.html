@@ -1,13 +1,36 @@
 <!DOCTYPE html>
 <html>
-<head><title>SD系统模块选择</title></head>
+<head>
+  <title>模块选择</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
 <body>
-  <h2>欢迎进入系统</h2>
-  <ul>
-    <li><a href="/customer">客户管理</a></li>
-    <li><a href="/inquiry">订单管理</a></li>
-    <li><a href="/delivery">发货管理</a></li>
-    <li><a href="/finance">财务管理</a></li>
-  </ul>
+  <div style="text-align: center; padding-top: 50px;">
+    <h2>请选择要进入的模块</h2>
+    <div class="module-card">
+      <a href="/customer">
+        <img src="/static/logo.png">
+        <div>客户管理</div>
+      </a>
+    </div>
+    <div class="module-card">
+      <a href="/order">
+        <img src="/static/logo.png">
+        <div>订单管理</div>
+      </a>
+    </div>
+    <div class="module-card">
+      <a href="/delivery">
+        <img src="/static/logo.png">
+        <div>发货管理</div>
+      </a>
+    </div>
+    <div class="module-card">
+      <a href="/finance">
+        <img src="/static/logo.png">
+        <div>财务管理</div>
+      </a>
+    </div>
+  </div>
 </body>
 </html>
