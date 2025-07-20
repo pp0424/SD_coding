@@ -1,36 +1,138 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh">
 <head>
-  <title>模块选择</title>
+  <meta charset="UTF-8">
+  <title>SD系统模块选择</title>
+  <link href="https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&family=Pacifico&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'ZCOOL XiaoWei', 'Microsoft YaHei', sans-serif;
+      background: url("/static/background.jpg") no-repeat center center fixed;
+      background-size: cover;
+      color: #fff;
+    }
+
+    .overlay {
+      background-color: rgba(0, 0, 0, 0.6);
+      min-height: 100vh;
+      padding: 40px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .logo {
+      height: 80px;
+      margin-bottom: 20px;
+    }
+
+    .title {
+      font-family: 'Pacifico', cursive;
+      font-size: 42px;
+      color: #ffffff;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      font-size: 20px;
+      color: #eeeeee;
+    }
+
+    .module-container {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 30px;
+      max-width: 1600px;
+      margin: 0 auto;
+      margin-top: 60px;
+    }
+
+    .module-card {
+      background-color: rgba(255, 255, 255, 0.95);
+      border-radius: 16px;
+      text-align: center;
+      transition: all 0.3s ease;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+      padding: 20px;
+      color: #333;
+    }
+
+    .module-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.4);
+    }
+
+    .module-card img {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 12px;
+      margin-bottom: 15px;
+    }
+
+    .module-card div {
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .module-card a {
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+
+    @media (max-width: 992px) {
+      .module-container {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .module-container {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 <body>
-  <div style="text-align: center; padding-top: 50px;">
-    <h2>请选择要进入的模块</h2>
-    <div class="module-card">
-      <a href="/customer">
-        <img src="/static/logo.png">
-        <div>客户管理</div>
-      </a>
+  <div class="overlay">
+    <div class="header">
+      <img class="logo" src="/static/logo.png" alt="SD系统 Logo">
+      <div class="title">SD系统模块选择</div>
+      <div class="subtitle">欢迎来到SD系统</div>
     </div>
-    <div class="module-card">
-      <a href="/order">
-        <img src="/static/logo.png">
-        <div>订单管理</div>
-      </a>
-    </div>
-    <div class="module-card">
-      <a href="/delivery">
-        <img src="/static/logo.png">
-        <div>发货管理</div>
-      </a>
-    </div>
-    <div class="module-card">
-      <a href="/finance">
-        <img src="/static/logo.png">
-        <div>财务管理</div>
-      </a>
+
+    <div class="module-container">
+      <div class="module-card">
+        <a href="/customer">
+          <img src="/static/customer_logo.png" alt="客户管理">
+          <div>客户管理</div>
+        </a>
+      </div>
+      <div class="module-card">
+        <a href="/order">
+          <img src="/static/order_logo.png" alt="订单管理">
+          <div>订单管理</div>
+        </a>
+      </div>
+      <div class="module-card">
+        <a href="/delivery">
+          <img src="/static/delivery_logo.png" alt="发货管理">
+          <div>发货管理</div>
+        </a>
+      </div>
+      <div class="module-card">
+        <a href="/finance">
+          <img src="/static/finance_logo.png" alt="财务管理">
+          <div>财务管理</div>
+        </a>
+      </div>
     </div>
   </div>
 </body>
 </html>
+

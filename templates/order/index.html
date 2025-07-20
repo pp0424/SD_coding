@@ -1,45 +1,69 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh">
 <head>
   <meta charset="UTF-8">
   <title>订单模块首页</title>
   <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei", sans-serif;
+      background-image: url('/static/order_background.png');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+
     .title-bar {
-      background-color: #3498db;
+      background-color: rgba(0, 0, 0, 0.6);
       color: white;
       padding: 20px;
       text-align: center;
-      font-size: 24px;
+      font-size: 30px;
       font-weight: bold;
     }
 
     .grid-container {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
       gap: 20px;
-      max-width: 900px;
-      margin: 50px auto;
+      padding: 40px;
+      height: calc(100vh - 80px); /* 减去 title-bar 高度 */
+      box-sizing: border-box;
     }
 
     .grid-item {
-      background-color: #ffffffcc;
-      border-radius: 10px;
-      padding: 30px;
+      background-color: rgba(255, 255, 255, 0.9);
+      border-radius: 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
       text-align: center;
-      font-size: 16px;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
-      transition: transform 0.2s ease-in-out;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      transition: transform 0.3s ease;
     }
 
     .grid-item:hover {
-      transform: translateY(-5px);
-      background-color: #f2f9ff;
+      transform: translateY(-8px);
+      background-color: #f0f8ff;
     }
 
     .grid-item a {
       text-decoration: none;
       color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .grid-item i {
+      font-size: 32px;
+      color: #3498db;
     }
   </style>
 </head>
@@ -47,17 +71,18 @@
   <div class="title-bar">订单模块首页</div>
 
   <div class="grid-container">
-    <div class="grid-item"><a href="/order/create-inquiry">创建询价</a></div>
-    <div class="grid-item"><a href="/order/edit-inquiry">修改询价</a></div>
-    <div class="grid-item"><a href="/order/query-inquiry">查询询价</a></div>
+    <div class="grid-item"><a href="/order/create-inquiry"><i class="fas fa-file-alt"></i>创建询价</a></div>
+    <div class="grid-item"><a href="/order/edit-inquiry"><i class="fas fa-edit"></i>修改询价</a></div>
+    <div class="grid-item"><a href="/order/query-inquiry"><i class="fas fa-search"></i>查询询价</a></div>
 
-    <div class="grid-item"><a href="/order/create-quote">创建报价</a></div>
-    <div class="grid-item"><a href="/order/edit-quote">修改报价</a></div>
-    <div class="grid-item"><a href="/order/query-quote">查询报价</a></div>
+    <div class="grid-item"><a href="/order/create-quote"><i class="fas fa-file-invoice"></i>创建报价</a></div>
+    <div class="grid-item"><a href="/order/edit-quote"><i class="fas fa-pen-square"></i>修改报价</a></div>
+    <div class="grid-item"><a href="/order/query-quote"><i class="fas fa-chart-line"></i>查询报价</a></div>
 
-    <div class="grid-item"><a href="/order/create-order">创建订单</a></div>
-    <div class="grid-item"><a href="/order/edit-order">修改订单</a></div>
-    <div class="grid-item"><a href="/order/query-order">查询订单</a></div>
+    <div class="grid-item"><a href="/order/create-order"><i class="fas fa-shopping-cart"></i>创建订单</a></div>
+    <div class="grid-item"><a href="/order/edit-order"><i class="fas fa-sync-alt"></i>修改订单</a></div>
+    <div class="grid-item"><a href="/order/query-order"><i class="fas fa-database"></i>查询订单</a></div>
   </div>
 </body>
 </html>
+
