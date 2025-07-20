@@ -1,23 +1,63 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>订单模块</title>
+  <meta charset="UTF-8">
+  <title>订单模块首页</title>
   <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .title-bar {
+      background-color: #3498db;
+      color: white;
+      padding: 20px;
+      text-align: center;
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      max-width: 900px;
+      margin: 50px auto;
+    }
+
+    .grid-item {
+      background-color: #ffffffcc;
+      border-radius: 10px;
+      padding: 30px;
+      text-align: center;
+      font-size: 16px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+      transition: transform 0.2s ease-in-out;
+    }
+
+    .grid-item:hover {
+      transform: translateY(-5px);
+      background-color: #f2f9ff;
+    }
+
+    .grid-item a {
+      text-decoration: none;
+      color: #333;
+    }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <h2>订单模块功能</h2>
-    <ul>
-      <li><a href="/order/create-inquiry">创建询价</a></li>
-      <li><a href="/order/edit-inquiry">修改询价</a></li>
-      <li><a href="/order/query-inquiry">查询询价</a></li>
-      <li><a href="/order/create-quote">创建报价</a></li>
-      <li><a href="/order/edit-quote">修改报价</a></li>
-      <li><a href="/order/query-quote">查询报价</a></li>
-      <li><a href="/order/create-order">创建订单</a></li>
-      <li><a href="/order/edit-order">修改订单</a></li>
-      <li><a href="/order/query-order">查询订单</a></li>
-    </ul>
+  <div class="title-bar">订单模块首页</div>
+
+  <div class="grid-container">
+    <div class="grid-item"><a href="/order/create-inquiry">创建询价</a></div>
+    <div class="grid-item"><a href="/order/edit-inquiry">修改询价</a></div>
+    <div class="grid-item"><a href="/order/query-inquiry">查询询价</a></div>
+
+    <div class="grid-item"><a href="/order/create-quote">创建报价</a></div>
+    <div class="grid-item"><a href="/order/edit-quote">修改报价</a></div>
+    <div class="grid-item"><a href="/order/query-quote">查询报价</a></div>
+
+    <div class="grid-item"><a href="/order/create-order">创建订单</a></div>
+    <div class="grid-item"><a href="/order/edit-order">修改订单</a></div>
+    <div class="grid-item"><a href="/order/query-order">查询订单</a></div>
   </div>
 </body>
 </html>
