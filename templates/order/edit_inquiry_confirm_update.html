@@ -1,15 +1,144 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>更新确认</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+  <style>
+    body {
+      min-height: 100vh;
+      margin: 0;
+      background: url('/static/order_background.png') no-repeat center center fixed;
+      background-size: cover;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .card-container {
+      background: #ffffffdd;
+      border-radius: 1rem;
+      box-shadow: 0 10px 30px rgba(0, 74, 153, 0.15);
+      padding: 2.5rem 3rem;
+      max-width: 700px;
+      width: 100%;
+      text-align: center;
+    }
+    h3 {
+      font-family: 'Brush Script MT', cursive, 'Segoe UI', sans-serif;
+      font-size: 2.8rem;
+      color: #004a99;
+      margin-bottom: 0.5rem;
+      text-shadow: 1px 1px 5px rgba(0, 0, 0, 0.15);
+    }
+    p.text-muted {
+      font-size: 1.1rem;
+      margin-bottom: 1.8rem;
+      color: #004a99;
+      opacity: 0.75;
+    }
+    table.table {
+      background: #fefefe;
+      border-radius: 0.75rem;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 74, 153, 0.1);
+      text-align: left;
+    }
+    table th,
+    table td {
+      vertical-align: middle !important;
+      color: #004a99;
+      font-weight: 600;
+      padding: 0.6rem 1rem;
+      border-top: none;
+      border-bottom: 1px solid #ddd;
+    }
+    table thead {
+      background: linear-gradient(45deg, #007bff, #004a99);
+      color: #fff;
+      font-weight: 700;
+    }
+    /* 分组明细标题 */
+    tr.items-header {
+      background-color: #e9f0fb;
+      font-weight: 700;
+      color: #004a99;
+      border-bottom: 2px solid #004a99;
+    }
+    /* 明细字段名单元格 */
+    .item-field-name {
+      width: 120px;
+      font-weight: 600;
+      color: #0056b3;
+      padding-left: 2rem;
+    }
+    /* 明细字段值单元格 */
+    .item-field-value {
+      color: #003366;
+      font-weight: 400;
+    }
+    form.d-flex {
+      justify-content: center;
+      gap: 1.5rem;
+      margin-top: 2.5rem;
+      flex-wrap: wrap;
+    }
+    .btn {
+      min-width: 140px;
+      border-radius: 2rem;
+      font-weight: 700;
+      font-size: 1.2rem;
+      padding: 0.6rem 1.8rem;
+      box-shadow: 0 4px 14px rgba(0, 74, 153, 0.4);
+      border: none;
+      transition: background 0.3s ease, box-shadow 0.3s ease;
+    }
+    .btn-success {
+      background: linear-gradient(45deg, #28a745, #1e7e34);
+      color: #fff;
+    }
+    .btn-success:hover,
+    .btn-success:focus {
+      background: linear-gradient(45deg, #1e7e34, #155d27);
+      box-shadow: 0 6px 18px rgba(21, 93, 39, 0.7);
+      color: #fff;
+    }
+    .btn-secondary {
+      background: linear-gradient(45deg, #6c757d, #495057);
+      color: #fff;
+    }
+    .btn-secondary:hover,
+    .btn-secondary:focus {
+      background: linear-gradient(45deg, #495057, #343a40);
+      box-shadow: 0 6px 18px rgba(52, 58, 64, 0.7);
+      color: #fff;
+    }
+    @media (max-width: 576px) {
+      .card-container {
+        padding: 1.5rem 1.8rem;
+      }
+      table th,
+      table td {
+        font-size: 0.9rem;
+        padding: 0.4rem 0.7rem;
+      }
+      .btn {
+        font-size: 1rem;
+        min-width: 120px;
+      }
+    }
+  </style>
 </head>
-<body class="bg-light">
-  <div class="container py-4">
+<body>
+  <div class="card-container">
     <h3>更新确认</h3>
     <p class="text-muted">请确认以下更改内容：</p>
-    <table class="table table-bordered">
+
+    <table class="table table-bordered mb-0">
       <thead>
         <tr>
           <th>字段</th>
@@ -18,19 +147,71 @@
         </tr>
       </thead>
       <tbody>
-        {% for key, value in old.items() %}
-          <tr>
-            <td>{{ key }}</td>
-            <td>{{ value }}</td>
-            <td>{{ new[key] }}</td>
-          </tr>
+        {# 先映射非items的普通字段 #}
+        {% set field_name_map = {
+          'customer_id': '客户ID',
+          'inquiry_date': '询价日期',
+          'expected_delivery_date': '期望交货日期',
+          'status': '状态',
+          'expected_total_amount': '预期总金额',
+          'salesperson_id': '业务员ID',
+          'remarks': '备注'
+        } %}
+        
+        {% for key, old_val in old.items() %}
+          {% if key != 'items' %}
+            <tr>
+              <td>{{ field_name_map.get(key, key) }}</td>
+              <td>{{ old_val }}</td>
+              <td>{{ new[key] }}</td>
+            </tr>
+          {% endif %}
         {% endfor %}
+
+        {# 明细行单独处理 #}
+        <tr class="items-header">
+          <td colspan="3">明细行变更</td>
+        </tr>
+
+       {% for old_item in old.get('items', []) %}
+  <tr class="table-active">
+    <td colspan="3">第 {{ loop.index }} 行</td>
+  </tr>
+  <tr>
+    <td class="item-field-name">物料ID</td>
+    <td class="item-field-value">{{ old_item.material_id }}</td>
+    <td class="item-field-value">{{ new['items'][loop.index0].material_id }}</td>
+  </tr>
+  <tr>
+    <td class="item-field-name">数量</td>
+    <td class="item-field-value">{{ old_item.inquiry_quantity }}</td>
+    <td class="item-field-value">{{ new['items'][loop.index0].inquiry_quantity }}</td>
+  </tr>
+  <tr>
+    <td class="item-field-name">单位</td>
+    <td class="item-field-value">{{ old_item.unit }}</td>
+    <td class="item-field-value">{{ new['items'][loop.index0].unit }}</td>
+  </tr>
+  <tr>
+    <td class="item-field-name">预期单价</td>
+    <td class="item-field-value">{{ old_item.expected_unit_price }}</td>
+    <td class="item-field-value">{{ new['items'][loop.index0].expected_unit_price }}</td>
+  </tr>
+  <tr>
+    <td class="item-field-name">备注</td>
+    <td class="item-field-value">{{ old_item.item_remarks }}</td>
+    <td class="item-field-value">{{ new['items'][loop.index0].item_remarks }}</td>
+  </tr>
+{% endfor %}
       </tbody>
     </table>
-    <form method="POST" action="/order/edit-inquiry/confirm_update" class="d-flex gap-3">
+
+    <form method="POST" action="/order/edit-inquiry/confirm_update" class="d-flex mt-4">
+      <input type="hidden" name="inquiry_id" value="{{ new['inquiry_id'] }}" />
       <button type="submit" name="confirm" value="yes" class="btn btn-success">确认更新</button>
       <button type="submit" name="confirm" value="no" class="btn btn-secondary">取消</button>
     </form>
   </div>
 </body>
 </html>
+

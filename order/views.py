@@ -82,30 +82,122 @@ def edit_prompt():
 @order_bp.route('/edit-inquiry/save', methods=['POST'])
 def edit_save():
     inquiry_id = request.form.get('inquiry_id')
-    inquiry = get_inquiry_by_id(inquiry_id)
+    inquiry = Inquiry.query.options(joinedload(Inquiry.items)).filter_by(inquiry_id=inquiry_id).first()
+
     if not inquiry:
-        flash("找不到要更新的询价单")
+        flash('未找到该询价单')
         return redirect(url_for('order.edit_prompt'))
 
+    # ===== 原始数据（用于对比） =====
     old_data = {
         'customer_id': inquiry.customer_id,
-        'inquiry_date': inquiry.inquiry_date,
-        'expected_delivery_date': inquiry.expected_delivery_date,
-        'expected_total_amount': inquiry.expected_total_amount,
+        'inquiry_date': inquiry.inquiry_date.strftime('%Y-%m-%d') if inquiry.inquiry_date else '',
+        'expected_delivery_date': inquiry.expected_delivery_date.strftime('%Y-%m-%d') if inquiry.expected_delivery_date else '',
+        'expected_total_amount': str(inquiry.expected_total_amount),
         'salesperson_id': inquiry.salesperson_id,
-        'remarks': inquiry.remarks
+        'remarks': inquiry.remarks,
+        'items': [
+            {
+                'item_no': item.item_no,
+                'material_id': item.material_id,
+                'inquiry_quantity': str(item.inquiry_quantity),
+                'unit': item.unit,
+                'expected_unit_price': str(item.expected_unit_price or ''),
+                'item_remarks': item.item_remarks or ''
+            }
+            for item in inquiry.items
+        ]
     }
 
+    # ===== 更新主表 Inquiry =====
     inquiry.customer_id = request.form.get('customer_id')
     inquiry.inquiry_date = datetime.strptime(request.form.get('inquiry_date'), '%Y-%m-%d')
     inquiry.expected_delivery_date = datetime.strptime(request.form.get('expected_delivery_date'), '%Y-%m-%d')
-    inquiry.expected_total_amount = float(request.form.get('expected_total_amount'))
+    inquiry.expected_total_amount = float(request.form.get('expected_total_amount') or 0)
     inquiry.salesperson_id = request.form.get('salesperson_id')
     inquiry.remarks = request.form.get('remarks')
 
-    db.session.flush()  # 暂不提交，先展示新旧数据对比
+    # ===== 获取行项字段列表 =====
+    item_nos = request.form.getlist('item_no')
+    material_ids = request.form.getlist('material_id')
+    inquiry_quantities = request.form.getlist('inquiry_quantity')
+    units = request.form.getlist('unit')
+    expected_unit_prices = request.form.getlist('expected_unit_price')
+    item_remarks = request.form.getlist('item_remarks')
 
-    return render_template('order/edit_inquiry_confirm_update.html', old=old_data, new=inquiry)
+    # 构建前端提交的新行项数据列表
+    new_items = []
+    for i in range(len(item_nos)):
+        if not item_nos[i] or not material_ids[i]:
+            continue  # 跳过空行
+        new_items.append({
+            'item_no': int(item_nos[i]),
+            'material_id': material_ids[i],
+            'inquiry_quantity': float(inquiry_quantities[i] or 0),
+            'unit': units[i],
+            'expected_unit_price': float(expected_unit_prices[i] or 0),
+            'item_remarks': item_remarks[i]
+        })
+
+    # ========== 行项同步处理 ==========
+    # 已存在 item_no 的映射
+    existing_items = {item.item_no: item for item in inquiry.items}
+
+    # 保留 item_no，用于判断是否删除
+    submitted_item_nos = [item['item_no'] for item in new_items]
+
+    for new_item in new_items:
+        item_no = new_item['item_no']
+        if item_no in existing_items:
+            # 更新已有项
+            item = existing_items[item_no]
+            item.material_id = new_item['material_id']
+            item.inquiry_quantity = new_item['inquiry_quantity']
+            item.unit = new_item['unit']
+            item.expected_unit_price = new_item['expected_unit_price']
+            item.item_remarks = new_item['item_remarks']
+        else:
+            # 插入新项
+            new_entry = InquiryItem(
+                inquiry_id=inquiry_id,
+                item_no=item_no,
+                material_id=new_item['material_id'],
+                inquiry_quantity=new_item['inquiry_quantity'],
+                unit=new_item['unit'],
+                expected_unit_price=new_item['expected_unit_price'],
+                item_remarks=new_item['item_remarks']
+            )
+            db.session.add(new_entry)
+
+    # 删除未提交的旧项
+    for item in inquiry.items:
+        if item.item_no not in submitted_item_nos:
+            db.session.delete(item)
+
+    db.session.commit()
+
+    # ========== 新数据汇总（用于对比） ==========
+    new_data = {
+        'customer_id': inquiry.customer_id,
+        'inquiry_date': inquiry.inquiry_date.strftime('%Y-%m-%d') if inquiry.inquiry_date else '',
+        'expected_delivery_date': inquiry.expected_delivery_date.strftime('%Y-%m-%d') if inquiry.expected_delivery_date else '',
+        'expected_total_amount': str(inquiry.expected_total_amount),
+        'salesperson_id': inquiry.salesperson_id,
+        'remarks': inquiry.remarks,
+        'items': [
+            {
+                'item_no': item.item_no,
+                'material_id': item.material_id,
+                'inquiry_quantity': str(item.inquiry_quantity),
+                'unit': item.unit,
+                'expected_unit_price': str(item.expected_unit_price or ''),
+                'item_remarks': item.item_remarks or ''
+            }
+            for item in inquiry.items
+        ]
+    }
+
+    return render_template('order/edit_inquiry_confirm_update.html', old=old_data, new=new_data)
 
 # 3️⃣ 确认更新
 @order_bp.route('/edit-inquiry/confirm_update', methods=['POST'])
@@ -114,25 +206,30 @@ def confirm_update():
     inquiry_id = request.form.get('inquiry_id')
 
     if confirmed == 'yes':
-        db.session.commit()
-        flash('✅ 已成功更新询价信息')
+        flash('✅ 已成功更新询价信息！', 'success')
     else:
-        db.session.rollback()
-        flash('⚠️ 取消了修改，数据未更改')
+        flash('⚠️ 已取消修改，数据未更新。', 'warning')
+        # 回滚未提交的数据（理论上已 commit，但前端用户体验仍可保持一致）
+        return redirect(url_for('order.edit_prompt'))
 
     return redirect(url_for('order.edit_prompt'))
+
 
 # 4️⃣ 审核状态更新
 @order_bp.route('/edit-inquiry/approve', methods=['POST'])
 def approve_inquiry():
     inquiry_id = request.form.get('inquiry_id')
     inquiry = Inquiry.query.filter_by(inquiry_id=inquiry_id).first()
-    if inquiry:
-        inquiry.status = '已评审'
-        db.session.commit()
-        flash('✅ 状态已变为已评审')
-    return redirect(url_for('order.edit_prompt'))
 
+    if not inquiry:
+        flash('❌ 未找到对应询价单', 'danger')
+        return redirect(url_for('order.edit_prompt'))
+
+    inquiry.status = '已评审'
+    db.session.commit()
+
+    flash('✅ 状态已更新为“已评审”', 'success')
+    return redirect(url_for('order.edit_prompt'))
 
 
 @order_bp.route('/query-inquiry', methods=['GET', 'POST'])

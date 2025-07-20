@@ -1,51 +1,292 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>修改询价单</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+  <style>
+    body {
+      min-height: 100vh;
+      margin: 0;
+      background: url('/static/order_background.png') no-repeat center center fixed;
+      background-size: cover;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      padding: 1rem;
+    }
+    .card-container {
+      background: #fff;
+      border-radius: 1rem;
+      box-shadow: 0 10px 30px rgba(0, 74, 153, 0.15);
+      padding: 2rem 2.5rem;
+      max-width: 900px;
+      width: 100%;
+      overflow-x: auto;
+    }
+    h3 {
+      font-family: 'Brush Script MT', cursive, 'Segoe UI', sans-serif;
+      font-size: 2.8rem;
+      color: #004a99;
+      text-align: center;
+      margin-bottom: 1.8rem;
+      text-shadow: 1px 1px 5px rgba(0, 0, 0, 0.15);
+    }
+    label {
+      font-weight: 600;
+      color: #004a99;
+    }
+    input.form-control,
+    textarea.form-control {
+      border-radius: 0.5rem;
+      border: 1.5px solid #007bff;
+      box-shadow: inset 0 1px 3px rgba(0, 123, 255, 0.15);
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    input.form-control:focus,
+    textarea.form-control:focus {
+      border-color: #0056b3;
+      box-shadow: 0 0 8px rgba(0, 86, 179, 0.6);
+      outline: none;
+    }
+    .btn {
+      border-radius: 2rem;
+      font-weight: 700;
+      font-size: 1.1rem;
+      padding: 0.6rem 1.8rem;
+      box-shadow: 0 4px 14px rgba(0, 74, 153, 0.4);
+      transition: background 0.3s ease, box-shadow 0.3s ease;
+      border: none;
+    }
+    .btn-warning {
+      background: linear-gradient(45deg, #ffc107, #e0a800);
+      color: #fff;
+    }
+    .btn-warning:hover,
+    .btn-warning:focus {
+      background: linear-gradient(45deg, #e0a800, #b38600);
+      box-shadow: 0 6px 18px rgba(179, 134, 0, 0.7);
+      color: #fff;
+    }
+    .btn-success {
+      background: linear-gradient(45deg, #28a745, #1e7e34);
+      color: #fff;
+    }
+    .btn-success:hover,
+    .btn-success:focus {
+      background: linear-gradient(45deg, #1e7e34, #155d27);
+      box-shadow: 0 6px 18px rgba(21, 93, 39, 0.7);
+      color: #fff;
+    }
+    .btn-danger {
+      background: linear-gradient(45deg, #dc3545, #a71d2a);
+      color: #fff;
+    }
+    .btn-danger:hover,
+    .btn-danger:focus {
+      background: linear-gradient(45deg, #a71d2a, #7a141f);
+      box-shadow: 0 6px 18px rgba(122, 20, 31, 0.7);
+      color: #fff;
+    }
+    .btn-group-custom {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 2rem;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .btn-group-custom form {
+      flex: 1;
+      min-width: 140px;
+    }
+    /* 明细表格 */
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0 0.75rem;
+      margin-top: 1rem;
+    }
+    th {
+      color: #004a99;
+      font-weight: 700;
+      text-align: center;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid #007bff;
+    }
+    td {
+      vertical-align: middle;
+    }
+    td > input {
+      width: 100%;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.95rem;
+    }
+    .remove-row-btn {
+      padding: 0.3rem 0.8rem;
+    }
+  </style>
 </head>
-<body class="bg-light">
-  <div class="container py-4">
-    <h3 class="mb-4">修改询价单：{{ inquiry.inquiry_id }}</h3>
-    <form method="POST" action="/order/edit-inquiry/save">
-      <input type="hidden" name="inquiry_id" value="{{ inquiry.inquiry_id }}">
+<body>
+  <div class="card-container">
+    <h3>修改询价单：{{ inquiry.inquiry_id }}</h3>
+
+    <form method="POST" action="/order/edit-inquiry/save" id="editInquiryForm" class="mb-0">
+      <input type="hidden" name="inquiry_id" value="{{ inquiry.inquiry_id }}" />
 
       <div class="row g-3">
         <div class="col-md-6">
-          <label class="form-label">客户编号</label>
-          <input type="text" class="form-control" name="customer_id" value="{{ inquiry.customer_id }}">
+          <label class="form-label" for="customer_id">客户编号</label>
+          <input
+            type="text"
+            id="customer_id"
+            class="form-control"
+            name="customer_id"
+            value="{{ inquiry.customer_id }}"
+            required
+          />
         </div>
         <div class="col-md-6">
-          <label class="form-label">询价日期</label>
-          <input type="date" class="form-control" name="inquiry_date" value="{{ inquiry.inquiry_date }}">
+          <label class="form-label" for="inquiry_date">询价日期</label>
+          <input
+            type="date"
+            id="inquiry_date"
+            class="form-control"
+            name="inquiry_date"
+            value="{{ inquiry.inquiry_date.strftime('%Y-%m-%d') if inquiry.inquiry_date else '' }}"
+            required
+          />
         </div>
         <div class="col-md-6">
-          <label class="form-label">期望交货日期</label>
-          <input type="date" class="form-control" name="expected_delivery_date" value="{{ inquiry.expected_delivery_date }}">
+          <label class="form-label" for="expected_delivery_date">期望交货日期</label>
+          <input
+            type="date"
+            id="expected_delivery_date"
+            class="form-control"
+            name="expected_delivery_date"
+            value="{{ inquiry.expected_delivery_date.strftime('%Y-%m-%d') if inquiry.expected_delivery_date else '' }}"
+            required
+          />
         </div>
         <div class="col-md-6">
-          <label class="form-label">期望总金额</label>
-          <input type="number" step="0.01" class="form-control" name="expected_total_amount" value="{{ inquiry.expected_total_amount }}">
+          <label class="form-label" for="expected_total_amount">期望总金额</label>
+          <input
+            type="number"
+            step="0.01"
+            id="expected_total_amount"
+            class="form-control"
+            name="expected_total_amount"
+            value="{{ inquiry.expected_total_amount }}"
+            required
+          />
         </div>
         <div class="col-md-6">
-          <label class="form-label">销售人员编号</label>
-          <input type="text" class="form-control" name="salesperson_id" value="{{ inquiry.salesperson_id }}">
+          <label class="form-label" for="salesperson_id">销售人员编号</label>
+          <input
+            type="text"
+            id="salesperson_id"
+            class="form-control"
+            name="salesperson_id"
+            value="{{ inquiry.salesperson_id }}"
+            required
+          />
         </div>
         <div class="col-12">
-          <label class="form-label">备注</label>
-          <textarea class="form-control" name="remarks">{{ inquiry.remarks }}</textarea>
+          <label class="form-label" for="remarks">备注</label>
+          <textarea
+            id="remarks"
+            class="form-control"
+            name="remarks"
+            rows="3"
+          >{{ inquiry.remarks }}</textarea>
         </div>
       </div>
 
-      <div class="mt-4 d-flex justify-content-between">
-        <button type="submit" class="btn btn-warning">保存修改</button>
-    </form>
-    <form method="POST" action="/order/edit-inquiry/approve">
-      <input type="hidden" name="inquiry_id" value="{{ inquiry.inquiry_id }}">
-      <button type="submit" class="btn btn-success">审核通过</button>
-    </form>
+      <!-- 明细表 -->
+      <h5 class="mt-4" style="color:#004a99;">询价明细</h5>
+      <table id="itemsTable" class="table table-striped table-bordered">
+        <thead>
+          <tr>
+            <th>序号 (item_no)</th>
+            <th>物料编号 (material_id)</th>
+            <th>数量 (inquiry_quantity)</th>
+            <th>单位 (unit)</th>
+            <th>预期单价 (expected_unit_price)</th>
+            <th>备注 (item_remarks)</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in inquiry.items %}
+          <tr>
+            <td>
+              <input type="number" name="item_no" class="form-control" value="{{ item.item_no }}" required />
+            </td>
+            <td>
+              <input type="text" name="material_id" class="form-control" value="{{ item.material_id }}" required />
+            </td>
+            <td>
+              <input type="number" step="0.01" name="inquiry_quantity" class="form-control" value="{{ item.inquiry_quantity }}" required />
+            </td>
+            <td>
+              <input type="text" name="unit" class="form-control" value="{{ item.unit }}" required />
+            </td>
+            <td>
+              <input type="number" step="0.01" name="expected_unit_price" class="form-control" value="{{ item.expected_unit_price or '' }}" />
+            </td>
+            <td>
+              <input type="text" name="item_remarks" class="form-control" value="{{ item.item_remarks or '' }}" />
+            </td>
+            <td class="text-center">
+              <button type="button" class="btn btn-danger remove-row-btn">删除</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <button type="button" id="addRowBtn" class="btn btn-primary mb-3">新增明细行</button>
+
+      <div class="btn-group-custom mt-4">
+        <button type="submit" class="btn btn-warning w-100">保存修改</button>
       </div>
+    </form>
+
+    <form method="POST" action="/order/edit-inquiry/approve" class="btn-group-custom mt-3">
+      <input type="hidden" name="inquiry_id" value="{{ inquiry.inquiry_id }}" />
+      <button type="submit" class="btn btn-success w-100">审核通过</button>
+    </form>
   </div>
+
+  <script>
+    // 添加新明细行
+    document.getElementById('addRowBtn').addEventListener('click', () => {
+      const tbody = document.querySelector('#itemsTable tbody');
+      const newRow = document.createElement('tr');
+      newRow.innerHTML = `
+        <td><input type="number" name="item_no" class="form-control" required /></td>
+        <td><input type="text" name="material_id" class="form-control" required /></td>
+        <td><input type="number" step="0.01" name="inquiry_quantity" class="form-control" required /></td>
+        <td><input type="text" name="unit" class="form-control" required /></td>
+        <td><input type="number" step="0.01" name="expected_unit_price" class="form-control" /></td>
+        <td><input type="text" name="item_remarks" class="form-control" /></td>
+        <td class="text-center">
+          <button type="button" class="btn btn-danger remove-row-btn">删除</button>
+        </td>
+      `;
+      tbody.appendChild(newRow);
+    });
+
+    // 删除行
+    document.querySelector('#itemsTable').addEventListener('click', (e) => {
+      if (e.target.classList.contains('remove-row-btn')) {
+        const row = e.target.closest('tr');
+        if (row) row.remove();
+      }
+    });
+  </script>
 </body>
 </html>
