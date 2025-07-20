@@ -1,3 +1,5 @@
+PRAGMA foreign_keys = ON;
+
 CREATE TABLE `Customer` (
   `customer_id` varchar(255) PRIMARY KEY COMMENT '客户编号，唯一键（如“CUST-CN00001”）',
   `customer_name` varchar(255) NOT NULL COMMENT '客户名称，全称',
