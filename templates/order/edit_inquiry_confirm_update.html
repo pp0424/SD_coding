@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>更新确认</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+  <div class="container py-4">
+    <h3>更新确认</h3>
+    <p class="text-muted">请确认以下更改内容：</p>
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>字段</th>
+          <th>旧值</th>
+          <th>新值</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for key, value in old.items() %}
+          <tr>
+            <td>{{ key }}</td>
+            <td>{{ value }}</td>
+            <td>{{ new[key] }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <form method="POST" action="/order/edit-inquiry/confirm_update" class="d-flex gap-3">
+      <button type="submit" name="confirm" value="yes" class="btn btn-success">确认更新</button>
+      <button type="submit" name="confirm" value="no" class="btn btn-secondary">取消</button>
+    </form>
+  </div>
+</body>
+</html>

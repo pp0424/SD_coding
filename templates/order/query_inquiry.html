@@ -1,52 +1,144 @@
+<!-- templates/inquiry/search.html -->
 <!DOCTYPE html>
-<html>
+<html lang="zh">
 <head>
   <meta charset="UTF-8">
   <title>查询询价</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
   <style>
-    .container {
-      width: 600px;
-      margin: 80px auto;
-      padding: 30px;
-      background-color: #ffffffcc;
-      border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    body {
+      background: url('/static/order_background.png') no-repeat center center fixed;
+      background-size: cover;
+      font-family: 'Segoe UI', sans-serif;
     }
+
+    .container {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      margin-top: 40px;
+      margin-bottom: 40px;
+    }
+
     h2 {
+      font-family: 'ZCOOL XiaoWei', serif;
+      font-size: 32px;
+      color: #2c3e50;
       text-align: center;
       margin-bottom: 30px;
     }
-    input[type="text"], textarea {
-      width: 100%;
-      padding: 10px;
-      margin: 12px 0;
-      border: 1px solid #ccc;
-      border-radius: 5px;
+
+    h4 {
+      margin-top: 40px;
+      color: #34495e;
     }
-    button {
-      width: 100%;
-      padding: 12px;
-      background-color: #3498db;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      font-size: 16px;
-      cursor: pointer;
+
+    .card {
+      border: 1px solid #dbe9f4;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     }
-    button:hover {
-      background-color: #2980b9;
+
+    .card-title {
+      font-weight: bold;
+      color: #2980b9;
+    }
+
+    .card-text {
+      font-size: 15px;
+      color: #333;
+      line-height: 1.6;
+    }
+
+    .table th {
+      background-color: #f0f8ff;
+      color: #2c3e50;
+      font-weight: 500;
+    }
+
+    .btn {
+      border-radius: 8px;
+      font-weight: 500;
+      padding: 8px 16px;
+    }
+
+    .alert {
+      margin-top: 30px;
+    }
+
+    @media (max-width: 768px) {
+      .form-control {
+        margin-bottom: 10px;
+      }
     }
   </style>
 </head>
 <body>
   <div class="container">
     <h2>查询询价</h2>
-    <form method="POST">
-      <input type="text" placeholder="示例字段 1">
-      <textarea placeholder="示例字段 2（可替换为详细内容）"></textarea>
-      <button type="submit">提交</button>
+
+    <form method="POST" class="row g-3">
+      {{ form.hidden_tag() }}
+      <div class="col-md-4">{{ form.inquiry_id.label }} {{ form.inquiry_id(class="form-control") }}</div>
+      <div class="col-md-4">{{ form.customer_id.label }} {{ form.customer_id(class="form-control") }}</div>
+      <div class="col-md-4">{{ form.material_id.label }} {{ form.material_id(class="form-control") }}</div>
+      <div class="col-md-4">{{ form.date_start.label }} {{ form.date_start(class="form-control") }}</div>
+      <div class="col-md-4">{{ form.date_end.label }} {{ form.date_end(class="form-control") }}</div>
+      <div class="col-md-4 d-flex align-items-end">
+        {{ form.submit(class="btn btn-primary me-2") }}
+        {{ form.show_all(class="btn btn-secondary") }}
+      </div>
     </form>
+
+    <hr class="my-4">
+
+    {% if results %}
+      <h4>查询结果：</h4>
+      {% for inquiry in results %}
+        <div class="card my-3">
+          <div class="card-body">
+            <h5 class="card-title">询价单号：{{ inquiry.inquiry_id }} ｜ 客户：{{ inquiry.customer_id }} ｜ 日期：{{ inquiry.inquiry_date }}</h5>
+            <p class="card-text">
+              状态：{{ inquiry.status }}<br>
+              总金额：{{ inquiry.expected_total_amount }}<br>
+              交货日期：{{ inquiry.expected_delivery_date }}<br>
+              销售员：{{ inquiry.salesperson_id }}<br>
+              备注：{{ inquiry.remarks }}
+            </p>
+
+            <h6>询价物料项：</h6>
+            <table class="table table-sm table-bordered">
+              <thead>
+                <tr>
+                  <th>行项号</th>
+                  <th>物料编号</th>
+                  <th>数量</th>
+                  <th>单位</th>
+                  <th>期望单价</th>
+                  <th>备注</th>
+                </tr>
+              </thead>
+              <tbody>
+              {% for item in inquiry.items %}
+                <tr>
+                  <td>{{ item.item_no }}</td>
+                  <td>{{ item.material_id }}</td>
+                  <td>{{ item.inquiry_quantity }}</td>
+                  <td>{{ item.unit }}</td>
+                  <td>{{ item.expected_unit_price }}</td>
+                  <td>{{ item.item_remarks }}</td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      {% endfor %}
+    {% elif request.method == 'POST' %}
+      <div class="alert alert-warning">未找到符合条件的询价数据。</div>
+    {% endif %}
   </div>
 </body>
 </html>
