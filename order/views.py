@@ -331,9 +331,162 @@ def create_quotation():
 
     return render_template('order/create_quotation.html')
 
-@order_bp.route('/edit-quote')
-def edit_quote():
-    return render_template('order/edit_quote.html')
+@order_bp.route('/edit-quote', methods=['GET', 'POST'])
+def edit_quote_prompt():
+    if request.method == 'POST':
+        quote_id = request.form.get('quotation_id')
+        quotation = Quotation.query.options(joinedload(Quotation.items)).filter_by(quotation_id=quote_id).first()
+        if quotation:
+            return render_template('order/edit_quote_form.html', quotation=quotation)
+        else:
+            flash("未找到该报价单")
+    return render_template('order/edit_quote_input.html')
+
+
+@order_bp.route('/edit-quote/save', methods=['GET','POST'])
+def edit_quote_save():
+    quote_id = request.form.get('quotation_id')
+    quotation = Quotation.query.options(joinedload(Quotation.items)).filter_by(quotation_id=quote_id).first()
+
+    if not quotation:
+        flash('未找到该报价单', 'danger')
+        return redirect(url_for('order.edit_quote_prompt'))
+
+    # ========== 原始数据（用于对比） ==========
+    old_data = {
+        "customer_id": quotation.customer_id,
+        "inquiry_id": quotation.inquiry_id,
+        "quotation_date": quotation.quotation_date.strftime('%Y-%m-%d') if quotation.quotation_date else '',
+        "valid_until_date": quotation.valid_until_date.strftime('%Y-%m-%d') if quotation.valid_until_date else '',
+        "total_amount": str(quotation.total_amount),
+        "salesperson_id": quotation.salesperson_id,
+        "remarks": quotation.remarks,
+        "items": [
+            {
+                'item_no': item.item_no,
+                'material_id': item.material_id,
+                'quotation_quantity': str(item.quotation_quantity),
+                'unit': item.unit,
+                'unit_price': str(item.unit_price),
+                'discount_rate': str(item.discount_rate),
+                'item_amount': str(item.item_amount),
+                'inquiry_item_id': item.inquiry_item_id or ''
+            } for item in quotation.items
+        ]
+    }
+
+    # ========== 更新主表 ==========
+    quotation.customer_id = request.form.get("customer_id")
+    quotation.inquiry_id = request.form.get("inquiry_id")
+
+    try:
+        quotation.quotation_date = datetime.strptime(request.form.get("quotation_date"), '%Y-%m-%d')
+        quotation.valid_until_date = datetime.strptime(request.form.get("valid_until_date"), '%Y-%m-%d')
+    except Exception:
+        flash("请填写合法的日期", "danger")
+        return redirect(request.url)
+
+    quotation.total_amount = float(request.form.get("total_amount") or 0)
+    quotation.salesperson_id = request.form.get("salesperson_id")
+    quotation.remarks = request.form.get("remarks")
+
+    # ========== 子表同步 ==========
+    item_nos = request.form.getlist('item_no')
+    material_ids = request.form.getlist('material_id')
+    quotation_quantities = request.form.getlist('quotation_quantity')
+    units = request.form.getlist('unit')
+    unit_prices = request.form.getlist('unit_price')
+    discount_rates = request.form.getlist('discount_rate')
+    item_amounts = request.form.getlist('item_amount')
+    inquiry_item_ids = request.form.getlist('inquiry_item_id')
+
+    new_items = []
+    for i in range(len(item_nos)):
+        if not item_nos[i] or not material_ids[i]:
+            continue
+        new_items.append({
+            'item_no': int(item_nos[i]),
+            'material_id': material_ids[i],
+            'quotation_quantity': float(quotation_quantities[i] or 0),
+            'unit': units[i],
+            'unit_price': float(unit_prices[i] or 0),
+            'discount_rate': float(discount_rates[i] or 0),
+            'item_amount': float(item_amounts[i] or 0),
+            'inquiry_item_id': inquiry_item_ids[i]
+        })
+
+    existing_items = {item.item_no: item for item in quotation.items}
+    submitted_item_nos = [item['item_no'] for item in new_items]
+
+    for item_data in new_items:
+        item_no = item_data['item_no']
+        if item_no in existing_items:
+            item = existing_items[item_no]
+        else:
+            item = QuotationItem(quotation_id=quote_id, item_no=item_no)
+            db.session.add(item)
+
+        item.material_id = item_data['material_id']
+        item.quotation_quantity = item_data['quotation_quantity']
+        item.unit = item_data['unit']
+        item.unit_price = item_data['unit_price']
+        item.discount_rate = item_data['discount_rate']
+        item.item_amount = item_data['item_amount']
+        item.inquiry_item_id = item_data['inquiry_item_id']
+
+    for old_item in quotation.items:
+        if old_item.item_no not in submitted_item_nos:
+            db.session.delete(old_item)
+
+    db.session.commit()
+
+    # ========== 新数据（对比用） ==========
+    new_data = {
+        "customer_id": quotation.customer_id,
+        "inquiry_id": quotation.inquiry_id,
+        "quotation_date": quotation.quotation_date.strftime('%Y-%m-%d') if quotation.quotation_date else '',
+        "valid_until_date": quotation.valid_until_date.strftime('%Y-%m-%d') if quotation.valid_until_date else '',
+        "total_amount": str(quotation.total_amount),
+        "salesperson_id": quotation.salesperson_id,
+        "remarks": quotation.remarks,
+        "items": [
+            {
+                'item_no': item.item_no,
+                'material_id': item.material_id,
+                'quotation_quantity': str(item.quotation_quantity),
+                'unit': item.unit,
+                'unit_price': str(item.unit_price),
+                'discount_rate': str(item.discount_rate),
+                'item_amount': str(item.item_amount),
+                'inquiry_item_id': item.inquiry_item_id or ''
+            } for item in quotation.items
+        ]
+    }
+
+    return render_template('order/edit_quote_confirm_update.html', old=old_data, new=new_data, quotation_id=quote_id)
+
+@order_bp.route('/edit-quote/confirm_update', methods=['POST'])
+def confirm_quote_update():
+    quote_id = request.form.get('quotation_id')
+    confirmed = request.form.get('confirm')
+
+    if confirmed == 'yes':
+        flash('已成功更新报价信息')
+    else:
+        flash('取消了修改，数据未更改')
+
+    return redirect(url_for('order.edit_quote_prompt'))
+
+
+@order_bp.route('/edit-quote/approve', methods=['POST'])
+def approve_quotation():
+    quote_id = request.form.get('quotation_id')
+    quotation = Quotation.query.filter_by(quotation_id=quote_id).first()
+    if quotation:
+        quotation.status = '已确认'
+        db.session.commit()
+        flash('报价单状态已变更为“已确认”')
+    return redirect(url_for('order.edit_quote_prompt'))
 
 @order_bp.route('/query-quote', methods=['GET', 'POST'])
 def query_quotation():

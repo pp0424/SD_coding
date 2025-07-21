@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>修改报价单</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: url('/static/order_background.png') no-repeat center center fixed;
+      background-size: cover;
+      min-height: 100vh;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .card {
+      border-radius: 15px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      padding: 2rem;
+      background-color: white;
+      margin-top: 40px;
+    }
+    h3 {
+      font-family: 'Segoe UI Semibold', sans-serif;
+      text-align: center;
+      text-shadow: 1px 1px 2px #ccc;
+      margin-bottom: 30px;
+    }
+    .btn-glow {
+      box-shadow: 0 0 8px rgba(0,123,255,0.4);
+    }
+    .form-label {
+      font-weight: 600;
+    }
+    .table input {
+      width: 100%;
+      padding: 5px 8px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    .table th, .table td {
+      vertical-align: middle;
+    }
+    .btn-group {
+      gap: 12px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container-fluid">
+  <div class="card mx-auto" style="max-width: 1400px;">
+    <h3>修改报价单（编号：{{ quotation.quotation_id }}）</h3>
+    <form method="POST" action="{{ url_for('order.edit_quote_save') }}">
+      <input type="hidden" name="quotation_id" value="{{ quotation.quotation_id }}">
+
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <label class="form-label">客户编号</label>
+          <input class="form-control" name="customer_id" value="{{ quotation.customer_id }}" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">关联询价单号</label>
+          <input class="form-control" name="inquiry_id" value="{{ quotation.inquiry_id }}">
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <label class="form-label">报价日期</label>
+          <input type="date" class="form-control" name="quotation_date" value="{{ quotation.quotation_date.strftime('%Y-%m-%d') }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">有效期至</label>
+          <input type="date" class="form-control" name="valid_until_date" value="{{ quotation.valid_until_date.strftime('%Y-%m-%d') }}">
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <label class="form-label">总金额</label>
+          <input type="number" step="0.01" class="form-control" name="total_amount" value="{{ quotation.total_amount }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">销售员编号</label>
+          <input class="form-control" name="salesperson_id" value="{{ quotation.salesperson_id }}">
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label">备注</label>
+        <input class="form-control" name="remarks" value="{{ quotation.remarks }}">
+      </div>
+
+      <hr>
+      <h5 class="mb-3">报价明细</h5>
+      <table class="table table-bordered table-hover">
+        <thead class="table-light">
+          <tr>
+            <th>行号</th>
+            <th>物料编号</th>
+            <th>数量</th>
+            <th>单位</th>
+            <th>单价</th>
+            <th>折扣率</th>
+            <th>金额</th>
+            <th>关联询价项</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="items-table">
+          {% for item in quotation.items %}
+          <tr>
+            <td><input name="item_no" value="{{ item.item_no }}" readonly></td>
+            <td><input name="material_id" value="{{ item.material_id }}"></td>
+            <td><input name="quotation_quantity" type="number" value="{{ item.quotation_quantity }}"></td>
+            <td><input name="unit" value="{{ item.unit }}"></td>
+            <td><input name="unit_price" type="number" step="0.01" value="{{ item.unit_price }}"></td>
+            <td><input name="discount_rate" type="number" step="0.01" value="{{ item.discount_rate }}"></td>
+            <td><input name="item_amount" type="number" step="0.01" value="{{ item.item_amount }}"></td>
+            <td><input name="inquiry_item_id" value="{{ item.inquiry_item_id }}"></td>
+            <td><button type="button" class="btn btn-danger btn-sm" onclick="this.closest('tr').remove()">删除</button></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <div class="text-end mb-4">
+        <button type="button" class="btn btn-outline-primary btn-sm" onclick="addRow()">➕ 新增行</button>
+      </div>
+
+      <div class="d-flex justify-content-center btn-group">
+        <button type="submit" class="btn btn-primary btn-glow">💾 保存更新</button>
+        <button type="submit" formaction="{{ url_for('order.approve_quotation') }}" class="btn btn-success btn-glow">✔️ 提交审核</button>
+      </div>
+    </form>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul style="color: green;">
+          {% for msg in messages %}
+            <li>{{ msg }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+  </div>
+</div>
+
+<script>
+  function addRow() {
+    const table = document.getElementById('items-table');
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td><input name="item_no" value=""></td>
+      <td><input name="material_id" value=""></td>
+      <td><input name="quotation_quantity" type="number" value=""></td>
+      <td><input name="unit" value=""></td>
+      <td><input name="unit_price" type="number" value=""></td>
+      <td><input name="discount_rate" type="number" value="0"></td>
+      <td><input name="item_amount" type="number" value=""></td>
+      <td><input name="inquiry_item_id" value=""></td>
+      <td><button type="button" class="btn btn-danger btn-sm" onclick="this.closest('tr').remove()">删除</button></td>
+    `;
+    table.appendChild(row);
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>查询报价单</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: url('/static/order_background.png') no-repeat center center fixed;
+      background-size: cover;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .card {
+      margin-top: 100px;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .btn-glow {
+      box-shadow: 0 0 5px rgba(0,123,255,0.5);
+    }
+    h4 {
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 20px;
+      text-shadow: 1px 1px 1px #ccc;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card p-4">
+      <h4>输入报价单编号</h4>
+      <form method="POST" action="{{ url_for('order.edit_quote_prompt') }}">
+        <div class="mb-3">
+          <label class="form-label">报价单号</label>
+          <input type="text" class="form-control" name="quotation_id" required>
+        </div>
+        <div class="d-grid">
+          <button type="submit" class="btn btn-primary btn-glow">🔍 查询报价单</button>
+        </div>
+      </form>
+      {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul style="color: green;">
+          {% for msg in messages %}
+            <li>{{ msg }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+    </div>
+  </div>
+</body>
+</html>
