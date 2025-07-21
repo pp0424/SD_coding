@@ -3,9 +3,12 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from .forms import InquiryForm
 from .forms import InquirySearchForm
 from .models import Inquiry,InquiryItem
+from .models import db,Quotation, QuotationItem
 from sqlalchemy.orm import joinedload
 from database import db
 from datetime import datetime
+from .models import Quotation, QuotationItem
+from .forms import QuotationSearchForm
 
 order_bp = Blueprint('order', __name__, template_folder='templates')
 
@@ -262,17 +265,101 @@ def query_inquiry():
 
     return render_template('order/query_inquiry.html', form=form, results=results)
 
-@order_bp.route('/create-quote')
-def create_quote():
-    return render_template('order/create_quote.html')
+@order_bp.route('/create-quote', methods=['GET', 'POST'])
+def create_quotation():
+    if request.method == 'POST':
+        # 获取主表数据
+        quotation_id = request.form.get('quotation_id')
+        customer_id = request.form.get('customer_id')
+        inquiry_id = request.form.get('inquiry_id')
+        quotation_date = request.form.get('quotation_date')
+        valid_until_date = request.form.get('valid_until_date')
+        status = request.form.get('status')  # '草稿' or '已评审'
+        total_amount = request.form.get('total_amount') or 0
+        salesperson_id = request.form.get('salesperson_id')
+        remarks = request.form.get('remarks')
+
+        # 是否已存在，避免重复创建
+        quotation = Quotation.query.get(quotation_id)
+        if not quotation:
+            quotation = Quotation(quotation_id=quotation_id)
+            db.session.add(quotation)
+
+        # 更新主表字段
+        quotation.customer_id = customer_id
+        quotation.inquiry_id = inquiry_id
+        quotation.quotation_date = datetime.strptime(quotation_date, '%Y-%m-%d')
+        quotation.valid_until_date = datetime.strptime(valid_until_date, '%Y-%m-%d')
+        quotation.status = status
+        quotation.total_amount = float(total_amount)
+        quotation.salesperson_id = salesperson_id
+        quotation.remarks = remarks
+
+        # 清除旧的明细行（也可优化为比对更新）
+        QuotationItem.query.filter_by(quotation_id=quotation_id).delete()
+
+        # 获取明细数据
+        item_nos = request.form.getlist('item_no')
+        material_ids = request.form.getlist('material_id')
+        quotation_quantities = request.form.getlist('quotation_quantity')
+        unit_prices = request.form.getlist('unit_price')
+        discount_rates = request.form.getlist('discount_rate')
+        item_amounts = request.form.getlist('item_amount')
+        units = request.form.getlist('unit')
+        inquiry_item_ids = request.form.getlist('inquiry_item_id')
+
+        for i in range(len(item_nos)):
+            item = QuotationItem(
+                quotation_id=quotation_id,
+                item_no=int(item_nos[i]),
+                material_id=material_ids[i],
+                quotation_quantity=float(quotation_quantities[i]),
+                unit_price=float(unit_prices[i]),
+                discount_rate=float(discount_rates[i]),
+                item_amount=float(item_amounts[i]),
+                unit=units[i],
+                inquiry_item_id=inquiry_item_ids[i]
+            )
+            db.session.add(item)
+
+        db.session.commit()
+
+        flash(f"报价单 {quotation_id} 保存成功（状态：{status}）", 'success')
+
+        if status == '已评审':
+            return redirect(url_for('order.create_quotation'))
+
+    return render_template('order/create_quotation.html')
 
 @order_bp.route('/edit-quote')
 def edit_quote():
     return render_template('order/edit_quote.html')
 
-@order_bp.route('/query-quote')
-def query_quote():
-    return render_template('order/query_quote.html')
+@order_bp.route('/query-quote', methods=['GET', 'POST'])
+def query_quotation():
+    form = QuotationSearchForm()
+    results = []
+
+    if form.validate_on_submit():
+        if form.show_all.data:
+            results = Quotation.query.options(joinedload(Quotation.items)).all()
+        elif form.submit.data:
+            query = Quotation.query
+
+            if form.quotation_id.data:
+                query = query.filter(Quotation.quotation_id.like(f"%{form.quotation_id.data}%"))
+            if form.customer_id.data:
+                query = query.filter(Quotation.customer_id.like(f"%{form.customer_id.data}%"))
+            if form.date_start.data:
+                query = query.filter(Quotation.valid_until_date >= form.date_start.data)
+            if form.date_end.data:
+                query = query.filter(Quotation.valid_until_date <= form.date_end.data)
+            if form.material_id.data:
+                query = query.join(QuotationItem).filter(QuotationItem.material_id.like(f"%{form.material_id.data}%"))
+            
+            results = query.options(joinedload(Quotation.items)).all()
+
+    return render_template('order/query_quotation.html', form=form, results=results)
 
 @order_bp.route('/create-order')
 def create_order():

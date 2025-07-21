@@ -25,4 +25,13 @@ class InquiryForm(FlaskForm):
     remarks = StringField('备注', validators=[Optional()])
     submit = SubmitField('提交')
 
+class QuotationSearchForm(FlaskForm):
+    quotation_id = StringField("报价单号", validators=[Optional()])
+    customer_id = StringField("客户编号", validators=[Optional()])
+    date_start = DateField("有效起始日期", validators=[Optional()])
+    date_end = DateField("有效截止日期", validators=[Optional()])
+    material_id = StringField("物料编号", validators=[Optional()])
+    
+    submit = SubmitField("查询")
+    show_all = SubmitField("显示全部数据")
 
