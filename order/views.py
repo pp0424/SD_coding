@@ -1,14 +1,17 @@
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from .forms import InquiryForm
 from .forms import InquirySearchForm
 from .models import Inquiry,InquiryItem
-from .models import db,Quotation, QuotationItem
+from .models import db,Quotation, QuotationItem,SalesOrder, OrderItem, Material
 from sqlalchemy.orm import joinedload
 from database import db
 from datetime import datetime
 from .models import Quotation, QuotationItem
 from .forms import QuotationSearchForm
+from sqlalchemy import and_, or_, func
+from math import ceil
+import random
 
 order_bp = Blueprint('order', __name__, template_folder='templates')
 
@@ -514,14 +517,152 @@ def query_quotation():
 
     return render_template('order/query_quotation.html', form=form, results=results)
 
-@order_bp.route('/create-order')
+@order_bp.route('/api/quotation/<quotation_id>')
+def get_quotation_data(quotation_id):
+    quotation = Quotation.query.options(joinedload(Quotation.items)).filter_by(quotation_id=quotation_id).first()
+    if not quotation:
+        return jsonify({'success': False, 'message': '报价单不存在'}), 404
+
+    return jsonify({
+        'success': True,
+        'data': {
+            'customer_id': quotation.customer_id,
+            'salesperson_id': quotation.salesperson_id,
+            'remarks': quotation.remarks,
+            'items': [
+                {
+                    'item_no': item.item_no,
+                    'material_id': item.material_id,
+                    'order_quantity': item.quotation_quantity,
+                    'sales_unit_price': item.unit_price,
+                    'unit': item.unit,
+                    'item_amount': item.item_amount
+                } for item in quotation.items
+            ]
+        }
+    })
+
+
+@order_bp.route('/api/check-material/<mat_id>')
+def api_check_material(mat_id):
+    exists = Material.query.get(mat_id) is not None
+    return {'exists': exists}
+
+
+@order_bp.route('/create-order', methods=['GET', 'POST'])
 def create_order():
-    return render_template('order/create_order.html')
+    if request.method == 'GET':
+        return render_template('order/create_order.html')
+
+    # POST 创建逻辑
+    order_id = f"SO-{datetime.now().strftime('%Y%m%d-%H%M%S')}{random.randint(100,999)}"
+    save_type = request.form.get('save_type')
+    order = SalesOrder(
+        sales_order_id=order_id,
+        customer_id=request.form.get('customer_id'),
+        quotation_id=request.form.get('quotation_id'),
+        order_date=datetime.strptime(request.form.get('order_date'), '%Y-%m-%d'),
+        required_delivery_date=datetime.strptime(request.form.get('required_delivery_date'), '%Y-%m-%d'),
+        remarks=request.form.get('remarks'),
+        status='草稿' if save_type == 'draft' else '已创建',
+        total_amount=0
+    )
+
+    db.session.add(order)
+
+    item_nos = request.form.getlist('item_no')
+    material_ids = request.form.getlist('material_id')
+    quantities = request.form.getlist('order_quantity')
+    units = request.form.getlist('unit')
+    prices = request.form.getlist('sales_unit_price')
+    amounts = request.form.getlist('item_amount')
+
+    total = 0
+    for i in range(len(item_nos)):
+        amt = float(amounts[i] or 0)
+        item = OrderItem(
+            sales_order_id=order_id,
+            item_no=int(item_nos[i]),
+            material_id=material_ids[i],
+            order_quantity=float(quantities[i]),
+            sales_unit_price=float(prices[i]),
+            shipped_quantity=0,
+            unshipped_quantity=float(quantities[i]),
+            unit=units[i],
+            item_amount=amt
+        )
+        db.session.add(item)
+        total += amt
+
+    order.total_amount = total
+    db.session.commit()
+
+    flash("订单创建完成 ✅" if save_type == 'create' else "草稿保存成功 ✅", "success")
+    return redirect(url_for('order.order_detail', sales_order_id=order_id))
+
+
+@order_bp.route('/order-detail/<sales_order_id>')
+def order_detail(sales_order_id):
+    order = SalesOrder.query.options(
+        joinedload(SalesOrder.items).joinedload(OrderItem.material)
+    ).filter_by(sales_order_id=sales_order_id).first()
+
+    if not order:
+        flash('订单不存在', 'danger')
+        return redirect(url_for('order.create_order'))
+
+    return render_template('order/order_detail.html', order=order)
+
+
 
 @order_bp.route('/edit-order')
 def edit_order():
     return render_template('order/edit_order.html')
 
-@order_bp.route('/query-order')
+
+@order_bp.route('/query-order', methods=['GET', 'POST'])
 def query_order():
-    return render_template('order/query_order.html')
+    page = int(request.args.get('page', 1))
+    per_page = 10
+    
+    # 获取表单/URL参数
+    sales_order_id = request.values.get('sales_order_id')
+    customer_id = request.values.get('customer_id')
+    status = request.values.get('status')
+    date_from = request.values.get('date_from')
+    date_to = request.values.get('date_to')
+    material_keyword = request.values.get('material_keyword')
+    min_total = request.values.get('min_total')
+    max_total = request.values.get('max_total')
+
+    # 构建查询
+    query = SalesOrder.query.options(joinedload(SalesOrder.items).joinedload(OrderItem.material))
+
+    if sales_order_id:
+        query = query.filter(SalesOrder.sales_order_id.contains(sales_order_id))
+    if customer_id:
+        query = query.filter(SalesOrder.customer_id.contains(customer_id))
+    if status and status != '全部':
+        query = query.filter(SalesOrder.status == status)
+    if date_from:
+        query = query.filter(SalesOrder.order_date >= date_from)
+    if date_to:
+        query = query.filter(SalesOrder.order_date <= date_to)
+    if min_total:
+        query = query.filter(SalesOrder.total_amount >= float(min_total))
+    if max_total:
+        query = query.filter(SalesOrder.total_amount <= float(max_total))
+    if material_keyword:
+        query = query.join(SalesOrder.items).join(OrderItem.material).filter(
+            Material.description.ilike(f"%{material_keyword}%")
+        ).distinct()
+
+    total = query.count()
+    orders = query.order_by(SalesOrder.order_date.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    total_pages = ceil(total / per_page)
+
+    return render_template('order/query_order.html',
+                           orders=orders,
+                           page=page,
+                           total_pages=total_pages,
+                           form_data=request.values)

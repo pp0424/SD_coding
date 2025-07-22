@@ -58,3 +58,46 @@ class QuotationItem(db.Model):
     discount_rate = db.Column(db.Float, default=0, comment='折扣率')
     item_amount = db.Column(db.Float, comment='行项金额')
     unit = db.Column(db.String, comment='物料单位')
+
+class Material(db.Model):
+    __tablename__ = 'Material'
+
+    material_id = db.Column(db.String(255), primary_key=True, comment='物料编号')
+    description = db.Column(db.String(255), nullable=False, comment='物料描述')
+    base_unit = db.Column(db.String(255), nullable=False, comment='基本计量单位')
+    storage_location = db.Column(db.String(255), nullable=False, comment='存储位置')
+    available_stock = db.Column(db.Numeric, comment='当前可用库存')
+
+
+# models.py
+
+class SalesOrder(db.Model):
+    __tablename__ = 'SalesOrder'
+    sales_order_id = db.Column(db.String(255), primary_key=True)
+    customer_id = db.Column(db.String(255), nullable=False)
+    quotation_id = db.Column(db.String(255))
+    order_date = db.Column(db.DateTime, nullable=False)
+    required_delivery_date = db.Column(db.Date, nullable=False)
+    status = db.Column(db.String(255))
+    total_amount = db.Column(db.Numeric, nullable=False)
+    credit_check_result = db.Column(db.String(255))
+    remarks = db.Column(db.String(255))
+
+    # ✅ 添加这一行：建立订单 → 项目 的关系
+    items = db.relationship('OrderItem', backref='order', lazy=True, cascade="all, delete-orphan")
+
+
+class OrderItem(db.Model):
+    __tablename__ = 'OrderItem'
+    sales_order_id = db.Column(db.String(255), db.ForeignKey('SalesOrder.sales_order_id'), primary_key=True)
+    item_no = db.Column(db.Integer, primary_key=True)
+    material_id = db.Column(db.String(255), db.ForeignKey('Material.material_id'), nullable=False)
+    material = db.relationship('Material',backref="order_items")  # ✅ 告诉 SQLAlchemy 如何关联 Material 表
+
+    order_quantity = db.Column(db.Numeric, nullable=False)
+    sales_unit_price = db.Column(db.Numeric, nullable=False)
+    shipped_quantity = db.Column(db.Numeric)
+    unshipped_quantity = db.Column(db.Numeric)
+    item_amount = db.Column(db.Numeric)
+    unit = db.Column(db.String(255))
+
