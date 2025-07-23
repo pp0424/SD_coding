@@ -624,38 +624,32 @@ def edit_order():
 def query_order():
     page = int(request.args.get('page', 1))
     per_page = 10
-    
-    # 获取表单/URL参数
-    sales_order_id = request.values.get('sales_order_id')
-    customer_id = request.values.get('customer_id')
-    status = request.values.get('status')
-    date_from = request.values.get('date_from')
-    date_to = request.values.get('date_to')
-    material_keyword = request.values.get('material_keyword')
-    min_total = request.values.get('min_total')
-    max_total = request.values.get('max_total')
 
-    # 构建查询
-    query = SalesOrder.query.options(joinedload(SalesOrder.items).joinedload(OrderItem.material))
+    # 同时支持 POST（表单）和 GET（分页）
+    form = request.form if request.method == 'POST' else request.args
+    show_all = form.get('show_all') == '1'
 
-    if sales_order_id:
-        query = query.filter(SalesOrder.sales_order_id.contains(sales_order_id))
-    if customer_id:
-        query = query.filter(SalesOrder.customer_id.contains(customer_id))
-    if status and status != '全部':
-        query = query.filter(SalesOrder.status == status)
-    if date_from:
-        query = query.filter(SalesOrder.order_date >= date_from)
-    if date_to:
-        query = query.filter(SalesOrder.order_date <= date_to)
-    if min_total:
-        query = query.filter(SalesOrder.total_amount >= float(min_total))
-    if max_total:
-        query = query.filter(SalesOrder.total_amount <= float(max_total))
-    if material_keyword:
-        query = query.join(SalesOrder.items).join(OrderItem.material).filter(
-            Material.description.ilike(f"%{material_keyword}%")
-        ).distinct()
+    query = SalesOrder.query.options(joinedload(SalesOrder.items))
+
+    if not show_all:
+        if form.get('sales_order_id'):
+            query = query.filter(SalesOrder.sales_order_id.ilike(f"%{form.get('sales_order_id')}%"))
+        if form.get('customer_id'):
+            query = query.filter(SalesOrder.customer_id.ilike(f"%{form.get('customer_id')}%"))
+        if form.get('status') and form.get('status') != '全部':
+            query = query.filter(SalesOrder.status == form.get('status'))
+        if form.get('date_from'):
+            query = query.filter(SalesOrder.order_date >= form.get('date_from'))
+        if form.get('date_to'):
+            query = query.filter(SalesOrder.order_date <= form.get('date_to'))
+        if form.get('min_total'):
+            query = query.filter(SalesOrder.total_amount >= float(form.get('min_total')))
+        if form.get('max_total'):
+            query = query.filter(SalesOrder.total_amount <= float(form.get('max_total')))
+        if form.get('material_keyword'):
+            query = query.join(SalesOrder.items).join(OrderItem.material).filter(
+                Material.description.ilike(f"%{form.get('material_keyword')}%")
+            ).distinct()
 
     total = query.count()
     orders = query.order_by(SalesOrder.order_date.desc()).offset((page - 1) * per_page).limit(per_page).all()
@@ -665,4 +659,4 @@ def query_order():
                            orders=orders,
                            page=page,
                            total_pages=total_pages,
-                           form_data=request.values)
+                           form_data=form)
