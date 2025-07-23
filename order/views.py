@@ -1,5 +1,5 @@
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify,session
 from .forms import InquiryForm
 from .forms import InquirySearchForm
 from .models import Inquiry,InquiryItem
@@ -12,6 +12,7 @@ from .forms import QuotationSearchForm
 from sqlalchemy import and_, or_, func
 from math import ceil
 import random
+import decimal
 
 order_bp = Blueprint('order', __name__, template_folder='templates')
 
@@ -615,9 +616,248 @@ def order_detail(sales_order_id):
 
 
 
-@order_bp.route('/edit-order')
+@order_bp.route('/edit-order', methods=['GET', 'POST'])
 def edit_order():
-    return render_template('order/edit_order.html')
+    order = None
+    searched = False
+    if request.method == 'POST':
+        searched = True
+        order_id = request.form.get('sales_order_id')  # 使用 .get 可避免 400 错误
+        if order_id:
+            order = SalesOrder.query.filter_by(sales_order_id=order_id).first()
+        if not order:
+            error = f"未找到订单号 {order_id}。请确认输入。"
+    return render_template('order/edit_order.html', order=order, searched=searched)
+
+
+@order_bp.route('/edit-order/basic/<order_id>', methods=['GET', 'POST'])
+def edit_order_basic(order_id):
+    order = SalesOrder.query.get_or_404(order_id)
+
+    if request.method == 'POST':
+        # 提取表单内容
+        updated_data = {
+            'customer_id': request.form['customer_id'],
+            'quotation_id': request.form['quotation_id'],
+            'order_date': datetime.strptime(request.form['order_date'], '%Y-%m-%d'),
+            'required_delivery_date': datetime.strptime(request.form['required_delivery_date'], '%Y-%m-%d'),
+            'status': request.form['status'],
+            'total_amount': float(request.form['total_amount']),
+            'credit_check_result': request.form['credit_check_result'],
+            'remarks': request.form['remarks']
+        }
+
+        # 将旧值与新值打包送入预览页面
+        session['temp_update'] = {
+            'order_id': order_id,
+            'step': 'basic',
+            'updated': updated_data
+        }
+
+        return redirect(url_for('order.preview_salesorder_changes'))
+
+    return render_template('order/edit_order_basic.html', order=order)
+
+@order_bp.route('/edit-order/items/<order_id>', methods=['GET', 'POST'])
+def edit_order_items(order_id):
+    order = SalesOrder.query.get_or_404(order_id)
+
+    if request.method == 'POST':
+        updates = []
+        row_count = int(request.form.get('row_count', 0))
+
+        for i in range(row_count):
+            item_no = request.form.get(f'item_no_{i}')
+            material_id = request.form.get(f'material_id_{i}')
+
+            # 如果 material_id 是空的，跳过此行
+            if not material_id:
+                continue
+
+            update_data = {
+                'material_id': material_id,
+                'order_quantity': request.form.get(f'order_quantity_{i}'),
+                'sales_unit_price': request.form.get(f'sales_unit_price_{i}'),
+                'shipped_quantity': request.form.get(f'shipped_quantity_{i}'),
+                'unshipped_quantity': request.form.get(f'unshipped_quantity_{i}'),
+                'item_amount': request.form.get(f'item_amount_{i}'),
+                'unit': request.form.get(f'unit_{i}')
+            }
+
+            if item_no == 'new':
+                update_data['action'] = 'add'
+            else:
+                update_data['action'] = 'update'
+                update_data['item_no'] = item_no
+
+            updates.append(update_data)
+
+        session['temp_update'] = {
+            'order_id': order_id,
+            'updates': updates,
+            'step': 'items'
+        }
+        return redirect(url_for('order.preview_changes'))
+
+    return render_template('order/edit_order_items.html', order=order)
+
+
+@order_bp.route('/preview-salesorder-changes', methods=['GET', 'POST']) 
+def preview_salesorder_changes():  #订单基本信息更新预览页
+    temp_update = session.get('temp_update')
+    if not temp_update or temp_update.get('step') != 'basic':
+        return redirect(url_for('order.edit_order_basic'))
+
+    order_id = temp_update['order_id']
+    updates = temp_update['updated']
+    order = SalesOrder.query.get_or_404(order_id)
+
+    if request.method == 'POST':
+        if 'confirm' in request.form:
+            # 执行数据库更新
+            for field, new_val in updates.items():
+                if hasattr(order, field):
+                    setattr(order, field, new_val)
+            db.session.commit()
+            session.pop('temp_update')
+            return redirect(url_for('order.order_detail', sales_order_id=order_id))
+        elif 'cancel' in request.form:
+            return redirect(url_for('order.edit_order_basic', order_id=order_id))
+
+    old_data = {
+        'customer_id': order.customer_id,
+        'quotation_id': order.quotation_id or '',
+        'order_date': order.order_date.strftime('%Y-%m-%d') if order.order_date else '',
+        'required_delivery_date': order.required_delivery_date.strftime('%Y-%m-%d') if order.required_delivery_date else '',
+        'status': order.status or '',
+        'total_amount': float(order.total_amount),
+        'credit_check_result': order.credit_check_result or '',
+        'remarks': order.remarks or '',
+    }
+
+    return render_template('order/preview_salesorder.html', order=order, old_data=old_data, new_data=updates)
+
+
+
+@order_bp.route('/preview-changes', methods=['GET', 'POST'])  # items更新预览页
+def preview_changes():
+    temp_update = session.get('temp_update')
+    if not temp_update:
+        return redirect(url_for('order.edit_order_items'))
+
+    order_id = temp_update['order_id']
+    updates = temp_update['updates']
+    step = temp_update.get('step')
+
+    order = SalesOrder.query.get_or_404(order_id)
+
+    if request.method == 'POST':
+        if 'confirm' in request.form:
+            for u in updates:
+                action = u.get('action')
+                if action == 'update':
+                    item = OrderItem.query.filter_by(sales_order_id=order_id, item_no=u['item_no']).first()
+                    if item:
+                        item.material_id = u['material_id']
+                        item.order_quantity = u['order_quantity']
+                        item.sales_unit_price = u['sales_unit_price']
+                        item.shipped_quantity = u['shipped_quantity']
+                        item.unshipped_quantity = u['unshipped_quantity']
+                        item.item_amount = u['item_amount']
+                        item.unit = u['unit']
+                elif action == 'delete':
+                    OrderItem.query.filter_by(sales_order_id=order_id, item_no=u['item_no']).delete()
+                elif action == 'add':
+                    max_item_no = db.session.query(
+                        db.func.max(OrderItem.item_no)
+                    ).filter_by(sales_order_id=order_id).scalar() or 0
+
+                    new_item = OrderItem(
+                        sales_order_id=order_id,
+                        item_no=max_item_no + 1,
+                        material_id=u['material_id'],
+                        order_quantity=u['order_quantity'],
+                        sales_unit_price=u['sales_unit_price'],
+                        shipped_quantity=u['shipped_quantity'],
+                        unshipped_quantity=u['unshipped_quantity'],
+                        item_amount=u['item_amount'],
+                        unit=u['unit']
+                    )
+                    db.session.add(new_item)
+
+            db.session.commit()
+            session.pop('temp_update')
+            return redirect(url_for('order.order_detail', sales_order_id=order_id))
+
+        elif 'cancel' in request.form:
+            if step == 'items':
+                return redirect(url_for('order.edit_order_items', order_id=order_id))
+            else:
+                return redirect(url_for('order.edit_order_items'))
+
+    # 构造旧数据字典 keyed by item_no
+    old_items = {item.item_no: item for item in order.items}
+
+    # 构造一个对比列表，格式：
+    # [{'action': 'update', 'item_no': x, 'old': {...}, 'new': {...}}, ...]
+    compare_list = []
+    for u in updates:
+        action = u.get('action')
+        if action == 'update':
+            item_no = u['item_no']
+            old = old_items.get(item_no)
+            old_data = {
+                'material_id': old.material_id,
+                'order_quantity': float(old.order_quantity),
+                'sales_unit_price': float(old.sales_unit_price),
+                'shipped_quantity': float(old.shipped_quantity or 0),
+                'unshipped_quantity': float(old.unshipped_quantity or 0),
+                'item_amount': float(old.item_amount or 0),
+                'unit': old.unit or ''
+            }
+            new_data = {
+                'material_id': u['material_id'],
+                'order_quantity': float(u['order_quantity']),
+                'sales_unit_price': float(u['sales_unit_price']),
+                'shipped_quantity': float(u['shipped_quantity'] or 0),
+                'unshipped_quantity': float(u['unshipped_quantity'] or 0),
+                'item_amount': float(u['item_amount'] or 0),
+                'unit': u['unit'] or ''
+            }
+            compare_list.append({'action': 'update', 'item_no': item_no, 'old': old_data, 'new': new_data})
+
+        elif action == 'delete':
+            item_no = u['item_no']
+            old = old_items.get(item_no)
+            old_data = {
+                'material_id': old.material_id,
+                'order_quantity': float(old.order_quantity),
+                'sales_unit_price': float(old.sales_unit_price),
+                'shipped_quantity': float(old.shipped_quantity or 0),
+                'unshipped_quantity': float(old.unshipped_quantity or 0),
+                'item_amount': float(old.item_amount or 0),
+                'unit': old.unit or ''
+            }
+            compare_list.append({'action': 'delete', 'item_no': item_no, 'old': old_data, 'new': None})
+
+        elif action == 'add':
+            new_data = {
+                'material_id': u['material_id'],
+                'order_quantity': float(u['order_quantity']),
+                'sales_unit_price': float(u['sales_unit_price']),
+                'shipped_quantity': float(u['shipped_quantity'] or 0),
+                'unshipped_quantity': float(u['unshipped_quantity'] or 0),
+                'item_amount': float(u['item_amount'] or 0),
+                'unit': u['unit'] or ''
+            }
+            compare_list.append({'action': 'add', 'item_no': None, 'old': None, 'new': new_data})
+
+    return render_template('order/preview_order_items.html', order=order, compare_list=compare_list)
+
+
+
+
+
 
 
 @order_bp.route('/query-order', methods=['GET', 'POST'])
