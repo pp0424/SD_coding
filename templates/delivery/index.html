@@ -11,6 +11,8 @@
             font-family: "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
             background-image: url('/static/delivery_background.png');
             background-size: cover;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
         }
         .sap-shellbar {
             background: linear-gradient(90deg, #0a6ed1 80%, #2196f3 100%);
@@ -32,23 +34,28 @@
             margin-top: 4rem;
         }
         .sap-tile {
-            background: #fff;
+            background: rgba(255, 255, 255, 0.7); /* 半透明白色 */
             border-radius: 18px;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+            box-shadow: 0 8px 32px rgba(10,110,209,0.13), 0 1.5px 6px rgba(10,110,209,0.10);
             width: 260px;
             min-height: 180px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            transition: box-shadow 0.2s, transform 0.2s;
+            transition: box-shadow 0.3s cubic-bezier(.4,2,.6,1), transform 0.3s cubic-bezier(.4,2,.6,1), background 0.3s;
             cursor: pointer;
             border-left: 6px solid #0a6ed1;
             position: relative;
+            margin-bottom: 2.5rem;
+            backdrop-filter: blur(8px); /* 毛玻璃模糊效果 */
+            transform: translateY(0px);
         }
         .sap-tile:hover {
-            box-shadow: 0 8px 32px rgba(10,110,209,0.13);
-            transform: translateY(-4px) scale(1.03);
+            background: rgba(255, 255, 255, 0.92); /* 悬浮时更亮 */
+            box-shadow: 0 24px 64px rgba(10,110,209,0.22), 0 8px 24px rgba(10,110,209,0.13);
+            transform: translateY(-12px) scale(1.04);
+            z-index: 2;
         }
         .sap-tile-icon {
             font-size: 2.6rem;
@@ -92,12 +99,10 @@
             <div class="sap-tile" onclick="location.href='{{ url_for('delivery.create_delivery') }}'">
                 <div class="sap-tile-icon"><i class="bi bi-plus-circle"></i></div>
                 <div class="sap-tile-title">创建发货流程</div>
-                <div class="sap-tile-desc">根据销售订单生成发货单，启动发货</div>
             </div>
             <div class="sap-tile" onclick="location.href='{{ url_for('delivery.query_delivery') }}'">
                 <div class="sap-tile-icon"><i class="bi bi-search"></i></div>
                 <div class="sap-tile-title">查询/修改发货信息</div>
-                <div class="sap-tile-desc">查询发货单后可选择进行修改</div>
             </div>
             <!-- 可根据需要添加更多功能卡片 -->
         </div>

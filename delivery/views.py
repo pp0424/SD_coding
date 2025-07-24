@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
-from .models import DeliveryOrder, DeliveryOrderItem
-from .forms import DeliveryOrderForm, DeliveryOrderEditForm, DeliveryOrderQueryForm
+from .models import DeliveryNote, DeliveryItem
+from .forms import DeliveryNoteForm, DeliveryNoteEditForm, DeliveryNoteQueryForm
 from database import db
 from datetime import datetime
 
@@ -13,11 +13,11 @@ def delivery_home():
 # 1. 创建发货流程
 @delivery_bp.route('/create', methods=['GET', 'POST'])
 def create_delivery():
-    form = DeliveryOrderForm()
+    form = DeliveryNoteForm()
     if form.validate_on_submit():
         # 检查发货单编号唯一性（可自定义生成规则）
         delivery_id = f"D{int(datetime.utcnow().timestamp())}"
-        delivery = DeliveryOrder(
+        delivery = DeliveryNote(
             delivery_id=delivery_id,
             sales_order_id=form.sales_order_id.data,
             customer_id=form.customer_id.data,
@@ -28,7 +28,7 @@ def create_delivery():
         )
         db.session.add(delivery)
         for idx, item_form in enumerate(form.items.entries):
-            item = DeliveryOrderItem(
+            item = DeliveryItem(
                 delivery_id=delivery_id,
                 item_no=idx + 1,
                 material_id=item_form.material_id.data,
@@ -44,12 +44,12 @@ def create_delivery():
 # 2. 修改发货信息
 @delivery_bp.route('/edit/<delivery_id>', methods=['GET', 'POST'])
 def edit_delivery(delivery_id):
-    delivery = DeliveryOrder.query.filter_by(delivery_id=delivery_id).first()
+    delivery = DeliveryNote.query.filter_by(delivery_id=delivery_id).first()
     if not delivery:
         flash('未找到该发货单', 'danger')
         return redirect(url_for('delivery.query_delivery'))
     can_edit = delivery.status != '已过账'
-    form = DeliveryOrderEditForm(obj=delivery)
+    form = DeliveryNoteEditForm(obj=delivery)
     if form.validate_on_submit() and can_edit:
         if form.expected_delivery_date.data:
             delivery.expected_delivery_date = form.expected_delivery_date.data
@@ -65,18 +65,18 @@ def edit_delivery(delivery_id):
 # 3. 查询发货状态
 @delivery_bp.route('/query', methods=['GET', 'POST'])
 def query_delivery():
-    form = DeliveryOrderQueryForm(request.form)
-    query = DeliveryOrder.query
+    form = DeliveryNoteQueryForm(request.form)
+    query = DeliveryNote.query
     if form.validate_on_submit():
         if form.delivery_id.data:
-            query = query.filter(DeliveryOrder.delivery_id.like(f"%{form.delivery_id.data}%"))
+            query = query.filter(DeliveryNote.delivery_id.like(f"%{form.delivery_id.data}%"))
         if form.sales_order_id.data:
-            query = query.filter(DeliveryOrder.sales_order_id.like(f"%{form.sales_order_id.data}%"))
+            query = query.filter(DeliveryNote.sales_order_id.like(f"%{form.sales_order_id.data}%"))
         if form.date_from.data:
-            query = query.filter(DeliveryOrder.expected_delivery_date >= form.date_from.data)
+            query = query.filter(DeliveryNote.expected_delivery_date >= form.date_from.data)
         if form.date_to.data:
-            query = query.filter(DeliveryOrder.expected_delivery_date <= form.date_to.data)
+            query = query.filter(DeliveryNote.expected_delivery_date <= form.date_to.data)
         if form.status.data:
-            query = query.filter(DeliveryOrder.status == form.status.data)
+            query = query.filter(DeliveryNote.status == form.status.data)
     results = query.all()
     return render_template('delivery/query_delivery.html', form=form, results=results)
