@@ -221,3 +221,40 @@ ALTER TABLE `InvoiceItem` ADD FOREIGN KEY (`material_id`) REFERENCES `Material` 
 ALTER TABLE `CustomerPayment` ADD FOREIGN KEY (`customer_id`) REFERENCES `Customer` (`customer_id`);
 
 ALTER TABLE `CustomerPayment` ADD FOREIGN KEY (`invoice_id`) REFERENCES `CustomerInvoice` (`invoice_id`);
+
+
+-- 创建 DeliveryOrder 表
+CREATE TABLE DeliveryOrder (
+  delivery_id VARCHAR(255) PRIMARY KEY COMMENT '发货单编号，唯一键',
+  sales_order_id VARCHAR(255) NOT NULL COMMENT '关联销售订单编号',
+  customer_id VARCHAR(255) NOT NULL COMMENT '客户编号',
+  expected_delivery_date DATE COMMENT '期望发货日期',
+  warehouse_code VARCHAR(255) COMMENT '仓库代码',
+  status VARCHAR(255) COMMENT '发货单状态',
+  remarks VARCHAR(255) COMMENT '备注',
+  created_at DATETIME COMMENT '创建时间'
+);
+
+-- 创建 DeliveryOrderItem 表
+CREATE TABLE DeliveryOrderItem (
+  delivery_id VARCHAR(255) NOT NULL COMMENT '所属发货单编号',
+  item_no INT NOT NULL COMMENT '行项号（在发货单内唯一）',
+  material_id VARCHAR(255) NOT NULL COMMENT '物料编号',
+  planned_qty DECIMAL COMMENT '计划发货数量',
+  picked_qty DECIMAL COMMENT '实际拣货数量',
+  remarks VARCHAR(255) COMMENT '备注',
+  PRIMARY KEY (delivery_id, item_no)
+);
+
+-- 外键关联
+ALTER TABLE DeliveryOrder
+  ADD FOREIGN KEY (sales_order_id) REFERENCES SalesOrder(sales_order_id);
+
+ALTER TABLE DeliveryOrder
+  ADD FOREIGN KEY (customer_id) REFERENCES Customer(customer_id);
+
+ALTER TABLE DeliveryOrderItem
+  ADD FOREIGN KEY (delivery_id) REFERENCES DeliveryOrder(delivery_id);
+
+ALTER TABLE DeliveryOrderItem
+  ADD FOREIGN KEY (material_id) REFERENCES Material(material_id);

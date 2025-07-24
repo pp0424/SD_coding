@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>创建发货单</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <style>
+    body {
+      background: #f4f6f9;
+      font-family: "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+    }
+    .sap-card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+      padding: 2.5rem 2.5rem 2rem 2.5rem;
+      margin-top: 3rem;
+      border-left: 6px solid #0a6ed1;
+    }
+    .sap-title {
+      color: #0a6ed1;
+      font-weight: 700;
+      letter-spacing: 1px;
+      margin-bottom: 2rem;
+    }
+    .sap-form-label {
+      color: #0a6ed1;
+      font-weight: 500;
+      margin-bottom: 0.3rem;
+    }
+    .sap-section-title {
+      color: #1565c0;
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-top: 2rem;
+      margin-bottom: 1rem;
+      letter-spacing: 1px;
+    }
+    .sap-btn {
+      background: #0a6ed1;
+      color: #fff;
+      border-radius: 6px;
+      border: none;
+      padding: 0.5rem 1.2rem;
+      font-weight: 500;
+      box-shadow: 0 2px 8px rgba(10,110,209,0.08);
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+    .sap-btn:hover {
+      background: #1565c0;
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(10,110,209,0.13);
+    }
+    .alert {
+      border-radius: 8px;
+    }
+    @media (max-width: 768px) {
+      .sap-card {
+        padding: 1.2rem 0.7rem 1rem 0.7rem;
+      }
+      .sap-title {
+        font-size: 1.3rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-8 col-md-11">
+        <div class="sap-card">
+          <h2 class="sap-title text-center mb-4"><i class="bi bi-plus-circle me-2"></i>创建发货单</h2>
+          <form method="post">
+            {{ form.hidden_tag() }}
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="sap-form-label">{{ form.sales_order_id.label }}</label>
+                {{ form.sales_order_id(class="form-control") }}
+              </div>
+              <div class="col-md-6">
+                <label class="sap-form-label">{{ form.customer_id.label }}</label>
+                {{ form.customer_id(class="form-control") }}
+              </div>
+              <div class="col-md-6">
+                <label class="sap-form-label">{{ form.expected_delivery_date.label }}</label>
+                {{ form.expected_delivery_date(class="form-control") }}
+              </div>
+              <div class="col-md-6">
+                <label class="sap-form-label">{{ form.warehouse_code.label }}</label>
+                {{ form.warehouse_code(class="form-control") }}
+              </div>
+              <div class="col-12">
+                <label class="sap-form-label">{{ form.remarks.label }}</label>
+                {{ form.remarks(class="form-control") }}
+              </div>
+            </div>
+            <div class="sap-section-title"><i class="bi bi-box-seam me-1"></i>发货物料</div>
+            {% for item_form in form.items %}
+              <div class="row mb-2">
+                <div class="col-md-4">
+                  <label class="sap-form-label">{{ item_form.material_id.label }}</label>
+                  {{ item_form.material_id(class="form-control") }}
+                </div>
+                <div class="col-md-4">
+                  <label class="sap-form-label">{{ item_form.planned_qty.label }}</label>
+                  {{ item_form.planned_qty(class="form-control") }}
+                </div>
+                <div class="col-md-4">
+                  <label class="sap-form-label">{{ item_form.remarks.label }}</label>
+                  {{ item_form.remarks(class="form-control") }}
+                </div>
+              </div>
+            {% endfor %}
+            <div class="text-end mt-4">
+              {{ form.submit(class="sap-btn") }}
+            </div>
+          </form>
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              {% for category, msg in messages %}
+                <div class="alert alert-{{ category }} mt-3">{{ msg }}</div>
+              {% endfor %}
+            {% endif %}
+          {% endwith %}
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

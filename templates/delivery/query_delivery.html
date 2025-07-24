@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>查询发货状态</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <style>
+    body {
+      background: #f4f6f9;
+      font-family: "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+    }
+    .sap-card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+      padding: 2.5rem 2.5rem 2rem 2.5rem;
+      margin-top: 3rem;
+      border-left: 6px solid #0a6ed1;
+    }
+    .sap-title {
+      color: #0a6ed1;
+      font-weight: 700;
+      letter-spacing: 1px;
+      margin-bottom: 2rem;
+    }
+    .sap-form-label {
+      color: #0a6ed1;
+      font-weight: 500;
+      margin-bottom: 0.3rem;
+    }
+    .sap-table thead th {
+      background: #e3f2fd;
+      color: #0a6ed1;
+      font-weight: 600;
+      border-bottom: 2px solid #b3d1f7;
+    }
+    .sap-table tbody tr {
+      transition: background 0.2s;
+    }
+    .sap-table tbody tr:hover {
+      background: #f0f7ff;
+    }
+    .sap-badge {
+      background: #0a6ed1;
+      color: #fff;
+      border-radius: 8px;
+      padding: 0.2em 0.7em;
+      font-size: 0.95em;
+    }
+    .no-result {
+      color: #888;
+      font-size: 1.1em;
+      text-align: center;
+    }
+    @media (max-width: 768px) {
+      .sap-card {
+        padding: 1.2rem 0.7rem 1rem 0.7rem;
+      }
+      .sap-title {
+        font-size: 1.3rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-10 col-md-12">
+        <div class="sap-card">
+          <h2 class="sap-title text-center mb-4"><i class="bi bi-search me-2"></i>发货单查询</h2>
+          <form method="post" class="row g-3 mb-4">
+            {{ form.hidden_tag() }}
+            <div class="col-md-2">
+              <label class="sap-form-label">{{ form.delivery_id.label }}</label>
+              {{ form.delivery_id(class="form-control") }}
+            </div>
+            <div class="col-md-2">
+              <label class="sap-form-label">{{ form.sales_order_id.label }}</label>
+              {{ form.sales_order_id(class="form-control") }}
+            </div>
+            <div class="col-md-2">
+              <label class="sap-form-label">{{ form.date_from.label }}</label>
+              {{ form.date_from(class="form-control") }}
+            </div>
+            <div class="col-md-2">
+              <label class="sap-form-label">{{ form.date_to.label }}</label>
+              {{ form.date_to(class="form-control") }}
+            </div>
+            <div class="col-md-2">
+              <label class="sap-form-label">{{ form.status.label }}</label>
+              {{ form.status(class="form-control") }}
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+              {{ form.submit(class="btn btn-primary w-100") }}
+            </div>
+          </form>
+          <div class="table-responsive">
+            <table class="table table-bordered table-striped sap-table align-middle">
+              <thead>
+                <tr>
+                  <th>发货单编号</th>
+                  <th>销售订单编号</th>
+                  <th>客户编号</th>
+                  <th>发货日期</th>
+                  <th>仓库</th>
+                  <th>状态</th>
+                  <th>物料明细</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for order in results %}
+                <tr>
+                  <td>{{ order.delivery_id }}</td>
+                  <td>{{ order.sales_order_id }}</td>
+                  <td>{{ order.customer_id }}</td>
+                  <td>{{ order.expected_delivery_date }}</td>
+                  <td>{{ order.warehouse_code }}</td>
+                  <td>
+                    <span class="sap-badge">{{ order.status }}</span>
+                  </td>
+                  <td>
+                    <ul class="mb-0 ps-3">
+                      {% for item in order.items %}
+                        <li>{{ item.material_id }}：{{ item.planned_qty }}</li>
+                      {% endfor %}
+                    </ul>
+                  </td>
+                  <td>
+                    <a href="{{ url_for('delivery.edit_delivery', delivery_id=order.delivery_id) }}" class="btn btn-sm btn-outline-primary">修改</a>
+                  </td>
+                </tr>
+                {% else %}
+                <tr>
+                  <td colspan="8" class="no-result py-4">无符合条件的发货单</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
