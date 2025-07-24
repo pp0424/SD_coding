@@ -204,7 +204,10 @@ def edit_save():
         ]
     }
 
-    return render_template('order/edit_inquiry_confirm_update.html', old=old_data, new=new_data)
+    # 新增：注入 inquiry_id 供前端使用
+    new_data['inquiry_id'] = inquiry_id
+
+    return render_template('order/edit_inquiry_confirm_update.html', old=old_data, new=new_data,min=min)
 
 # 3️⃣ 确认更新
 @order_bp.route('/edit-inquiry/confirm_update', methods=['POST'])
@@ -467,7 +470,19 @@ def edit_quote_save():
         ]
     }
 
-    return render_template('order/edit_quote_confirm_update.html', old=old_data, new=new_data, quotation_id=quote_id)
+    # ===== 识别并标记新增项（前端存在但数据库没有的 item_no） =====
+    old_item_nos = {item['item_no'] for item in old_data['items']}
+    for new_item in new_data['items']:
+        if new_item['item_no'] not in old_item_nos:
+            new_item['is_new'] = True
+    
+    old_items_map = {item['item_no']: item for item in old_data['items']}
+    new_items_map = {item['item_no']: item for item in new_data['items']}
+
+    all_item_nos = sorted(set(old_items_map.keys()) | set(new_items_map.keys())) 
+
+    return render_template('order/edit_quote_confirm_update.html', old=old_data, new=new_data, quotation_id=quote_id,min=min,old_items_map=old_items_map,
+    new_items_map=new_items_map,all_item_nos=all_item_nos)
 
 @order_bp.route('/edit-quote/confirm_update', methods=['POST'])
 def confirm_quote_update():
@@ -755,8 +770,14 @@ def preview_changes():
         if 'confirm' in request.form:
             for u in updates:
                 action = u.get('action')
+
                 if action == 'update':
-                    item = OrderItem.query.filter_by(sales_order_id=order_id, item_no=u['item_no']).first()
+                    try:
+                        item_no = int(u['item_no'])
+                    except (KeyError, ValueError, TypeError):
+                        continue
+
+                    item = OrderItem.query.filter_by(sales_order_id=order_id, item_no=item_no).first()
                     if item:
                         item.material_id = u['material_id']
                         item.order_quantity = u['order_quantity']
@@ -765,8 +786,14 @@ def preview_changes():
                         item.unshipped_quantity = u['unshipped_quantity']
                         item.item_amount = u['item_amount']
                         item.unit = u['unit']
+
                 elif action == 'delete':
-                    OrderItem.query.filter_by(sales_order_id=order_id, item_no=u['item_no']).delete()
+                    try:
+                        item_no = int(u['item_no'])
+                        OrderItem.query.filter_by(sales_order_id=order_id, item_no=item_no).delete()
+                    except Exception:
+                        continue
+
                 elif action == 'add':
                     max_item_no = db.session.query(
                         db.func.max(OrderItem.item_no)
@@ -795,62 +822,76 @@ def preview_changes():
             else:
                 return redirect(url_for('order.edit_order_items'))
 
-    # 构造旧数据字典 keyed by item_no
-    old_items = {item.item_no: item for item in order.items}
-
-    # 构造一个对比列表，格式：
-    # [{'action': 'update', 'item_no': x, 'old': {...}, 'new': {...}}, ...]
+    # ----------- 构造比较数据 -----------
+    old_items = {int(item.item_no): item for item in order.items}
     compare_list = []
+
     for u in updates:
         action = u.get('action')
-        if action == 'update':
-            item_no = u['item_no']
-            old = old_items.get(item_no)
-            old_data = {
-                'material_id': old.material_id,
-                'order_quantity': float(old.order_quantity),
-                'sales_unit_price': float(old.sales_unit_price),
-                'shipped_quantity': float(old.shipped_quantity or 0),
-                'unshipped_quantity': float(old.unshipped_quantity or 0),
-                'item_amount': float(old.item_amount or 0),
-                'unit': old.unit or ''
-            }
-            new_data = {
-                'material_id': u['material_id'],
-                'order_quantity': float(u['order_quantity']),
-                'sales_unit_price': float(u['sales_unit_price']),
-                'shipped_quantity': float(u['shipped_quantity'] or 0),
-                'unshipped_quantity': float(u['unshipped_quantity'] or 0),
-                'item_amount': float(u['item_amount'] or 0),
-                'unit': u['unit'] or ''
-            }
-            compare_list.append({'action': 'update', 'item_no': item_no, 'old': old_data, 'new': new_data})
 
-        elif action == 'delete':
-            item_no = u['item_no']
-            old = old_items.get(item_no)
+        if action in ['update', 'delete']:
+            try:
+                item_no = int(u['item_no'])
+                old = old_items.get(item_no)
+                if not old:
+                    continue
+            except Exception:
+                continue
+
             old_data = {
                 'material_id': old.material_id,
-                'order_quantity': float(old.order_quantity),
-                'sales_unit_price': float(old.sales_unit_price),
+                'order_quantity': float(old.order_quantity or 0),
+                'sales_unit_price': float(old.sales_unit_price or 0),
                 'shipped_quantity': float(old.shipped_quantity or 0),
                 'unshipped_quantity': float(old.unshipped_quantity or 0),
                 'item_amount': float(old.item_amount or 0),
                 'unit': old.unit or ''
             }
-            compare_list.append({'action': 'delete', 'item_no': item_no, 'old': old_data, 'new': None})
+
+            if action == 'update':
+                new_data = {
+                    'material_id': u['material_id'],
+                    'order_quantity': float(u.get('order_quantity') or 0),
+                    'sales_unit_price': float(u.get('sales_unit_price') or 0),
+                    'shipped_quantity': float(u.get('shipped_quantity') or 0),
+                    'unshipped_quantity': float(u.get('unshipped_quantity') or 0),
+                    'item_amount': float(u.get('item_amount') or 0),
+                    'unit': u.get('unit') or ''
+                }
+                compare_list.append({
+                    'action': 'update',
+                    'item_no': item_no,
+                    'old': old_data,
+                    'new': new_data
+                })
+
+            elif action == 'delete':
+                compare_list.append({
+                    'action': 'delete',
+                    'item_no': item_no,
+                    'old': old_data,
+                    'new': None
+                })
 
         elif action == 'add':
-            new_data = {
-                'material_id': u['material_id'],
-                'order_quantity': float(u['order_quantity']),
-                'sales_unit_price': float(u['sales_unit_price']),
-                'shipped_quantity': float(u['shipped_quantity'] or 0),
-                'unshipped_quantity': float(u['unshipped_quantity'] or 0),
-                'item_amount': float(u['item_amount'] or 0),
-                'unit': u['unit'] or ''
-            }
-            compare_list.append({'action': 'add', 'item_no': None, 'old': None, 'new': new_data})
+            try:
+                new_data = {
+                    'material_id': u['material_id'],
+                    'order_quantity': float(u.get('order_quantity') or 0),
+                    'sales_unit_price': float(u.get('sales_unit_price') or 0),
+                    'shipped_quantity': float(u.get('shipped_quantity') or 0),
+                    'unshipped_quantity': float(u.get('unshipped_quantity') or 0),
+                    'item_amount': float(u.get('item_amount') or 0),
+                    'unit': u.get('unit') or ''
+                }
+                compare_list.append({
+                    'action': 'add',
+                    'item_no': None,
+                    'old': None,
+                    'new': new_data
+                })
+            except Exception:
+                continue
 
     return render_template('order/preview_order_items.html', order=order, compare_list=compare_list)
 

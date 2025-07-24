@@ -66,6 +66,14 @@
       color: #dc3545;
     }
 
+    .highlight-new-row {
+      background-color: #e8f5e9 !important;
+    }
+
+    .highlight-deleted-row {
+      background-color: #fce4e4 !important;
+    }
+
     .sub-header {
       font-size: 1.2rem;
       margin-top: 2rem;
@@ -132,22 +140,34 @@
               "item_amount": "金额",
               "inquiry_item_id": "关联询价项"
             } %}
-            {% for i in range(old['items']|length) %}
-              {% set old_item = old['items'][i] %}
-              {% set new_item = new['items'][i] %}
-              {% for field, label in item_fields.items() %}
-                <tr>
-                  {% if loop.index0 == 0 %}
-                    <td rowspan="{{ item_fields|length }}">{{ old_item.item_no }}</td>
-                  {% endif %}
-                  <td>{{ label }}</td>
-                  <td class="old-value">{{ old_item[field] }}</td>
-                  <td class="new-value {% if old_item[field] != new_item[field] %}changed{% endif %}">
-                    {{ new_item[field] }}
-                  </td>
-                </tr>
-              {% endfor %}
-            {% endfor %}
+
+             {% for item_no in all_item_nos %}
+    {% set old_item = old_items_map.get(item_no) %}
+    {% set new_item = new_items_map.get(item_no) %}
+    {% set is_new = new_item is not none and old_item is none %}
+    {% set is_deleted = old_item is not none and new_item is none %}
+
+    {% for field, label in item_fields.items() %}
+      <tr
+        {% if is_new %}
+          class="highlight-new-row"
+        {% elif is_deleted %}
+          class="highlight-deleted-row"
+        {% endif %}
+      >
+        {% if loop.index0 == 0 %}
+          <td rowspan="{{ item_fields|length }}">{{ item_no }}</td>
+        {% endif %}
+        <td>{{ label }}</td>
+        <td class="old-value">
+          {{ old_item[field] if old_item else '--' }}
+        </td>
+        <td class="new-value {% if old_item and new_item and old_item[field] != new_item[field] %}changed{% endif %}">
+          {{ new_item[field] if new_item else '--' }}
+        </td>
+      </tr>
+    {% endfor %}
+  {% endfor %}
           </tbody>
         </table>
 
@@ -158,6 +178,7 @@
           <button type="submit" name="confirm" value="no" class="btn btn-secondary btn-cancel px-4">❌ 取消修改</button>
         </div>
       </form>
+
       {% with messages = get_flashed_messages() %}
       {% if messages %}
         <ul style="color: green;">
@@ -166,7 +187,7 @@
           {% endfor %}
         </ul>
       {% endif %}
-    {% endwith %}
+      {% endwith %}
     </div>
   </div>
 </body>
