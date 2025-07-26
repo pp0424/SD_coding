@@ -121,22 +121,27 @@ def query_stock_change():
 
 # 6. 提交过账信息
 @delivery_bp.route('/post_gi', methods=['POST'])
-def post_gi(delivery_id):
-    # 从数据库获取发货单
+def post_gi():
+    delivery_id = request.form.get('selected_id')  # 从表单获取 delivery_id
+
+    if not delivery_id:
+        flash('请选择发货单！', 'danger')
+        return redirect(url_for('delivery.posting'))
+
     delivery = DeliveryNote.query.filter_by(delivery_id=delivery_id).first()
     if not delivery:
-        flash('请选择发货单！', 'danger')
+        flash(f'发货单 {delivery_id} 不存在！', 'danger')
         return redirect(url_for('delivery.posting'))
 
     if delivery.status != '已拣货':
         flash(f'发货单 {delivery_id} 尚未拣货，无法过账！', 'danger')
         return redirect(url_for('delivery.posting'))
-    delivery.status = '已过账'
 
+    delivery.status = '已过账'
     db.session.commit()
-    
-    flash(f'发货单 {delivery_id} 拣货成功', 'success')
-    return redirect(url_for('delivery.posting', delivery_id=delivery_id))
+
+    flash(f'发货单 {delivery_id} 过账成功', 'success')
+    return redirect(url_for('delivery.posting'))
 
 # 7. 确定拣货信息
 @delivery_bp.route('/pick/<int:delivery_id>', methods=['POST'])
