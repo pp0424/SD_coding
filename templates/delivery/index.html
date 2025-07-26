@@ -105,6 +105,20 @@
                 <div class="sap-tile-title">查询/修改发货信息</div>
             </div>
             <!-- 可根据需要添加更多功能卡片 -->
+            <div class="sap-tiles mt-4">  <!-- mt-4 表示上方留出间距 -->
+            <div class="sap-tile" onclick="location.href='{{ url_for('inventory.posting') }}'">
+                <div class="sap-tile-icon"><i class="bi bi-journal-check"></i></div>
+                <div class="sap-tile-title">执行过账手续</div>
+            </div>
+            <div class="sap-tile" onclick="location.href='{{ url_for('inventory.query_stock_change') }}'">
+                <div class="sap-tile-icon"><i class="bi bi-boxes"></i></div>
+                <div class="sap-tile-title">查询库存变动</div>
+            </div>
+        </div>
+           
+            
+        </div>
+        </div>
         </div>
     </div>
 </body>
