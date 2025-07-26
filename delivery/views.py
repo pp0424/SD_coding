@@ -80,3 +80,41 @@ def query_delivery():
             query = query.filter(DeliveryNote.status == form.status.data)
     results = query.all()
     return render_template('delivery/query_delivery.html', form=form, results=results)
+
+# 4. 执行过账手续
+@delivery_bp.route('/posting', methods=['GET', 'POST'])
+def posting():
+    form = DeliveryNoteQueryForm(request.form)
+    query = DeliveryNote.query
+    if form.validate_on_submit():
+        if form.delivery_id.data:
+            query = query.filter(DeliveryNote.delivery_id.like(f"%{form.delivery_id.data}%"))
+        if form.sales_order_id.data:
+            query = query.filter(DeliveryNote.sales_order_id.like(f"%{form.sales_order_id.data}%"))
+        if form.date_from.data:
+            query = query.filter(DeliveryNote.expected_delivery_date >= form.date_from.data)
+        if form.date_to.data:
+            query = query.filter(DeliveryNote.expected_delivery_date <= form.date_to.data)
+        if form.status.data:
+            query = query.filter(DeliveryNote.status == form.status.data)
+    results = query.all()
+    return render_template('delivery/posting.html', form=form, results=results)
+
+# 5. 查询库存变动
+@delivery_bp.route('/stock', methods=['GET', 'POST'])
+def query_stock_change():
+    form = DeliveryNoteQueryForm(request.form)
+    query = DeliveryNote.query
+    if form.validate_on_submit():
+        if form.delivery_id.data:
+            query = query.filter(DeliveryNote.delivery_id.like(f"%{form.delivery_id.data}%"))
+        if form.sales_order_id.data:
+            query = query.filter(DeliveryNote.sales_order_id.like(f"%{form.sales_order_id.data}%"))
+        if form.date_from.data:
+            query = query.filter(DeliveryNote.expected_delivery_date >= form.date_from.data)
+        if form.date_to.data:
+            query = query.filter(DeliveryNote.expected_delivery_date <= form.date_to.data)
+        if form.status.data:
+            query = query.filter(DeliveryNote.status == form.status.data)
+    results = query.all()
+    return render_template('delivery/query_stock_change.html', form=form, results=results)
