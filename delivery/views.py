@@ -118,3 +118,41 @@ def query_stock_change():
             query = query.filter(DeliveryNote.status == form.status.data)
     results = query.all()
     return render_template('delivery/query_stock_change.html', form=form, results=results)
+
+# 6. 提交过账信息
+@delivery_bp.route('/post_gi'/<int:delivery_id>, methods=['POST'])
+def post_gi(delivery_id):
+    # 从数据库获取发货单
+    delivery = DeliveryNote.query.filter_by(delivery_id=delivery_id).first()
+    if not delivery:
+        flash('请选择发货单！', 'danger')
+        return redirect(url_for('delivery.posting'))
+
+    if delivery.status != '已拣货':
+        flash(f'发货单 {delivery_id} 尚未拣货，无法过账！', 'danger')
+        return redirect(url_for('delivery.posting'))
+    delivery.status = '已过账'
+
+    db.session.commit()
+    
+    flash(f'发货单 {delivery_id} 拣货成功', 'success')
+    return redirect(url_for('delivery.posting', delivery_id=delivery_id))
+
+# 7. 确定拣货信息
+@delivery_bp.route('/pick/<int:delivery_id>', methods=['POST'])
+def pick(delivery_id):
+    # 从数据库获取发货单
+    delivery = DeliveryNote.query.filter_by(delivery_id=delivery_id).first()
+    if not delivery:
+        flash('发货单不存在', 'danger')
+        return redirect(url_for('delivery.posting'))
+
+    # 修改状态为“已拣货”
+    delivery.status = '已拣货'
+
+    # 提交到数据库
+    db.session.commit()
+
+    flash(f'发货单 {delivery_id} 拣货成功', 'success')
+    return redirect(url_for('delivery.posting', delivery_id=delivery_id))
+
