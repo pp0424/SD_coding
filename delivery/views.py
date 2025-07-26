@@ -120,7 +120,7 @@ def query_stock_change():
     return render_template('delivery/query_stock_change.html', form=form, results=results)
 
 # 6. 提交过账信息
-@delivery_bp.route('/post_gi/<int:delivery_id>', methods=['POST'])
+@delivery_bp.route('/post_gi', methods=['POST'])
 def post_gi(delivery_id):
     # 从数据库获取发货单
     delivery = DeliveryNote.query.filter_by(delivery_id=delivery_id).first()
