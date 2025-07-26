@@ -68,7 +68,7 @@
     <div class="row justify-content-center">
       <div class="col-lg-10 col-md-12">
         <div class="sap-card">
-          <h2 class="sap-title text-center mb-4"><i class="bi bi-search me-2"></i>发货单查询</h2>
+          <h2 class="sap-title text-center mb-4"><i class="bi bi-search me-2"></i>执行过账手续</h2>
           <form method="post" class="row g-3 mb-4">
             {{ form.hidden_tag() }}
             <div class="col-md-2">
@@ -128,7 +128,16 @@
                     </ul>
                   </td>
                   <td>
-                    <a href="{{ url_for('delivery.edit_delivery', delivery_id=order.delivery_id) }}" class="btn btn-sm btn-outline-primary">修改</a>
+                   <form method="POST" action="{{ url_for('delivery.pick', delivery_id=order.delivery_id) }}">
+                      <button type="submit"
+                          class="btn btn-sm {% if order.status == '已拣货' %}btn-secondary disabled{% else %}btn-success{% endif %}">
+                          {% if order.status == '已拣货' %}
+                              已拣货
+                          {% else %}
+                              拣货
+                          {% endif %}
+                      </button>
+                    </form>
                   </td>
                 </tr>
                 {% else %}
