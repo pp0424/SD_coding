@@ -104,22 +104,8 @@ def posting():
 
 # 5. 查询库存变动
 @delivery_bp.route('/stock', methods=['GET', 'POST'])
-def query_stock_change():
-    form = DeliveryNoteQueryForm(request.form)
-    query = DeliveryNote.query
-    if form.validate_on_submit():
-        if form.delivery_id.data:
-            query = query.filter(DeliveryNote.delivery_id.like(f"%{form.delivery_id.data}%"))
-        if form.sales_order_id.data:
-            query = query.filter(DeliveryNote.sales_order_id.like(f"%{form.sales_order_id.data}%"))
-        if form.date_from.data:
-            query = query.filter(DeliveryNote.expected_delivery_date >= form.date_from.data)
-        if form.date_to.data:
-            query = query.filter(DeliveryNote.expected_delivery_date <= form.date_to.data)
-        if form.status.data:
-            query = query.filter(DeliveryNote.status == form.status.data)
-    results = query.all()
-    return render_template('delivery/query_stock_change.html', form=form, results=results)
+def stock_home():
+    return render_template('delivery/query_stock_index.html')
 
 # 6. 提交过账信息
 @delivery_bp.route('/post_gi', methods=['POST'])
@@ -166,21 +152,21 @@ def pick(delivery_id):
 # 8. 查询物料信息（包括库存）
 @delivery_bp.route('/query-stock-material', methods=['GET', 'POST'])
 def query_stock_material():
+    form = MaterialQueryForm()
+    material = None
     error = None
-    result = None
     searched = False
 
-    if request.method == 'POST':
-        material_id = request.form.get('sales_order_id')  # 你 HTML 表单里的 input 名
+    if form.validate_on_submit():
+        material_id = form.material_id.data.strip()
         searched = True
-        if not material_id:
-            error = "请输入物料编号"
-        else:
-            result = Material.query.filter_by(material_id=material_id).first()
-            if not result:
-                error = f"未找到物料编号 {material_id}"
+        material = Material.query.filter_by(material_id=material_id).first()
+        if not material:
+            error = f"未找到物料编号 {material_id}"
 
-    return render_template('query_stock_material.html',
-                           material=result,
+    return render_template('delivery/query_stock_material.html',
+                           form=form,
+                           material=material,
                            error=error,
                            searched=searched)
+
