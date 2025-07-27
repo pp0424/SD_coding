@@ -93,9 +93,11 @@
             </div>
             <div class="col-md-2 d-flex align-items-end">
               {{ form.submit(class="btn btn-primary w-100") }}
-            </div>
-              <input type="hidden" name="selected_id" id="selectedIdInput">
-              <div style="position: fixed; bottom: 20px; right: 940px;">
+              </div>  <!-- 闭合最后一列 -->
+          </form>
+          <form id="postGiForm" method="POST" action="{{ url_for('delivery.post_gi') }}">
+            <input type="hidden" name="selected_id" id="selectedIdInput">
+            <div style="position: fixed; bottom: 20px; right: 25%;">
               <button type="submit" class="btn btn-primary">Post GI</button>
             </div>
           </form>
@@ -150,7 +152,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                  <td colspan="8" class="no-result py-4">无符合条件的发货单</td>
+                  <td colspan="9" class="no-result py-4">无符合条件的发货单</td>
                 </tr>
                 {% endfor %}
               </tbody>
