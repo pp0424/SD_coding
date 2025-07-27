@@ -75,9 +75,9 @@
     <div></div>
     <div></div>
 
-    <div class="grid-item"><a href="/order/create-inquiry"><i class="fas fa-file-alt"></i>按物料查询</a></div>
-    <div class="grid-item"><a href="/order/edit-inquiry"><i class="fas fa-edit"></i>按变动日期查询</a></div>
-    <div class="grid-item"><a href="/order/query-inquiry"><i class="fas fa-search"></i>按订单查询</a></div>
+    <div class="grid-item"><a href="/delivery/query-stock-items"><i class="fas fa-file-alt"></i>按物料查询</a></div>
+    <div class="grid-item"><a href="/delivery/query-stock-date"><i class="fas fa-edit"></i>按变动日期查询</a></div>
+    <div class="grid-item"><a href="/delivery/query-stock-order"><i class="fas fa-search"></i>按订单查询</a></div>
   </div>
 </body>
 </html>
