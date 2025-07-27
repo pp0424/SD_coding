@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from .models import DeliveryNote, DeliveryItem
-from .forms import DeliveryNoteForm, DeliveryNoteEditForm, DeliveryNoteQueryForm
+from .forms import DeliveryNoteForm, DeliveryNoteEditForm, DeliveryNoteQueryForm, MaterialQueryForm
 from order.models import Material
 
 from database import db
