@@ -23,3 +23,12 @@ class DeliveryItem(db.Model):
     planned_qty = db.Column(db.Float, nullable=False)      # 计划发货数量
     picked_qty = db.Column(db.Float, default=0)            # 已拣货数量
     remarks = db.Column(db.String)
+
+class Material(db.Model):
+    __tablename__ = 'Material'
+
+    material_id = db.Column(db.String(255), primary_key=True, comment='物料编号，唯一键')
+    description = db.Column(db.String(255), nullable=False, comment='物料描述')
+    base_unit = db.Column(db.String(255), nullable=False, comment='基本计量单位')
+    storage_location = db.Column(db.String(255), nullable=False, comment='存储位置')
+    available_stock = db.Column(db.Numeric, comment='当前可用库存')
