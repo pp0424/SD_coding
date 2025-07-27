@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>按物料查询</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      padding-top: 70px; /* 给导航栏让出空间 */
+      background: #f4f7fc;
+      background: url('/static/order_background.png') no-repeat center center fixed;
+      background-size: cover;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .container {
+      max-width: 800px;
+      margin: 40px auto;
+      background: white;
+      padding: 30px;
+      border-radius: 14px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 12px 15px;
+      text-align: left;
+      font-size: 1rem;
+      vertical-align: middle;
+    }
+    th {
+      background-color: #f8f9fa;
+      font-weight: 600;
+      width: 25%;
+    }
+    .diff {
+      background-color: #fff3cd;
+      font-weight: 700;
+      color: #856404;
+    }
+    .btn-group {
+      margin-top: 30px;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <nav style="position: fixed; top: 0; left: 0; right: 0; height: 56px; background: #1b5899; color: white; display: flex; align-items: center; justify-content: space-around; z-index: 9999; font-family: 'Segoe UI', sans-serif; font-size: 15px;">
+  <a href="/delivery/query-stock-material" style="color: white; text-decoration: none;">🛒 按物料查询</a>
+  <a href="/delivery/query-stock-date" style="color: white; text-decoration: none;">🔁 按变动日期查询</a>
+  <a href="/delivery/query-stock-order" style="color: white; text-decoration: none;">💾 按订单查询</a>
+</nav>
+<div class="container mt-5">
+  <h3>✏️ 按物料查询</h3>
+  <form method="POST">
+  {{ form.hidden_tag() }}
+  <div class="input-group mb-3">
+    {{ form.material_id(class="form-control", placeholder="请输入物料编号") }}
+    <button class="btn btn-primary" type="submit">{{ form.submit.label.text }}</button>
+  </div>
+</form>
+  {% if error %}
+  <div class="alert alert-danger">{{ error }}</div>
+  {% endif %}
+      
+  {% if material %}
+  <table class="table table-bordered mt-4">
+    <tr><th>物料编号</th><td>{{ material.material_id }}</td></tr>
+    <tr><th>物料描述</th><td>{{ material.description }}</td></tr>
+    <tr><th>基本单位</th><td>{{ material.base_unit }}</td></tr>
+    <tr><th>存储位置</th><td>{{ material.storage_location }}</td></tr>
+    <tr><th>可用库存</th><td>{{ material.available_stock }}</td></tr>
+  </table>
+{% elif searched %}
+  <div class="alert alert-danger mt-3">未找到该物料。</div>
+{% endif %}
+</div>
+</body>
+</html>
