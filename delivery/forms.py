@@ -31,3 +31,7 @@ class DeliveryNoteQueryForm(FlaskForm):
     date_to = DateField('发货日期止', validators=[Optional()])
     status = StringField('发货单状态', validators=[Optional()])
     submit = SubmitField('查询')
+
+class MaterialQueryForm(FlaskForm):
+    material_id = StringField('物料编号', validators=[DataRequired()])
+    submit = SubmitField('查询')
