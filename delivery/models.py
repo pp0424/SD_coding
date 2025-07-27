@@ -26,6 +26,7 @@ class DeliveryItem(db.Model):
 
 class Material(db.Model):
     __tablename__ = 'Material'
+    __table_args__ = {'extend_existing': True}  # ✅ 解决“重复定义表”错误
 
     material_id = db.Column(db.String(255), primary_key=True, comment='物料编号，唯一键')
     description = db.Column(db.String(255), nullable=False, comment='物料描述')
