@@ -1,6 +1,8 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from .models import DeliveryNote, DeliveryItem, Material
 from .forms import DeliveryNoteForm, DeliveryNoteEditForm, DeliveryNoteQueryForm, MaterialQueryForm
+from order.models import Material
+
 from database import db
 from datetime import datetime
 
@@ -162,17 +164,23 @@ def pick(delivery_id):
     return redirect(url_for('delivery.posting', delivery_id=delivery_id))
 
 # 8. 查询物料信息（包括库存）
-@delivery_bp.route('/delivery/query-stock-material', methods=['GET', 'POST'])
+@delivery_bp.route('/query-stock-material', methods=['GET', 'POST'])
 def query_stock_material():
-    form = MaterialQueryForm()
-    material = None
+    error = None
+    result = None
     searched = False
 
-    if form.validate_on_submit():
+    if request.method == 'POST':
+        material_id = request.form.get('sales_order_id')  # 你 HTML 表单里的 input 名
         searched = True
-        material_id = form.material_id.data.strip()
-        material = Material.query.filter_by(material_id=material_id).first()
-        if not material:
-            flash("未找到该物料编号的库存信息", "danger")
-    return render_template('delivery/query_stock_material.html', form=form, material=material, searched=searched)
+        if not material_id:
+            error = "请输入物料编号"
+        else:
+            result = Material.query.filter_by(material_id=material_id).first()
+            if not result:
+                error = f"未找到物料编号 {material_id}"
 
+    return render_template('query_stock_material.html',
+                           material=result,
+                           error=error,
+                           searched=searched)
