@@ -80,3 +80,84 @@ def query_delivery():
             query = query.filter(DeliveryNote.status == form.status.data)
     results = query.all()
     return render_template('delivery/query_delivery.html', form=form, results=results)
+
+# 4. 执行过账手续
+@delivery_bp.route('/posting', methods=['GET', 'POST'])
+def posting():
+    form = DeliveryNoteQueryForm(request.form)
+    query = DeliveryNote.query
+    if form.validate_on_submit():
+        if form.delivery_id.data:
+            query = query.filter(DeliveryNote.delivery_id.like(f"%{form.delivery_id.data}%"))
+        if form.sales_order_id.data:
+            query = query.filter(DeliveryNote.sales_order_id.like(f"%{form.sales_order_id.data}%"))
+        if form.date_from.data:
+            query = query.filter(DeliveryNote.expected_delivery_date >= form.date_from.data)
+        if form.date_to.data:
+            query = query.filter(DeliveryNote.expected_delivery_date <= form.date_to.data)
+        if form.status.data:
+            query = query.filter(DeliveryNote.status == form.status.data)
+    results = query.all()
+    return render_template('delivery/posting.html', form=form, results=results)
+
+# 5. 查询库存变动
+@delivery_bp.route('/stock', methods=['GET', 'POST'])
+def query_stock_change():
+    form = DeliveryNoteQueryForm(request.form)
+    query = DeliveryNote.query
+    if form.validate_on_submit():
+        if form.delivery_id.data:
+            query = query.filter(DeliveryNote.delivery_id.like(f"%{form.delivery_id.data}%"))
+        if form.sales_order_id.data:
+            query = query.filter(DeliveryNote.sales_order_id.like(f"%{form.sales_order_id.data}%"))
+        if form.date_from.data:
+            query = query.filter(DeliveryNote.expected_delivery_date >= form.date_from.data)
+        if form.date_to.data:
+            query = query.filter(DeliveryNote.expected_delivery_date <= form.date_to.data)
+        if form.status.data:
+            query = query.filter(DeliveryNote.status == form.status.data)
+    results = query.all()
+    return render_template('delivery/query_stock_change.html', form=form, results=results)
+
+# 6. 提交过账信息
+@delivery_bp.route('/post_gi', methods=['POST'])
+def post_gi():
+    delivery_id = request.form.get('selected_id')  # 从表单获取 delivery_id
+
+    if not delivery_id:
+        flash('请选择发货单！', 'danger')
+        return redirect(url_for('delivery.posting'))
+
+    delivery = DeliveryNote.query.filter_by(delivery_id=delivery_id).first()
+    if not delivery:
+        flash(f'发货单 {delivery_id} 不存在！', 'danger')
+        return redirect(url_for('delivery.posting'))
+
+    if delivery.status != '已拣货':
+        flash(f'发货单 {delivery_id} 尚未拣货，无法过账！', 'danger')
+        return redirect(url_for('delivery.posting'))
+
+    delivery.status = '已过账'
+    db.session.commit()
+
+    flash(f'发货单 {delivery_id} 过账成功', 'success')
+    return redirect(url_for('delivery.posting'))
+
+# 7. 确定拣货信息
+@delivery_bp.route('/pick/<int:delivery_id>', methods=['POST'])
+def pick(delivery_id):
+    # 从数据库获取发货单
+    delivery = DeliveryNote.query.filter_by(delivery_id=delivery_id).first()
+    if not delivery:
+        flash('发货单不存在', 'danger')
+        return redirect(url_for('delivery.posting'))
+
+    # 修改状态为“已拣货”
+    delivery.status = '已拣货'
+
+    # 提交到数据库
+    db.session.commit()
+
+    flash(f'发货单 {delivery_id} 拣货成功', 'success')
+    return redirect(url_for('delivery.posting', delivery_id=delivery_id))
+

@@ -15,6 +15,11 @@ app.config['SECRET_KEY'] = 'dev'
 
 db = db_init(app)
 
+#07261928发货模块
+with app.app_context():
+    from delivery.models import DeliveryNote, DeliveryItem  # 确保导入模型
+    db.create_all()
+
 # 注册模块蓝图（只注册一次）
 app.register_blueprint(auth_bp)
 app.register_blueprint(customer_bp)

@@ -106,6 +106,21 @@
             </div>
             <!-- 可根据需要添加更多功能卡片 -->
         </div>
+        <div class="sap-tiles mt-4">
+            <div class="sap-tile" onclick="location.href='{{ url_for('delivery.posting') }}'">
+                <div class="sap-tile-icon"><i class="bi bi-journal-check"></i></div>
+                <div class="sap-tile-title">执行过账手续</div>
+            </div>
+            <div class="sap-tile" onclick="location.href='{{ url_for('delivery.query_stock_change') }}'">
+                <div class="sap-tile-icon"><i class="bi bi-boxes"></i></div>
+                <div class="sap-tile-title">查询库存变动</div>
+            </div>
+        </div>
+           
+            
+        </div>
+        </div>
+        </div>
     </div>
 </body>
 </html>
