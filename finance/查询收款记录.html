@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>收款记录查询系统</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f0f8ff 0%, #e6f2ff 100%);
+            color: #2c3e50;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        /* 头部样式 */
+        header {
+            text-align: center;
+            padding: 30px 0;
+            margin-bottom: 20px;
+        }
+        
+        header h1 {
+            font-size: 2.8rem;
+            color: #1a73e8;
+            margin-bottom: 15px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: relative;
+            display: inline-block;
+        }
+        
+        header h1::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 4px;
+            background: linear-gradient(90deg, #1a73e8, #4285f4);
+            border-radius: 2px;
+        }
+        
+        header p {
+            color: #5f778a;
+            font-size: 1.2rem;
+            margin-top: 20px;
+        }
+        
+        /* 搜索面板样式 */
+        .search-panel {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(66, 133, 244, 0.15);
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid #e1ebfa;
+        }
+        
+        .panel-title {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e8f0fe;
+        }
+        
+        .panel-title i {
+            background: #e8f0fe;
+            color: #1a73e8;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 1.2rem;
+        }
+        
+        .panel-title h2 {
+            color: #1a73e8;
+            font-size: 1.6rem;
+        }
+        
+        .form-row {
+            display: flex;
+            flex-wrap: wrap;
+            margin: 0 -12px;
+        }
+        
+        .form-group {
+            flex: 1;
+            min-width: 250px;
+            padding: 0 12px;
+            margin-bottom: 25px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #4285f4;
+            font-size: 1.05rem;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 14px 18px;
+            border: 1px solid #d2e3fc;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s;
+            background: #f8fbff;
+            color: #2c3e50;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #4285f4;
+            box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.2);
+            background: white;
+        }
+        
+        .date-range {
+            display: flex;
+            align-items: center;
+        }
+        
+        .date-range .form-control {
+            flex: 1;
+        }
+        
+        .date-range span {
+            margin: 0 12px;
+            color: #5f778a;
+            font-weight: 500;
+        }
+        
+        .btn {
+            padding: 14px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #1a73e8, #4285f4);
+            color: white;
+            box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #1669d8, #3a7ae9);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(26, 115, 232, 0.4);
+        }
+        
+        .btn-search {
+            height: 100%;
+            padding: 0 30px;
+            margin-left: 12px;
+        }
+        
+        .invoice-group {
+            display: flex;
+        }
+        
+        .invoice-group .form-control {
+            border-radius: 8px 0 0 8px;
+        }
+        
+        /* 结果容器样式 */
+        .results-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(66, 133, 244, 0.15);
+            overflow: hidden;
+            border: 1px solid #e1ebfa;
+            margin-bottom: 40px;
+        }
+        
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 30px;
+            background: linear-gradient(90deg, #1a73e8, #4285f4);
+            color: white;
+        }
+        
+        .results-header h2 {
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .results-header h2 i {
+            margin-right: 12px;
+        }
+        
+        .results-count {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 6px 15px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+        
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .results-table th {
+            padding: 18px 24px;
+            text-align: left;
+            font-weight: 600;
+            color: #5f778a;
+            background: #f0f7ff;
+            border-bottom: 2px solid #e1ebfa;
+        }
+        
+        .results-table td {
+            padding: 18px 24px;
+            border-bottom: 1px solid #eef5ff;
+            transition: background 0.3s;
+        }
+        
+        .results-table tbody tr {
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .results-table tbody tr:hover {
+            background: #f8fbff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(66, 133, 244, 0.1);
+        }
+        
+        .amount {
+            font-weight: 700;
+            color: #1e8e3e;
+            font-size: 1.1rem;
+        }
+        
+        .payment-method {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        .bank-transfer {
+            background: #e8f0fe;
+            color: #1a73e8;
+        }
+        
+        .cash {
+            background: #e6f4ea;
+            color: #137333;
+        }
+        
+        .check {
+            background: #fce8e6;
+            color: #c5221f;
+        }
+        
+        .action-btn {
+            background: #e8f0fe;
+            border: none;
+            color: #1a73e8;
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: all 0.3s;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .action-btn:hover {
+            background: #1a73e8;
+            color: white;
+            transform: scale(1.1);
+        }
+        
+        .detail-row {
+            display: none;
+            background: #f8fbff;
+        }
+        
+        .detail-row.active {
+            display: table-row;
+        }
+        
+        .detail-content {
+            padding: 25px;
+        }
+        
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        
+        .detail-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 3px 10px rgba(66, 133, 244, 0.1);
+            border: 1px solid #e1ebfa;
+        }
+        
+        .detail-card h4 {
+            margin-bottom: 15px;
+            color: #5f778a;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .detail-card h4 i {
+            margin-right: 8px;
+            color: #4285f4;
+        }
+        
+        .detail-card p {
+            font-size: 1.15rem;
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 25px;
+            color: #5f778a;
+            font-size: 1rem;
+            border-top: 1px solid #e1ebfa;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .form-group {
+                min-width: 100%;
+            }
+            
+            .invoice-group {
+                flex-direction: column;
+            }
+            
+            .btn-search {
+                margin-left: 0;
+                margin-top: 15px;
+                width: 100%;
+                border-radius: 8px;
+                padding: 14px;
+            }
+            
+            .results-table {
+                display: block;
+                overflow-x: auto;
+            }
+            
+            header h1 {
+                font-size: 2.2rem;
+            }
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 60px 20px;
+            color: #5f778a;
+        }
+        
+        .no-results i {
+            font-size: 4rem;
+            margin-bottom: 25px;
+            color: #d2e3fc;
+        }
+        
+        .no-results h3 {
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+            color: #4285f4;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .loading-spinner {
+            border: 4px solid rgba(26, 115, 232, 0.1);
+            border-left-color: #1a73e8;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 25px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* 装饰元素 */
+        .decoration {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(26, 115, 232, 0.08) 0%, rgba(66, 133, 244, 0.05) 100%);
+            z-index: -1;
+        }
+        
+        .decoration.top-right {
+            top: -100px;
+            right: -100px;
+        }
+        
+        .decoration.bottom-left {
+            bottom: -100px;
+            left: -100px;
+        }
+    </style>
+</head>
+<body>
+    <div class="decoration top-right"></div>
+    <div class="decoration bottom-left"></div>
+    
+    <div class="container">
+        <header>
+            <h1>收款记录查询系统</h1>
+                    </header>
+        
+        <div class="search-panel">
+            <div class="panel-title">
+                <i class="fas fa-search"></i>
+                <h2>收款记录查询</h2>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="receiptNo"><i class="fas fa-receipt"></i> 收款单号</label>
+                    <input type="text" id="receiptNo" class="form-control" placeholder="请输入收款单号">
+                </div>
+                <div class="form-group">
+                    <label for="startDate"><i class="far fa-calendar-alt"></i> 收款日期范围</label>
+                    <div class="date-range">
+                        <input type="date" id="startDate" class="form-control">
+                        <span>至</span>
+                        <input type="date" id="endDate" class="form-control">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="clientId"><i class="fas fa-user-tie"></i> 客户编号</label>
+                    <input type="text" id="clientId" class="form-control" placeholder="请输入客户编号">
+                </div>
+                <div class="form-group">
+                    <label for="invoiceNo"><i class="fas fa-file-invoice"></i> 发票编号</label>
+                    <div class="invoice-group">
+                        <input type="text" id="invoiceNo" class="form-control" placeholder="请输入发票编号">
+                        <button class="btn btn-primary btn-search" id="searchBtn">
+                            <i class="fas fa-search"></i> 查询
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="results-container">
+            <div class="results-header">
+                <h2><i class="fas fa-list"></i> 收款记录列表</h2>
+                <div class="results-count">共 <span id="resultCount">5</span> 条记录</div>
+            </div>
+            
+            <table class="results-table" id="resultsTable">
+                <thead>
+                    <tr>
+                        <th>收款单号</th>
+                        <th>收款金额</th>
+                        <th>收款日期</th>
+                        <th>付款方式</th>
+                        <th>付款备注</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsBody">
+                    <tr>
+                        <td>RC20230728001</td>
+                        <td class="amount">¥12,500.00</td>
+                        <td>2023-07-28</td>
+                        <td><span class="payment-method bank-transfer">银行转账</span></td>
+                        <td>7月份货款结算</td>
+                        <td>
+                            <button class="action-btn toggle-detail" data-id="1">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    <tr class="detail-row" data-id="1">
+                        <td colspan="6">
+                            <div class="detail-content">
+                                <div class="detail-grid">
+                                    <div class="detail-card">
+                                        <h4><i class="fas fa-building"></i> 客户信息</h4>
+                                        <p>XXXXXX</p>
+                                    </div>
+                                    <div class="detail-card">
+                                        <h4><i class="fas fa-file-invoice"></i> 发票编号</h4>
+                                        <p>INV202507001</p>
+                                    </div>
+                                    <div class="detail-card">
+                                        <h4><i class="fas fa-credit-card"></i> 支付详情</h4>
+                                        <p>XXXXX</p>
+                                    </div>
+                                    <div class="detail-card">
+                                        <h4><i class="fas fa-user-cog"></i> 操作信息</h4>
+                                        <p>XXXXX</p>
+                                    </div>
+                                </div>
+                                <div style="margin-top: 20px; color: #5f778a; display: flex; align-items: center;">
+                                    <i class="fas fa-paperclip" style="margin-right: 10px;"></i> 
+                                    <span>附件: XXX</span>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td>RC20230727002</td>
+                        <td class="amount">¥8,500.50</td>
+                        <td>2023-07-27</td>
+                        <td><span class="payment-method cash">现金</span></td>
+                        <td>产品定金</td>
+                        <td>
+                            <button class="action-btn toggle-detail" data-id="2">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    <tr class="detail-row" data-id="2">
+                        <td colspan="6">
+                            <div class="detail-content">
+                                <div class="detail-grid">
+                                    <div class="detail-card">
+                                        <h4><i class="fas fa-building"></i> 客户信息</h4>
+                                        <p>XXXXX </p>
+                                    </div>
+                                    <div class="detail-card">
+                                        <h4><i class="fas fa-file-invoice"></i> 发票编号</h4>
+                                        <p>INV202507045</p>
+                                    </div>
+                                    <div class="detail-card">
+                                        <h4><i class="fas fa-credit-card"></i> 支付详情</h4>
+                                        <p>XXXXX</p>
+                                    </div>
+                                    <div class="detail-card">
+                                        <h4><i class="fas fa-user-cog"></i> 操作信息</h4>
+                                        <p>XXX</p>
+                                    </div>
+                                </div>
+                                <div style="margin-top: 20px; color: #5f778a; display: flex; align-items: center;">
+                                    <i class="fas fa-paperclip" style="margin-right: 10px;"></i> 
+                                    <span>附件: XXX</span>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td>RC20230726003</td>
+                        <td class="amount">¥32,000.00</td>
+                        <td>2023-07-26</td>
+                        <td><span class="payment-method check">支票</span></td>
+                        <td>季度货款</td>
+                        <td>
+                            <button class="action-btn toggle-detail" data-id="3">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    <tr class="detail-row" data-id="3">
+                        <td colspan="6">
+                            <div class="detail-content">
+                                <div class="detail-grid">
+                                    <div class="detail-card">
+                                        <h4><i class="fas fa-building"></i> 客户信息</h4>
+                                        <p>XXXXX</p>
+                                    </div>
+                                    <div class="detail-card">
+                                        <h4><i class="fas fa-file-invoice"></i> 发票编号</h4>
+                                        <p>INV202507078</p>
+                                    </div>
+                                    <div class="detail-card">
+                                        <h4><i class="fas fa-credit-card"></i> 支付详情</h4>
+                                        <p>XXXXX</p>
+                                    </div>
+                                    <div class="detail-card">
+                                        <h4><i class="fas fa-user-cog"></i> 操作信息</h4>
+                                        <p>XXX</p>
+                                    </div>
+                                </div>
+                                <div style="margin-top: 20px; color: #5f778a; display: flex; align-items: center;">
+                                    <i class="fas fa-paperclip" style="margin-right: 10px;"></i> 
+                                    <span>附件: XXX</span>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="footer">
+            <p><i class="fas fa-lock"></i>© 2025 ERP财务管理系统</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchBtn = document.getElementById('searchBtn');
+            
+            // 设置默认日期范围（最近7天）
+            const today = new Date();
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(today.getDate() - 7);
+            
+            document.getElementById('startDate').valueAsDate = sevenDaysAgo;
+            document.getElementById('endDate').valueAsDate = today;
+            
+            // 添加详情展开事件
+            document.querySelectorAll('.toggle-detail').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const id = this.dataset.id;
+                    const detailRow = document.querySelector(`.detail-row[data-id="${id}"]`);
+                    const icon = this.querySelector('i');
+                    
+                    if (detailRow.classList.contains('active')) {
+                        detailRow.classList.remove('active');
+                        icon.classList.remove('fa-chevron-down');
+                        icon.classList.add('fa-chevron-right');
+                    } else {
+                        detailRow.classList.add('active');
+                        icon.classList.remove('fa-chevron-right');
+                        icon.classList.add('fa-chevron-down');
+                    }
+                });
+            });
+            
+            // 搜索按钮点击效果
+            searchBtn.addEventListener('click', function() {
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 查询中...';
+                setTimeout(() => {
+                    this.innerHTML = '<i class="fas fa-search"></i> 查询';
+                    alert('查询完成！页面已显示最新结果');
+                }, 1500);
+            });
+        });
+    </script>
+</body>
+</html>
