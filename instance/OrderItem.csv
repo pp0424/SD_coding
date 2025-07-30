@@ -1,4 +1,4 @@
-﻿sales_order_id,item_no,material_id,order_quantity,sales_unit_price,shipped_quantity,unshipped_quantity,item_amount,unit
+sales_order_id,item_no,material_id,order_quantity,sales_unit_price,shipped_quantity,unshipped_quantity,item_amount,unit
 SO-20250720-001,1,MAT-01001A,100,200,0,100,20000,个
 SO-20250720-001,2,MAT-01002A,50,300,0,50,15000,个
 SO-20250722-001,1,MAT-01004A,100,50,0,100,5000,个

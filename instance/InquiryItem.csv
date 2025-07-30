@@ -1,4 +1,5 @@
-﻿INQ-20250716-001,1,MAT-01001A,100,个,200,黑色优先
+inquiry_id,item_no,material_id,inquiry_quantity,unit,expected_unit_price,item_remarks
+INQ-20250716-001,1,MAT-01001A,100,个,200,黑色优先
 INQ-20250716-001,2,MAT-01002A,50,个,300,需英文包装
 INQ-20250717-001,1,MAT-01003A,200,条,15,需加急
 INQ-20250718-001,1,MAT-01004A,100,个,50,需样品确认
