@@ -16,7 +16,7 @@ def parse_date(date_str):
     raise ValueError(f"无法解析日期格式: {date_str}")
 
 def load_csv_to_model(file_path, model, preprocess_row=None):
-    with open(file_path, newline='', encoding='utf-8') as f:
+    with open(file_path, newline='', encoding='utf-8-sig') as f:
         reader = csv.DictReader(f)
         instances = []
         for row in reader:
