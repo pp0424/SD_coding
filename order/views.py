@@ -914,9 +914,9 @@ def query_order():
 
     if not show_all:
         if form.get('sales_order_id'):
-            query = query.filter(SalesOrder.sales_order_id.ilike(f"%{form.get('sales_order_id')}%"))
+            query = query.filter(SalesOrder.sales_order_id.like(f"%{form.get('sales_order_id')}%"))
         if form.get('customer_id'):
-            query = query.filter(SalesOrder.customer_id.ilike(f"%{form.get('customer_id')}%"))
+            query = query.filter(SalesOrder.customer_id.like(f"%{form.get('customer_id')}%"))
         if form.get('status') and form.get('status') != '全部':
             query = query.filter(SalesOrder.status == form.get('status'))
         if form.get('date_from'):
