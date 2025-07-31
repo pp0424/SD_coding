@@ -145,7 +145,7 @@
 </nav>
   <div class="card-container">
     <h3>修改询价单：{{ inquiry.inquiry_id }}</h3>
-
+    {% set read_only = inquiry.status == '已评审' %}
     <form method="POST" action="/order/edit-inquiry/save" id="editInquiryForm" class="mb-0">
       <input type="hidden" name="inquiry_id" value="{{ inquiry.inquiry_id }}" />
 
@@ -158,7 +158,7 @@
             class="form-control"
             name="customer_id"
             value="{{ inquiry.customer_id }}"
-            required
+            required {% if read_only %}readonly{% endif %}
           />
         </div>
         <div class="col-md-6">
@@ -169,7 +169,7 @@
             class="form-control"
             name="inquiry_date"
             value="{{ inquiry.inquiry_date.strftime('%Y-%m-%d') if inquiry.inquiry_date else '' }}"
-            required
+            required {% if read_only %}readonly{% endif %}
           />
         </div>
         <div class="col-md-6">
@@ -180,7 +180,7 @@
             class="form-control"
             name="expected_delivery_date"
             value="{{ inquiry.expected_delivery_date.strftime('%Y-%m-%d') if inquiry.expected_delivery_date else '' }}"
-            required
+            required {% if read_only %}readonly{% endif %}
           />
         </div>
         <div class="col-md-6">
@@ -192,7 +192,7 @@
             class="form-control"
             name="expected_total_amount"
             value="{{ inquiry.expected_total_amount }}"
-            required
+            required {% if read_only %}readonly{% endif %}
           />
         </div>
         <div class="col-md-6">
@@ -203,7 +203,7 @@
             class="form-control"
             name="salesperson_id"
             value="{{ inquiry.salesperson_id }}"
-            required
+            required {% if read_only %}readonly{% endif %}
           />
         </div>
         <div class="col-12">
@@ -235,19 +235,19 @@
           {% for item in inquiry.items %}
           <tr>
             <td>
-              <input type="number" name="item_no" class="form-control" value="{{ item.item_no }}" required />
+              <input type="number" name="item_no" class="form-control" value="{{ item.item_no }}" required {% if read_only %}readonly{% endif %}/>
             </td>
             <td>
-              <input type="text" name="material_id" class="form-control" value="{{ item.material_id }}" required />
+              <input type="text" name="material_id" class="form-control" value="{{ item.material_id }}" required {% if read_only %}readonly{% endif %}/>
             </td>
             <td>
-              <input type="number" step="0.01" name="inquiry_quantity" class="form-control" value="{{ item.inquiry_quantity }}" required />
+              <input type="number" step="0.01" name="inquiry_quantity" class="form-control" value="{{ item.inquiry_quantity }}" required {% if read_only %}readonly{% endif %} />
             </td>
             <td>
-              <input type="text" name="unit" class="form-control" value="{{ item.unit }}" required />
+              <input type="text" name="unit" class="form-control" value="{{ item.unit }}" required {% if read_only %}readonly{% endif %}/>
             </td>
             <td>
-              <input type="number" step="0.01" name="expected_unit_price" class="form-control" value="{{ item.expected_unit_price or '' }}" />
+              <input type="number" step="0.01" name="expected_unit_price" class="form-control" value="{{ item.expected_unit_price or '' }}" {% if read_only %}readonly{% endif %}/>
             </td>
             <td>
               <input type="text" name="item_remarks" class="form-control" value="{{ item.item_remarks or '' }}" />
@@ -261,9 +261,13 @@
       </table>
 
       <button type="button" id="addRowBtn" class="btn btn-primary mb-3">新增明细行</button>
+     
+
 
       <div class="btn-group-custom mt-4">
         <button type="submit" class="btn btn-warning w-100">保存修改</button>
+        
+
       </div>
     </form>
 
@@ -273,32 +277,51 @@
     </form>
   </div>
 
-  <script>
-    // 添加新明细行
-    document.getElementById('addRowBtn').addEventListener('click', () => {
-      const tbody = document.querySelector('#itemsTable tbody');
-      const newRow = document.createElement('tr');
-      newRow.innerHTML = `
-        <td><input type="number" name="item_no" class="form-control" required /></td>
-        <td><input type="text" name="material_id" class="form-control" required /></td>
-        <td><input type="number" step="0.01" name="inquiry_quantity" class="form-control" required /></td>
-        <td><input type="text" name="unit" class="form-control" required /></td>
-        <td><input type="number" step="0.01" name="expected_unit_price" class="form-control" /></td>
-        <td><input type="text" name="item_remarks" class="form-control" /></td>
-        <td class="text-center">
-          <button type="button" class="btn btn-danger remove-row-btn">删除</button>
-        </td>
-      `;
-      tbody.appendChild(newRow);
+<script>
+  const readOnly = "{{ 'true' if read_only else 'false' }}" === "true";
+
+  if (readOnly) {
+    const addBtn = document.getElementById('addRowBtn');
+    if (addBtn) addBtn.disabled = true;
+
+    document.querySelectorAll('.remove-row-btn').forEach(btn => {
+      btn.disabled = true;
     });
 
-    // 删除行
-    document.querySelector('#itemsTable').addEventListener('click', (e) => {
-      if (e.target.classList.contains('remove-row-btn')) {
-        const row = e.target.closest('tr');
-        if (row) row.remove();
-      }
-    });
-  </script>
+    const approveForm = document.querySelector('form[action="/order/edit-inquiry/approve"]');
+    if (approveForm) {
+      const approveBtn = approveForm.querySelector('button[type="submit"]');
+      if (approveBtn) approveBtn.disabled = true;
+    }
+  }
+
+  document.getElementById('addRowBtn').addEventListener('click', () => {
+    if (readOnly) return;
+
+    const tbody = document.querySelector('#itemsTable tbody');
+    const newRow = document.createElement('tr');
+    newRow.innerHTML = `
+      <td><input type="number" name="item_no" class="form-control" required /></td>
+      <td><input type="text" name="material_id" class="form-control" required /></td>
+      <td><input type="number" step="0.01" name="inquiry_quantity" class="form-control" required /></td>
+      <td><input type="text" name="unit" class="form-control" required /></td>
+      <td><input type="number" step="0.01" name="expected_unit_price" class="form-control" /></td>
+      <td><input type="text" name="item_remarks" class="form-control" /></td>
+      <td class="text-center">
+        <button type="button" class="btn btn-danger remove-row-btn">删除</button>
+      </td>
+    `;
+    tbody.appendChild(newRow);
+  });
+
+  document.querySelector('#itemsTable').addEventListener('click', (e) => {
+    if (e.target.classList.contains('remove-row-btn')) {
+      if (readOnly) return;
+      const row = e.target.closest('tr');
+      if (row) row.remove();
+    }
+  });
+</script>
+
 </body>
 </html>

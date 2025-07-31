@@ -60,39 +60,40 @@
 <div class="container-fluid">
   <div class="card mx-auto" style="max-width: 1400px;">
     <h3>修改报价单（编号：{{ quotation.quotation_id }}）</h3>
+    {% set read_only = quotation.status == '已发送' %}
     <form method="POST" action="{{ url_for('order.edit_quote_save') }}">
       <input type="hidden" name="quotation_id" value="{{ quotation.quotation_id }}">
 
       <div class="row mb-3">
         <div class="col-md-6">
           <label class="form-label">客户编号</label>
-          <input class="form-control" name="customer_id" value="{{ quotation.customer_id }}" required>
+          <input class="form-control" name="customer_id" value="{{ quotation.customer_id }}" required {% if read_only %}readonly{% endif %}>
         </div>
         <div class="col-md-6">
           <label class="form-label">关联询价单号</label>
-          <input class="form-control" name="inquiry_id" value="{{ quotation.inquiry_id }}">
+          <input class="form-control" name="inquiry_id" value="{{ quotation.inquiry_id }}"  {% if read_only %}readonly{% endif %}>
         </div>
       </div>
 
       <div class="row mb-3">
         <div class="col-md-6">
           <label class="form-label">报价日期</label>
-          <input type="date" class="form-control" name="quotation_date" value="{{ quotation.quotation_date.strftime('%Y-%m-%d') }}">
+          <input type="date" class="form-control" name="quotation_date" value="{{ quotation.quotation_date.strftime('%Y-%m-%d') }}"  {% if read_only %}readonly{% endif %}>
         </div>
         <div class="col-md-6">
           <label class="form-label">有效期至</label>
-          <input type="date" class="form-control" name="valid_until_date" value="{{ quotation.valid_until_date.strftime('%Y-%m-%d') }}">
+          <input type="date" class="form-control" name="valid_until_date" value="{{ quotation.valid_until_date.strftime('%Y-%m-%d') }}" >
         </div>
       </div>
 
       <div class="row mb-3">
         <div class="col-md-6">
           <label class="form-label">总金额</label>
-          <input type="number" step="0.01" class="form-control" name="total_amount" value="{{ quotation.total_amount }}">
+          <input type="number" step="0.01" class="form-control" name="total_amount" value="{{ quotation.total_amount }}" {% if read_only %}readonly{% endif %}>
         </div>
         <div class="col-md-6">
           <label class="form-label">销售员编号</label>
-          <input class="form-control" name="salesperson_id" value="{{ quotation.salesperson_id }}">
+          <input class="form-control" name="salesperson_id" value="{{ quotation.salesperson_id }}" {% if read_only %}readonly{% endif %}>
         </div>
       </div>
 
@@ -121,13 +122,13 @@
           {% for item in quotation.items %}
           <tr>
             <td><input name="item_no" value="{{ item.item_no }}" readonly></td>
-            <td><input name="material_id" value="{{ item.material_id }}"></td>
-            <td><input name="quotation_quantity" type="number" value="{{ item.quotation_quantity }}"></td>
-            <td><input name="unit" value="{{ item.unit }}"></td>
-            <td><input name="unit_price" type="number" step="0.01" value="{{ item.unit_price }}"></td>
-            <td><input name="discount_rate" type="number" step="0.01" value="{{ item.discount_rate }}"></td>
-            <td><input name="item_amount" type="number" step="0.01" value="{{ item.item_amount }}"></td>
-            <td><input name="inquiry_item_id" value="{{ item.inquiry_item_id }}"></td>
+            <td><input name="material_id" value="{{ item.material_id }}" {% if read_only %}readonly{% endif %}></td>
+            <td><input name="quotation_quantity" type="number" value="{{ item.quotation_quantity }}" {% if read_only %}readonly{% endif %}></td>
+            <td><input name="unit" value="{{ item.unit }}" {% if read_only %}readonly{% endif %}></td>
+            <td><input name="unit_price" type="number" step="0.01" value="{{ item.unit_price }}" {% if read_only %}readonly{% endif %}></td>
+            <td><input name="discount_rate" type="number" step="0.01" value="{{ item.discount_rate }}" {% if read_only %}readonly{% endif %}></td>
+            <td><input name="item_amount" type="number" step="0.01" value="{{ item.item_amount }}" {% if read_only %}readonly{% endif %}></td>
+            <td><input name="inquiry_item_id" value="{{ item.inquiry_item_id }}" {% if read_only %}readonly{% endif %}></td>
             <td><button type="button" class="btn btn-danger btn-sm" onclick="this.closest('tr').remove()">删除</button></td>
           </tr>
           {% endfor %}
@@ -136,6 +137,21 @@
 
       <div class="text-end mb-4">
         <button type="button" class="btn btn-outline-primary btn-sm" onclick="addRow()">➕ 新增行</button>
+        {% if read_only %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // 禁用新增按钮
+    const addBtn = document.querySelector('button[onclick="addRow()"]');
+    if (addBtn) addBtn.disabled = true;
+
+    // 禁用所有删除按钮
+    document.querySelectorAll('#items-table button.btn-danger').forEach(btn => {
+      btn.disabled = true;
+    });
+  });
+</script>
+{% endif %}
+
       </div>
 
       <div class="d-flex justify-content-center btn-group">

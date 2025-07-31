@@ -115,6 +115,48 @@ def edit_save():
             for item in inquiry.items
         ]
     }
+    # ===== 状态判断：若为“已评审”，仅允许修改备注字段 =====
+    if inquiry.status == '已评审':
+        flash('该询价单已评审，仅允许修改备注内容。其余字段不会被更改。', 'warning')
+
+    # 允许更新备注字段
+        inquiry.remarks = request.form.get('remarks')
+
+    # 同样允许每个明细的“item_remarks”更新
+        submitted_item_nos = request.form.getlist('item_no')
+        item_remarks = request.form.getlist('item_remarks')
+        item_remark_map = dict(zip(submitted_item_nos, item_remarks))
+
+        for item in inquiry.items:
+            if str(item.item_no) in item_remark_map:
+                item.item_remarks = item_remark_map[str(item.item_no)]
+
+        db.session.commit()
+
+    # 构建 new_data（与 old_data 格式一致）供前端比对展示
+        new_data = {
+        'customer_id': inquiry.customer_id,
+        'inquiry_date': inquiry.inquiry_date.strftime('%Y-%m-%d') if inquiry.inquiry_date else '',
+        'expected_delivery_date': inquiry.expected_delivery_date.strftime('%Y-%m-%d') if inquiry.expected_delivery_date else '',
+        'expected_total_amount': str(inquiry.expected_total_amount),
+        'salesperson_id': inquiry.salesperson_id,
+        'remarks': inquiry.remarks,
+        'items': [
+            {
+                'item_no': item.item_no,
+                'material_id': item.material_id,
+                'inquiry_quantity': str(item.inquiry_quantity),
+                'unit': item.unit,
+                'expected_unit_price': str(item.expected_unit_price or ''),
+                'item_remarks': item.item_remarks or ''
+            }
+            for item in inquiry.items
+        ],
+        'inquiry_id': inquiry_id
+    }
+
+        return render_template('order/edit_inquiry_confirm_update.html', old=old_data, new=new_data, min=min)
+
 
     # ===== 更新主表 Inquiry =====
     inquiry.customer_id = request.form.get('customer_id')
@@ -381,6 +423,24 @@ def edit_quote_save():
             } for item in quotation.items
         ]
     }
+    # ========== 状态校验：已审核则禁止修改关键信息 ==========
+    if quotation.status == '已发送':
+           flash('该报价单已审核，只允许修改备注、有效期等非关键内容。', 'warning')
+
+    # 主表仅允许修改备注
+           quotation.valid_until_date=request.form.get("valid_until_date")
+           quotation.remarks = request.form.get("remarks")
+           db.session.commit()
+
+    # 构建新旧数据对比页
+           new_data = old_data.copy()
+           new_data["valid_until_date"]=quotation.valid_until_date
+           new_data["remarks"] = quotation.remarks
+           return render_template('order/edit_quote_confirm_update.html',old=old_data, new=new_data,quotation_id=quote_id, min=min,
+                                   old_items_map={item['item_no']: item for item in old_data['items']},new_items_map={item['item_no']: item for item in old_data['items']},
+                                   all_item_nos=[item['item_no'] for item in old_data['items']])
+
+
 
     # ========== 更新主表 ==========
     quotation.customer_id = request.form.get("customer_id")
