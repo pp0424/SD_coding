@@ -1,126 +1,374 @@
-<!DOCTYPE html>
-<html lang="zh">
-<head>
-    <meta charset="UTF-8">
-    <title>发货管理首页</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-    <style>
-        body {
-            background:#eaf3fb;;
-            font-family: "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
-            background-image: url('/static/delivery_background.png');
-            background-size: cover;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
-        }
-        .sap-shellbar {
-            background: linear-gradient(90deg, #0a6ed1 80%, #2196f3 100%);
-            height: 56px;
-            display: flex;
-            align-items: center;
-            padding-left: 2rem;
-            color: #fff;
-            font-size: 1.25rem;
-            font-weight: 600;
-            letter-spacing: 1px;
-            box-shadow: 0 2px 8px rgba(10,110,209,0.07);
-        }
-        .sap-tiles {
-            display: flex;
-            gap: 2rem;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-top: 4rem;
-        }
-        .sap-tile {
-            background: rgba(255, 255, 255, 0.7); /* 半透明白色 */
-            border-radius: 18px;
-            box-shadow: 0 8px 32px rgba(10,110,209,0.13), 0 1.5px 6px rgba(10,110,209,0.10);
-            width: 260px;
-            min-height: 180px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            transition: box-shadow 0.3s cubic-bezier(.4,2,.6,1), transform 0.3s cubic-bezier(.4,2,.6,1), background 0.3s;
-            cursor: pointer;
-            border-left: 6px solid #0a6ed1;
-            position: relative;
-            margin-bottom: 2.5rem;
-            backdrop-filter: blur(8px); /* 毛玻璃模糊效果 */
-            transform: translateY(0px);
-        }
-        .sap-tile:hover {
-            background: rgba(255, 255, 255, 0.92); /* 悬浮时更亮 */
-            box-shadow: 0 24px 64px rgba(10,110,209,0.22), 0 8px 24px rgba(10,110,209,0.13);
-            transform: translateY(-12px) scale(1.04);
-            z-index: 2;
-        }
-        .sap-tile-icon {
-            font-size: 2.6rem;
-            color: #0a6ed1;
-            margin-bottom: 1.1rem;
-            margin-top: 0.5rem;
-        }
-        .sap-tile-title {
-            font-size: 1.18rem;
-            font-weight: 600;
-            color: #0a6ed1;
-            margin-bottom: 0.5rem;
-            letter-spacing: 1px;
-        }
-        .sap-tile-desc {
-            color: #6c757d;
-            font-size: 0.98rem;
-            text-align: center;
-            margin-bottom: 0.5rem;
-            min-height: 38px;
-        }
-        @media (max-width: 900px) {
-            .sap-tiles {
-                flex-direction: column;
-                align-items: center;
-                gap: 1.5rem;
-            }
-            .sap-tile {
-                width: 90%;
-                min-width: 220px;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="sap-shellbar">
-        <i class="bi bi-box-seam me-2"></i> 发货管理系统
+{% extends "delivery/base.html" %}
+{% block title %}发货管理- 首页{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <!-- 概览卡片 -->
+    <div class="col-md-3">
+        <div class="card border-primary">
+            <div class="card-body text-center">
+                <h5 class="card-title">待处理发货单</h5>
+                <h2 class="text-primary">{{ pending_deliveries|length }}</h2>
+                <a href="{{ url_for('delivery.delivery_list') }}?status=已创建,已拣货" class="btn btn-sm btn-outline-primary">
+                    查看详情
+                </a>
+            </div>
+        </div>
     </div>
-    <div class="container">
-        <div class="sap-tiles">
-            <div class="sap-tile" onclick="location.href='{{ url_for('delivery.create_delivery') }}'">
-                <div class="sap-tile-icon"><i class="bi bi-plus-circle"></i></div>
-                <div class="sap-tile-title">创建发货流程</div>
-            </div>
-            <div class="sap-tile" onclick="location.href='{{ url_for('delivery.query_delivery') }}'">
-                <div class="sap-tile-icon"><i class="bi bi-search"></i></div>
-                <div class="sap-tile-title">查询/修改发货信息</div>
-            </div>
-            <!-- 可根据需要添加更多功能卡片 -->
-        </div>
-        <div class="sap-tiles mt-4">
-            <div class="sap-tile" onclick="location.href='{{ url_for('delivery.posting') }}'">
-                <div class="sap-tile-icon"><i class="bi bi-journal-check"></i></div>
-                <div class="sap-tile-title">执行过账手续</div>
-            </div>
-            <div class="sap-tile" onclick="location.href='{{ url_for('delivery.query_stock_change') }}'">
-                <div class="sap-tile-icon"><i class="bi bi-boxes"></i></div>
-                <div class="sap-tile-title">查询库存变动</div>
+    
+    <div class="col-md-3">
+        <div class="card border-success">
+            <div class="card-body text-center">
+                <h5 class="card-title">今日发货单</h5>
+                <h2 class="text-success">{{ today_deliveries|length }}</h2>
+                <a href="{{ url_for('delivery.delivery_list') }}?start_date={{ today.strftime('%Y-%m-%d') }}&end_date={{ today.strftime('%Y-%m-%d') }}" 
+                   class="btn btn-sm btn-outline-success">
+                    查看详情
+                </a>
             </div>
         </div>
-           
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-warning">
+            <div class="card-body text-center">
+                <h5 class="card-title">库存预警</h5>
+                <h2 class="text-warning">{{ low_stock_materials|length }}</h2>
+                <a href="{{ url_for('delivery.delivery_list') }}" class="btn btn-sm btn-outline-warning">
+                    查看详情
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-danger">
+            <div class="card-body text-center">
+                <h5 class="card-title">待过账发货单</h5>
+                <h2 class="text-danger">{{ to_post_deliveries|length }}</h2>
+                <a href="{{ url_for('delivery.delivery_list') }}?status=已创建" class="btn btn-sm btn-outline-danger">
+                    立即过账
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 待处理发货单 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-warning text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">待处理发货单</h5>
+                <a href="{{ url_for('delivery.delivery_list') }}?status=已创建,已拣货" class="btn btn-sm btn-light">
+                    查看全部 <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>发货单号</th>
+                                <th>销售订单</th>
+                                <th>预计发货</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for delivery in pending_deliveries %}
+                            <tr>
+                                <td>{{ delivery.delivery_note_id }}</td>
+                                <td>{{ delivery.sales_order_id }}</td>
+                                <td>{{ delivery.delivery_date.strftime('%m-%d') }}</td>
+                                <td>
+                                    <span class="status-badge status-{{ delivery.status|lower }}">
+                                        {{ delivery.status }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('delivery.delivery_detail', delivery_id=delivery.delivery_note_id) }}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        处理
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4">没有待处理的发货单</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 今日发货单 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">今日发货单</h5>
+                <a href="{{ url_for('delivery.delivery_list') }}?start_date={{ today.strftime('%Y-%m-%d') }}&end_date={{ today.strftime('%Y-%m-%d') }}" 
+                   class="btn btn-sm btn-light">
+                    查看全部 <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>发货单号</th>
+                                <th>客户</th>
+                                <th>仓库</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for delivery in today_deliveries %}
+                            <tr>
+                                <td>{{ delivery.delivery_note_id }}</td>
+                                <td>{{ delivery.sales_order.customer.customer_name|truncate(10) }}</td>
+                                <td>{{ delivery.warehouse_code }}</td>
+                                <td>
+                                    <span class="status-badge status-{{ delivery.status|lower }}">
+                                        {{ delivery.status }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if delivery.status == '已创建' %}
+                                    <a href="{{ url_for('delivery.post_delivery', delivery_id=delivery.delivery_note_id) }}" 
+                                       class="btn btn-sm btn-success">
+                                        过账
+                                    </a>
+                                    {% endif %}
+                                    <a href="{{ url_for('delivery.delivery_detail', delivery_id=delivery.delivery_note_id) }}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        详情
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4">今日没有发货单</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <!-- 库存预警 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">库存预警</h5>
+                <a href="{{ url_for('delivery.delivery_list') }}" class="btn btn-sm btn-light">
+                    查看全部 <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>物料编号</th>
+                                <th>物料描述</th>
+                                <th>当前库存</th>
+                                <th>单位</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for material in low_stock_materials %}
+                            <tr>
+                                <td>{{ material.material_id }}</td>
+                                <td>{{ material.description|truncate(20) }}</td>
+                                <td class="{{ 'text-danger fw-bold' if material.available_stock < 10 else 'text-warning' }}">
+                                    {{ material.available_stock }}
+                                </td>
+                                <td>{{ material.base_unit }}</td>
+                                <td>
+                                    <a href="{{ url_for('inventory.material_detail', material_id=material.material_id) }}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        补货
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4">没有库存预警的物料</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 待过账发货单 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">待过账发货单</h5>
+                <a href="{{ url_for('delivery.delivery_list') }}?status=已创建" class="btn btn-sm btn-light">
+                    查看全部 <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>发货单号</th>
+                                <th>销售订单</th>
+                                <th>仓库</th>
+                                <th>计划数量</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for delivery in to_post_deliveries %}
+                            <tr>
+                                <td>{{ delivery.delivery_note_id }}</td>
+                                <td>{{ delivery.sales_order_id }}</td>
+                                <td>{{ delivery.warehouse_code }}</td>
+                                <td>
+                                    {% set total_quantity = delivery.items|sum(attribute='planned_delivery_quantity') %}
+                                    {{ total_quantity|int }}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('delivery.post_delivery', delivery_id=delivery.delivery_note_id) }}" 
+                                       class="btn btn-sm btn-success">
+                                        执行过账
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4">没有待过账的发货单</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">发货状态统计</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <canvas id="deliveryChart" height="250"></canvas>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex flex-column">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="bg-primary rounded-circle me-2" style="width:20px; height:20px;"></div>
+                                <span>已创建: {{ stats.created or 0 }}</span>
+                            </div>
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="bg-info rounded-circle me-2" style="width:20px; height:20px;"></div>
+                                <span>已拣货: {{ stats.picked or 0 }}</span>
+                            </div>
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="bg-success rounded-circle me-2" style="width:20px; height:20px;"></div>
+                                <span>已过账: {{ stats.posted or 0 }}</span>
+                            </div>
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="bg-secondary rounded-circle me-2" style="width:20px; height:20px;"></div>
+                                <span>已取消: {{ stats.canceled or 0 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 创建发货状态统计图表
+    const ctx = document.getElementById('deliveryChart').getContext('2d');
+    const deliveryChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['已创建', '已拣货', '已过账', '已取消'],
+            datasets: [{
+                data: [
+                    {{ stats.created or 0 }},
+                    {{ stats.picked or 0 }},
+                    {{ stats.posted or 0 }},
+                    {{ stats.canceled or 0 }}
+                ],
+                backgroundColor: [
+                    '#0d6efd', // 已创建 - 蓝色
+                    '#0dcaf0', // 已拣货 - 青色
+                    '#198754', // 已过账 - 绿色
+                    '#6c757d'  // 已取消 - 灰色
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                },
+                title: {
+                    display: true,
+                    text: '发货单状态分布'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw || 0;
+                            const total = context.chart.getDatasetMeta(0).total;
+                            const percentage = Math.round((value / total) * 100);
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    // 发货数量校验
+    const quantityInputs = document.querySelectorAll('input[name$="planned_delivery_quantity"], input[name$="actual_quantity"]');
+    quantityInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            const max = parseFloat(this.dataset.max) || Infinity;
+            const value = parseFloat(this.value) || 0;
             
-        </div>
-        </div>
-        </div>
-    </div>
-</body>
-</html>
+            if (value > max) {
+                this.value = max;
+                alert(`数量不能超过${max}`);
+            } else if (value < 0) {
+                this.value = 0;
+                alert('数量不能为负数');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

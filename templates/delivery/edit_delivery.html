@@ -1,103 +1,53 @@
-<!DOCTYPE html>
-<html lang="zh">
-<head>
-  <meta charset="UTF-8">
-  <title>修改发货单</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-  <style>
-    body {
-      background: #eaf3fb;;
-      font-family: "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
-    }
-    .sap-card {
-      background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
-      padding: 2.5rem 2.5rem 2rem 2.5rem;
-      margin-top: 3rem;
-      border-left: 6px solid #0a6ed1;
-    }
-    .sap-title {
-      color: #0a6ed1;
-      font-weight: 700;
-      letter-spacing: 1px;
-      margin-bottom: 2rem;
-    }
-    .sap-form-label {
-      color: #0a6ed1;
-      font-weight: 500;
-      margin-bottom: 0.3rem;
-    }
-    .sap-btn {
-      background: #0a6ed1;
-      color: #fff;
-      border-radius: 6px;
-      border: none;
-      padding: 0.5rem 1.2rem;
-      font-weight: 500;
-      box-shadow: 0 2px 8px rgba(10,110,209,0.08);
-      transition: background 0.2s, box-shadow 0.2s;
-    }
-    .sap-btn:hover {
-      background: #1565c0;
-      color: #fff;
-      box-shadow: 0 4px 16px rgba(10,110,209,0.13);
-    }
-    .alert {
-      border-radius: 8px;
-    }
-    @media (max-width: 768px) {
-      .sap-card {
-        padding: 1.2rem 0.7rem 1rem 0.7rem;
-      }
-      .sap-title {
-        font-size: 1.3rem;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="row justify-content-center">
-      <div class="col-lg-7 col-md-10">
-        <div class="sap-card">
-          <h2 class="sap-title text-center mb-4">
-            <i class="bi bi-pencil-square me-2"></i>修改发货单 {{ delivery.delivery_id }}
-          </h2>
-          {% if not can_edit %}
-            <div class="alert alert-warning mb-4">已过账发货单仅可修改备注</div>
-          {% endif %}
-          <form method="post">
-            {{ form.hidden_tag() }}
-            <div class="row g-3">
-              <div class="col-md-6">
-                <label class="sap-form-label">{{ form.expected_delivery_date.label }}</label>
-                {{ form.expected_delivery_date(class="form-control") }}
-              </div>
-              <div class="col-md-6">
-                <label class="sap-form-label">{{ form.warehouse_code.label }}</label>
-                {{ form.warehouse_code(class="form-control") }}
-              </div>
-              <div class="col-12">
-                <label class="sap-form-label">{{ form.remarks.label }}</label>
-                {{ form.remarks(class="form-control") }}
-              </div>
-            </div>
-            <div class="text-end mt-4">
-              {{ form.submit(class="sap-btn") }}
-            </div>
-          </form>
-          {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-              {% for category, msg in messages %}
-                <div class="alert alert-{{ category }} mt-3">{{ msg }}</div>
-              {% endfor %}
-            {% endif %}
-          {% endwith %}
+{% extends "delivery/base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">编辑发货单: {{ delivery_note.delivery_note_id }}</h2>
+    
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">基本信息</h5>
         </div>
-      </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                {{ form.as_p }}
+                
+                <hr>
+                <h5 class="mb-3">发货行项</h5>
+                
+                {{ formset.management_form }}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>物料编号</th>
+                                <th>物料描述</th>
+                                <th>计划数量</th>
+                                <th>订单未发货数量</th>
+                                <th>调整后数量</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for form in formset %}
+                            <tr>
+                                <td>{{ form.instance.material.material_id }}</td>
+                                <td>{{ form.instance.material.description }}</td>
+                                <td>{{ form.instance.planned_delivery_quantity }}</td>
+                                <td>{{ form.instance.sales_order_item.unshipped_quantity }}</td>
+                                <td>{{ form.planned_delivery_quantity }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <button type="submit" class="btn btn-primary mt-3">保存修改</button>
+                <a href="{% url 'post_delivery' delivery_note.delivery_note_id %}" 
+                   class="btn btn-success mt-3 ml-2">执行过账</a>
+            </form>
+        </div>
     </div>
-  </div>
-</body>
-</html>
+</div>
+{% endblock %}
