@@ -31,7 +31,7 @@ for mid in materials:
         'storage_location': f"WH-{fake.province()}",
         'available_stock': random.randint(100, 10000)
     })
-write_csv('D:\GIT\SD_coding\instance\Material.csv', list(material_data[0].keys()), material_data)
+write_csv('instance\Material.csv', list(material_data[0].keys()), material_data)
 
 # 2. Inquiry
 inquiry_data = []
@@ -49,7 +49,7 @@ for i in range(NUM_RECORDS):
         'salesperson_id': random.choice(salespersons),
         'remarks': fake.sentence(nb_words=5)
     })
-write_csv('D:\GIT\SD_coding\instance\Inquiry.csv', list(inquiry_data[0].keys()), inquiry_data)
+write_csv('instance\Inquiry.csv', list(inquiry_data[0].keys()), inquiry_data)
 
 # 3. InquiryItem
 inquiry_item_data = []
@@ -65,7 +65,7 @@ for iid in inquiry_ids:
             'expected_unit_price': round(random.uniform(10, 500), 2),
             'item_remarks': fake.word()
         })
-write_csv('D:\GIT\SD_coding\instance\InquiryItem.csv', list(inquiry_item_data[0].keys()), inquiry_item_data)
+write_csv('instance\InquiryItem.csv', list(inquiry_item_data[0].keys()), inquiry_item_data)
 
 # 4. Quotation
 quotation_data = []
@@ -84,7 +84,7 @@ for i, iid in enumerate(inquiry_ids):
         'salesperson_id': inquiry_data[i]['salesperson_id'],
         'remarks': fake.sentence()
     })
-write_csv('D:\GIT\SD_coding\instance\Quotation.csv', list(quotation_data[0].keys()), quotation_data)
+write_csv('instance\Quotation.csv', list(quotation_data[0].keys()), quotation_data)
 
 # 5. QuotationItem
 quotation_item_data = []
@@ -104,7 +104,7 @@ for i, qid in enumerate(quotation_ids):
             'item_amount': round(price * qty, 2),
             'unit': random.choice(units)
         })
-write_csv('D:\GIT\SD_coding\instance\QuotationItem.csv', list(quotation_item_data[0].keys()), quotation_item_data)
+write_csv('instance\QuotationItem.csv', list(quotation_item_data[0].keys()), quotation_item_data)
 
 # 6. SalesOrder
 sales_order_data = []
@@ -123,7 +123,7 @@ for i, qid in enumerate(quotation_ids[:NUM_RECORDS]):
         'credit_check_result': random.choice(['通过', '待审核']),
         'remarks': fake.sentence()
     })
-write_csv('D:\GIT\SD_coding\instance\SalesOrder.csv', list(sales_order_data[0].keys()), sales_order_data)
+write_csv('instance\SalesOrder.csv', list(sales_order_data[0].keys()), sales_order_data)
 
 # 7. OrderItem
 order_item_data = []
@@ -142,6 +142,6 @@ for i, oid in enumerate(order_ids):
             'item_amount': round(qty * price, 2),
             'unit': random.choice(units)
         })
-write_csv('D:\GIT\SD_coding\instance\OrderItem.csv', list(order_item_data[0].keys()), order_item_data)
+write_csv('instance\OrderItem.csv', list(order_item_data[0].keys()), order_item_data)
 
 print("✅ 所有CSV文件已生成！")

@@ -40,7 +40,7 @@ def import_all():
         db.session.commit()
 
         # 1. Material
-        load_csv_to_model('D:\GIT\SD_coding\instance\Material.csv', Material, lambda r: {
+        load_csv_to_model('instance\Material.csv', Material, lambda r: {
             'material_id': r['material_id'],
             'description': r['description'],
             'base_unit': r['base_unit'],
@@ -49,7 +49,7 @@ def import_all():
         })
 
         # 2. Inquiry
-        load_csv_to_model('D:\GIT\SD_coding\instance\Inquiry.csv', Inquiry, lambda r: {
+        load_csv_to_model('instance\Inquiry.csv', Inquiry, lambda r: {
             'inquiry_id': r['inquiry_id'],
             'customer_id': r['customer_id'],
             'inquiry_date': parse_date(r['inquiry_date']),
@@ -61,7 +61,7 @@ def import_all():
         })
 
         # 3. InquiryItem
-        load_csv_to_model('D:\GIT\SD_coding\instance\InquiryItem.csv', InquiryItem, lambda r: {
+        load_csv_to_model('instance\InquiryItem.csv', InquiryItem, lambda r: {
             'inquiry_id': r['inquiry_id'],
             'item_no': int(r['item_no']),
             'material_id': r['material_id'],
@@ -72,7 +72,7 @@ def import_all():
         })
 
         # 4. Quotation
-        load_csv_to_model('D:\GIT\SD_coding\instance\Quotation.csv', Quotation, lambda r: {
+        load_csv_to_model('instance\Quotation.csv', Quotation, lambda r: {
             'quotation_id': r['quotation_id'],
             'customer_id': r['customer_id'],
             'inquiry_id': r['inquiry_id'],
@@ -85,7 +85,7 @@ def import_all():
         })
 
         # 5. QuotationItem
-        load_csv_to_model('D:\GIT\SD_coding\instance\QuotationItem.csv', QuotationItem, lambda r: {
+        load_csv_to_model('instance\QuotationItem.csv', QuotationItem, lambda r: {
             'quotation_id': r['quotation_id'],
             'item_no': int(r['item_no']),
             'inquiry_item_id': r['inquiry_item_id'],
@@ -98,7 +98,7 @@ def import_all():
         })
 
         # 6. SalesOrder
-        load_csv_to_model('D:\GIT\SD_coding\instance\SalesOrder.csv', SalesOrder, lambda r: {
+        load_csv_to_model('instance\SalesOrder.csv', SalesOrder, lambda r: {
             'sales_order_id': r['sales_order_id'],
             'customer_id': r['customer_id'],
             'quotation_id': r['quotation_id'],
@@ -111,7 +111,7 @@ def import_all():
         })
 
         # 7. OrderItem
-        load_csv_to_model('D:\GIT\SD_coding\instance\OrderItem.csv', OrderItem, lambda r: {
+        load_csv_to_model('instance\OrderItem.csv', OrderItem, lambda r: {
             'sales_order_id': r['sales_order_id'],
             'item_no': int(r['item_no']),
             'material_id': r['material_id'],
