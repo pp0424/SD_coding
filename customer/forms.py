@@ -85,4 +85,3 @@ class BPRelationshipSearchForm(FlaskForm):
                                     ('status', '关系状态')],
                              default='relationship_type')
     search_value = StringField('搜索内容', validators=[Optional()])
-# forms.py for customer module

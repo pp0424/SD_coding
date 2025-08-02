@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>业务伙伴关系列表 - 客户管理系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>业务伙伴关系列表</h1>
+        
+        <div class="navbar">
+            <ul>
+                <li><a href="{{ url_for('customer.index') }}">首页</a></li>
+                <li><a href="{{ url_for('customer.list_customers') }}">客户管理</a></li>
+                <li><a href="{{ url_for('customer.list_contacts') }}">联系人管理</a></li>
+                <li><a href="{{ url_for('customer.list_relationships') }}">业务伙伴关系</a></li>
+            </ul>
+        </div>
+
+        <!-- 消息提示 -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'success' if category == 'success' else 'error' }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- 搜索表单 -->
+        <div class="search-container">
+            <h3>搜索业务伙伴关系</h3>
+            <form method="POST" action="{{ url_for('customer.search_relationships') }}" class="search-form">
+                {{ search_form.hidden_tag() }}
+                <div class="form-group">
+                    {{ search_form.search_type.label }}
+                    {{ search_form.search_type(class="form-control") }}
+                </div>
+                <div class="form-group">
+                    {{ search_form.search_value.label }}
+                    {{ search_form.search_value(class="form-control", placeholder="请输入搜索内容") }}
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">搜索</button>
+                    <a href="{{ url_for('customer.list_relationships') }}" class="btn btn-secondary">重置</a>
+                </div>
+            </form>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div style="margin-bottom: 20px;">
+            <a href="{{ url_for('customer.create_relationship') }}" class="btn btn-success">新增业务伙伴关系</a>
+        </div>
+
+        <!-- 业务伙伴关系列表 -->
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>关系ID</th>
+                        <th>主客户</th>
+                        <th>联系人</th>
+                        <th>关系类型</th>
+                        <th>关系描述</th>
+                        <th>生效日期</th>
+                        <th>失效日期</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for relationship in relationships %}
+                    <tr>
+                        <td>{{ relationship.relationship_id }}</td>
+                        <td>
+                            <a href="{{ url_for('customer.view_customer', customer_id=relationship.main_customer_id) }}" style="color: #3498db; text-decoration: none;">
+                                {{ relationship.main_customer.customer_name }}
+                            </a>
+                        </td>
+                        <td>
+                            {% if relationship.contact_person %}
+                                {{ relationship.contact_person.first_name }} {{ relationship.contact_person.last_name }}
+                                {% if relationship.contact_person.position %}
+                                    <br><small style="color: #666;">{{ relationship.contact_person.position }}</small>
+                                {% endif %}
+                            {% else %}
+                                <span style="color: #999;">无</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ relationship.relationship_type }}</td>
+                        <td>{{ relationship.description or '无' }}</td>
+                        <td>{{ relationship.effective_date.strftime('%Y-%m-%d') if relationship.effective_date else '无' }}</td>
+                        <td>{{ relationship.expiry_date.strftime('%Y-%m-%d') if relationship.expiry_date else '无' }}</td>
+                        <td>
+                            <span class="status-badge status-{{ relationship.status }}">
+                                {{ relationship.status }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('customer.edit_relationship', relationship_id=relationship.relationship_id) }}" class="btn btn-secondary" style="padding: 5px 10px; font-size: 12px;">编辑</a>
+                            <form method="POST" action="{{ url_for('customer.delete_relationship', relationship_id=relationship.relationship_id) }}" style="display: inline;" onsubmit="return confirm('确定要删除这个业务伙伴关系吗？')">
+                                <button type="submit" class="btn btn-danger" style="padding: 5px 10px; font-size: 12px;">删除</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" style="text-align: center; padding: 30px; color: #666;">
+                            暂无业务伙伴关系数据
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <style>
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-有效 {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status-已终止 {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</body>
+</html>

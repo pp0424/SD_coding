@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>客户管理系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>客户管理系统</h1>
+        
+        <div class="navbar">
+            <ul>
+                <li><a href="{{ url_for('customer.index') }}">首页</a></li>
+                <li><a href="{{ url_for('customer.list_customers') }}">客户管理</a></li>
+                <li><a href="{{ url_for('customer.list_contacts') }}">联系人管理</a></li>
+                <li><a href="{{ url_for('customer.list_relationships') }}">业务伙伴关系</a></li>
+            </ul>
+        </div>
+
+        <div style="text-align: center; margin-top: 50px;">
+            <a href="{{ url_for('customer.list_customers') }}" class="module-card">
+                <img src="{{ url_for('static', filename='customer_logo.png') }}" alt="客户管理">
+                <h3>客户管理</h3>
+                <p>管理客户基本信息、查询客户数据</p>
+            </a>
+
+            <a href="{{ url_for('customer.list_contacts') }}" class="module-card">
+                <img src="{{ url_for('static', filename='customer_logo.png') }}" alt="联系人管理">
+                <h3>联系人管理</h3>
+                <p>管理客户联系人信息</p>
+            </a>
+
+            <a href="{{ url_for('customer.list_relationships') }}" class="module-card">
+                <img src="{{ url_for('static', filename='customer_logo.png') }}" alt="业务伙伴关系">
+                <h3>业务伙伴关系</h3>
+                <p>管理客户间的业务关系</p>
+            </a>
+        </div>
+    </div>
+</body>
+</html>

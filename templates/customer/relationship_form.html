@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - 客户管理系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>{{ title }}</h1>
+        
+        <div class="navbar">
+            <ul>
+                <li><a href="{{ url_for('customer.index') }}">首页</a></li>
+                <li><a href="{{ url_for('customer.list_customers') }}">客户管理</a></li>
+                <li><a href="{{ url_for('customer.list_contacts') }}">联系人管理</a></li>
+                <li><a href="{{ url_for('customer.list_relationships') }}">业务伙伴关系</a></li>
+            </ul>
+        </div>
+
+        <!-- 消息提示 -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'success' if category == 'success' else 'error' }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="form-container">
+            <form method="POST">
+                {{ form.hidden_tag() }}
+                
+                <div class="form-group">
+                    {{ form.main_customer_id.label }}
+                    {{ form.main_customer_id(class="form-control", id="customer_select") }}
+                    {% if form.main_customer_id.errors %}
+                        <div class="error-message">
+                            {% for error in form.main_customer_id.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.contact_id.label }}
+                    {{ form.contact_id(class="form-control", id="contact_select") }}
+                    {% if form.contact_id.errors %}
+                        <div class="error-message">
+                            {% for error in form.contact_id.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    <!-- 调试信息 -->
+                    {% if relationship %}
+                    <small style="color: #666; font-size: 11px;">
+                        调试: 当前联系人ID = {{ relationship.contact_id or '无' }}
+                    </small>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.relationship_type.label }}
+                    {{ form.relationship_type(class="form-control") }}
+                    {% if form.relationship_type.errors %}
+                        <div class="error-message">
+                            {% for error in form.relationship_type.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.description.label }}
+                    {{ form.description(class="form-control", rows="3") }}
+                    {% if form.description.errors %}
+                        <div class="error-message">
+                            {% for error in form.description.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.effective_date.label }}
+                    {{ form.effective_date(class="form-control") }}
+                    {% if form.effective_date.errors %}
+                        <div class="error-message">
+                            {% for error in form.effective_date.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.expiry_date.label }}
+                    {{ form.expiry_date(class="form-control") }}
+                    {% if form.expiry_date.errors %}
+                        <div class="error-message">
+                            {% for error in form.expiry_date.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.status.label }}
+                    {{ form.status(class="form-control") }}
+                    {% if form.status.errors %}
+                        <div class="error-message">
+                            {% for error in form.status.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group" style="text-align: center; margin-top: 30px;">
+                    <button type="submit" class="btn btn-primary">保存</button>
+                    <a href="{{ url_for('customer.list_relationships') }}" class="btn btn-secondary">取消</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <style>
+        .error-message {
+            color: #e74c3c;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        .error-message span {
+            display: block;
+        }
+    </style>
+
+    <script>
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            const customerSelect = document.getElementById('customer_select');
+            const contactSelect = document.getElementById('contact_select');
+
+            // 保存当前选中的联系人ID（用于编辑时保持选择）
+            const currentContactId = contactSelect.value;
+            console.log('当前联系人ID:', currentContactId);
+            console.log('联系人选择列表:', contactSelect.innerHTML);
+
+            // 页面加载时，如果已选择客户，加载对应联系人
+            if (customerSelect.value) {
+                loadContacts(customerSelect.value, currentContactId);
+            }
+
+            // 当客户选择改变时，动态更新联系人列表
+            customerSelect.addEventListener('change', function() {
+                const customerId = this.value;
+                loadContacts(customerId);
+            });
+
+            function loadContacts(customerId, selectedContactId = null) {
+                // 清空联系人选择
+                contactSelect.innerHTML = '<option value="">加载中...</option>';
+
+                if (customerId) {
+                    // 发送AJAX请求获取联系人列表
+                    fetch(`/customer/api/contacts/${customerId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            contactSelect.innerHTML = '<option value="">无联系人</option>';
+                            data.contacts.forEach(contact => {
+                                const option = document.createElement('option');
+                                option.value = contact.contact_id;
+                                option.textContent = contact.name;
+                                // 如果是编辑模式且这是当前选中的联系人，设置为选中
+                                if (selectedContactId && contact.contact_id === selectedContactId) {
+                                    option.selected = true;
+                                }
+                                contactSelect.appendChild(option);
+                            });
+                            console.log('联系人列表加载完成，选中的联系人:', selectedContactId);
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            contactSelect.innerHTML = '<option value="">加载失败</option>';
+                        });
+                } else {
+                    contactSelect.innerHTML = '<option value="">请先选择客户</option>';
+                }
+            }
+        });
+    </script>
+</body>
+</html>
