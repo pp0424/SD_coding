@@ -1,0 +1,90 @@
+{% extends "delivery/base.html" %}
+{% block title %}发货单管理{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h4 class="mb-0">发货单查询</h4>
+    </div>
+    <div class="card-body">
+        <form method="GET">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">{{ form.delivery_id.label }}</label>
+                    {{ form.delivery_id(class="form-control") }}
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">{{ form.sales_order_id.label }}</label>
+                    {{ form.sales_order_id(class="form-control") }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">{{ form.status.label }}</label>
+                    {{ form.status(class="form-select") }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">{{ form.start_date.label }}</label>
+                    {{ form.start_date(class="form-control") }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">{{ form.end_date.label }}</label>
+                    {{ form.end_date(class="form-control") }}
+                </div>
+                <div class="col-md-12 d-flex justify-content-end mt-3">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="bi bi-search"></i> 查询
+                    </button>
+                    <a href="{{ url_for('delivery.delivery_list') }}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-clockwise"></i> 重置
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header bg-info text-white">
+        <h4 class="mb-0">发货单列表</h4>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped">
+                <thead class="table-light">
+                    <tr>
+                        <th>发货单号</th>
+                        <th>销售订单</th>
+                        <th>发货日期</th>
+                        <th>仓库</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for delivery in deliveries %}
+                    <tr>
+                        <td>{{ delivery.delivery_note_id }}</td>
+                        <td>{{ delivery.sales_order_id }}</td>
+                        <td>{{ delivery.delivery_date.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ delivery.warehouse_code }}</td>
+                        <td>
+                            <span class="status-badge status-{{ delivery.status|lower }}">
+                                {{ delivery.status }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('delivery.delivery_detail', delivery_id=delivery.delivery_note_id) }}" 
+                               class="btn btn-sm btn-outline-primary">
+                                详情
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center">没有找到发货单</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

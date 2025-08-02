@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>确认报价单更新</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: url('/static/order_background.png') no-repeat center center fixed;
+      background-size: cover;
+      font-family: 'Segoe UI', sans-serif;
+      min-height: 100vh;
+    }
+
+    .card {
+      max-width: 1000px;
+      margin: 60px auto;
+      border-radius: 15px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+      background-color: #fff;
+      padding: 2rem;
+    }
+
+    h4 {
+      text-align: center;
+      font-weight: 600;
+      margin-bottom: 30px;
+      text-shadow: 1px 1px 2px #ccc;
+      font-size: 1.8rem;
+    }
+
+    .table th, .table td {
+      vertical-align: middle;
+      word-break: break-word;
+    }
+
+    .btn-glow {
+      box-shadow: 0 0 10px rgba(25, 135, 84, 0.6);
+      transition: all 0.3s ease;
+    }
+
+    .btn-glow:hover {
+      transform: scale(1.05);
+    }
+
+    .btn-cancel {
+      box-shadow: 0 0 8px rgba(108, 117, 125, 0.5);
+    }
+
+    .field-name {
+      width: 25%;
+      font-weight: bold;
+      background-color: #f1f3f5;
+    }
+
+    .old-value {
+      background-color: #fdfdfe;
+    }
+
+    .new-value {
+      background-color: #e8f5e9;
+    }
+
+    .changed {
+      font-weight: bold;
+      color: #dc3545;
+    }
+
+    .highlight-new-row {
+      background-color: #e8f5e9 !important;
+    }
+
+    .highlight-deleted-row {
+      background-color: #fce4e4 !important;
+    }
+
+    .sub-header {
+      font-size: 1.2rem;
+      margin-top: 2rem;
+      font-weight: bold;
+      color: #0d6efd;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h4>🔍 请确认报价单修改内容</h4>
+      <form method="POST" action="{{ url_for('order.confirm_quote_update') }}">
+        
+        <!-- 主表字段 -->
+        <div class="sub-header">📋 报价单主信息</div>
+        <table class="table table-bordered align-middle">
+          <thead class="table-light">
+            <tr>
+              <th class="field-name">字段</th>
+              <th class="text-center">修改前</th>
+              <th class="text-center">修改后</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% set display_names = {
+              "customer_id": "客户编号",
+              "inquiry_id": "关联询价单号",
+              "quotation_date": "报价日期",
+              "valid_until_date": "有效期至",
+              "total_amount": "总金额",
+              "salesperson_id": "销售员编号",
+              "remarks": "备注"
+            } %}
+            {% for field, old_value in old.items() if field != 'items' %}
+              {% set new_value = new[field] %}
+              <tr>
+                <td class="field-name">{{ display_names.get(field, field) }}</td>
+                <td class="old-value">{{ old_value }}</td>
+                <td class="new-value {% if old_value != new_value %}changed{% endif %}">{{ new_value }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <!-- 子表字段 -->
+        <div class="sub-header">📦 报价明细项</div>
+        <table class="table table-bordered align-middle table-sm">
+          <thead class="table-light">
+            <tr>
+              <th>行号</th>
+              <th>字段</th>
+              <th class="text-center">旧值</th>
+              <th class="text-center">新值</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% set item_fields = {
+              "material_id": "物料编号",
+              "quotation_quantity": "数量",
+              "unit": "单位",
+              "unit_price": "单价",
+              "discount_rate": "折扣率",
+              "item_amount": "金额",
+              "inquiry_item_id": "关联询价项"
+            } %}
+
+             {% for item_no in all_item_nos %}
+    {% set old_item = old_items_map.get(item_no) %}
+    {% set new_item = new_items_map.get(item_no) %}
+    {% set is_new = new_item is not none and old_item is none %}
+    {% set is_deleted = old_item is not none and new_item is none %}
+
+    {% for field, label in item_fields.items() %}
+      <tr
+        {% if is_new %}
+          class="highlight-new-row"
+        {% elif is_deleted %}
+          class="highlight-deleted-row"
+        {% endif %}
+      >
+        {% if loop.index0 == 0 %}
+          <td rowspan="{{ item_fields|length }}">{{ item_no }}</td>
+        {% endif %}
+        <td>{{ label }}</td>
+        <td class="old-value">
+          {{ old_item[field] if old_item else '--' }}
+        </td>
+        <td class="new-value {% if old_item and new_item and old_item[field] != new_item[field] %}changed{% endif %}">
+          {{ new_item[field] if new_item else '--' }}
+        </td>
+      </tr>
+    {% endfor %}
+  {% endfor %}
+          </tbody>
+        </table>
+
+        <input type="hidden" name="quotation_id" value="{{ quotation_id }}">
+
+        <div class="text-center mt-4 d-flex justify-content-center gap-4">
+          <button type="submit" name="confirm" value="yes" class="btn btn-success btn-glow px-4">✅ 确认更新</button>
+          <button type="submit" name="confirm" value="no" class="btn btn-secondary btn-cancel px-4">❌ 取消修改</button>
+        </div>
+      </form>
+
+      {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul style="color: green;">
+          {% for msg in messages %}
+            <li>{{ msg }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+      {% endwith %}
+    </div>
+  </div>
+</body>
+</html>

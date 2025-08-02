@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAP发货管理</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        .sidebar {
+            background-color: #f8f9fa;
+            padding: 20px;
+            height: 100vh;
+            position: fixed;
+            width: 250px;
+        }
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+        }
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-weight: bold;
+        }
+        .status-created { background-color: #6c757d; color: white; }
+        .status-picked { background-color: #0dcaf0; color: black; }
+        .status-posted { background-color: #198754; color: white; }
+        .status-canceled { background-color: #dc3545; color: white; }
+    </style>
+</head>
+<body>
+    <div class="d-flex">
+        <!-- 侧边栏 -->
+        <div class="sidebar">
+            <h4 class="mb-4">发货管理</h4>
+            <ul class="nav nav-pills flex-column">
+        <!-- 首页链接 -->
+                <li class="nav-item">
+                    <a class="nav-link active" href="{{ url_for('delivery.index') }}">
+                        <i class="bi bi-house-door"></i> 首页
+                    </a>
+                </li>
+                
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('delivery.create_delivery') }}">
+                        <i class="bi bi-plus-circle"></i> 创建发货单
+                    </a>
+                </li>
+                
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('delivery.delivery_list') }}">
+                        <i class="bi bi-list"></i> 发货单管理
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('delivery.stock_changes') }}">
+                        <i class="bi bi-box-seam"></i> 库存变动查询
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('delivery.posted_stock_changes') }}">
+                        <i class="bi bi-journal-check"></i> 过账库存变动
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="main-content w-100">
+            <div class="container-fluid">
+                
+                <!-- 消息提示 -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+                
+                <!-- 内容块 -->
+                <div class="content">
+                    {% block content %}{% endblock %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 动态表单交互
+        document.addEventListener('DOMContentLoaded', function() {
+            // 发货数量校验
+            const quantityInputs = document.querySelectorAll('input[name$="planned_delivery_quantity"], input[name$="actual_quantity"]');
+            quantityInputs.forEach(input => {
+                input.addEventListener('change', function() {
+                    const max = parseFloat(this.getAttribute('data-max') || Infinity);
+                    const value = parseFloat(this.value) || 0;
+                    
+                    if (value > max) {
+                        this.value = max;
+                        alert(`数量不能超过${max}`);
+                    } else if (value < 0) {
+                        this.value = 0;
+                        alert('数量不能为负数');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

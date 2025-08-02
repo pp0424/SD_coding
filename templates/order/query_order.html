@@ -1,52 +1,149 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh">
 <head>
   <meta charset="UTF-8">
   <title>查询订单</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    .container {
-      width: 600px;
-      margin: 80px auto;
-      padding: 30px;
-      background-color: #ffffffcc;
-      border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    body {
+      padding-top: 70px; /* 给导航栏让出空间 */
+      background: url('/static/order_background.png') no-repeat center center fixed;
+      background-size: cover;
+      font-family: 'Segoe UI', sans-serif;
     }
-    h2 {
-      text-align: center;
-      margin-bottom: 30px;
+    .card {
+      max-width: 1100px;
+      margin: 30px auto;
+      border-radius: 15px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      padding: 25px;
     }
-    input[type="text"], textarea {
-      width: 100%;
-      padding: 10px;
-      margin: 12px 0;
-      border: 1px solid #ccc;
-      border-radius: 5px;
+    .btn-glow {
+      box-shadow: 0 0 6px rgba(0,123,255,0.5);
     }
-    button {
-      width: 100%;
-      padding: 12px;
-      background-color: #3498db;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #2980b9;
+    .table-striped > tbody > tr:nth-child(odd) {
+      background-color: #f9f9f9;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h2>查询订单</h2>
-    <form method="POST">
-      <input type="text" placeholder="示例字段 1">
-      <textarea placeholder="示例字段 2（可替换为详细内容）"></textarea>
-      <button type="submit">提交</button>
+  <nav style="position: fixed; top: 0; left: 0; right: 0; height: 56px; background: #1b5899; color: white; display: flex; align-items: center; justify-content: space-around; z-index: 9999; font-family: 'Segoe UI', sans-serif; font-size: 15px;">
+  <a href="/order/create-inquiry" style="color: white; text-decoration: none;">📝 创建询价</a>
+  <a href="/order/edit-inquiry" style="color: white; text-decoration: none;">✏️ 修改询价</a>
+  <a href="/order/query-inquiry" style="color: white; text-decoration: none;">🔍 查询询价</a>
+  <a href="/order/create-quote" style="color: white; text-decoration: none;">📄 创建报价</a>
+  <a href="/order/edit-quote" style="color: white; text-decoration: none;">🖋️ 修改报价</a>
+  <a href="/order/query-quote" style="color: white; text-decoration: none;">📊 查询报价</a>
+  <a href="/order/create-order" style="color: white; text-decoration: none;">🛒 创建订单</a>
+  <a href="/order/edit-order" style="color: white; text-decoration: none;">🔁 修改订单</a>
+  <a href="/order/query-order" style="color: white; text-decoration: none;">💾 查询订单</a>
+</nav>
+<div class="container">
+  <div class="card">
+    <h3 class="mb-4">🔍 查询销售订单</h3>
+    <form method="POST" class="row g-3">
+      <div class="col-md-3">
+        <label class="form-label">订单编号</label>
+        <input type="text" name="sales_order_id" value="{{ form_data.sales_order_id or '' }}" class="form-control">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">客户编号</label>
+        <input type="text" name="customer_id" value="{{ form_data.customer_id or '' }}" class="form-control">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">状态</label>
+        <select name="status" class="form-select">
+          <option {% if not form_data.status or form_data.status == '全部' %}selected{% endif %}>全部</option>
+          <option {% if form_data.status == '草稿' %}selected{% endif %}>草稿</option>
+          <option {% if form_data.status == '已创建' %}selected{% endif %}>已创建</option>
+          <option {% if form_data.status == '已完成' %}selected{% endif %}>已完成</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">起始日期</label>
+        <input type="date" name="date_from" value="{{ form_data.date_from or '' }}" class="form-control">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">结束日期</label>
+        <input type="date" name="date_to" value="{{ form_data.date_to or '' }}" class="form-control">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">物料描述关键词</label>
+        <input type="text" name="material_keyword" value="{{ form_data.material_keyword or '' }}" class="form-control">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">最小金额</label>
+        <input type="number" step="0.01" name="min_total" value="{{ form_data.min_total or '' }}" class="form-control">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">最大金额</label>
+        <input type="number" step="0.01" name="max_total" value="{{ form_data.max_total or '' }}" class="form-control">
+      </div>
+      <div class="col-12 d-flex justify-content-between">
+        <button type="submit" class="btn btn-primary">🔍 查询</button>
+        <button type="submit" name="show_all" value="1" class="btn btn-outline-secondary">📄 显示全部订单</button>
+      </div>
     </form>
   </div>
+
+  {% if orders is not none %}
+    {% if orders %}
+      <div class="card mt-4">
+        <table class="table table-bordered table-hover table-striped">
+          <thead class="table-light">
+          <tr>
+            <th>订单编号</th>
+            <th>客户编号</th>
+            <th>状态</th>
+            <th>订单日期</th>
+            <th>交货日期</th>
+            <th>金额</th>
+            <th>操作</th>
+          </tr>
+          </thead>
+          <tbody>
+          {% for order in orders %}
+            <tr>
+              <td>{{ order.sales_order_id }}</td>
+              <td>{{ order.customer_id }}</td>
+              <td>{{ order.status }}</td>
+              <td>{{ order.order_date.strftime('%Y-%m-%d') }}</td>
+              <td>{{ order.required_delivery_date.strftime('%Y-%m-%d') }}</td>
+              <td>￥{{ '%.2f' % order.total_amount }}</td>
+              <td>
+                <a href="{{ url_for('order.order_detail', sales_order_id=order.sales_order_id) }}" class="btn btn-sm btn-outline-info">详情</a>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+
+        <!-- 分页控件 -->
+        <nav>
+         <nav>
+          <ul class="pagination justify-content-center flex-wrap">
+            {% for p in range(1, total_pages + 1) %}
+              <li class="page-item {% if p == page %}active{% endif %}">
+                <a class="page-link"
+                   href="{{ url_for('order.query_order', page=p,
+                     sales_order_id=form_data.sales_order_id,
+                     customer_id=form_data.customer_id,
+                     status=form_data.status,
+                     date_from=form_data.date_from,
+                     date_to=form_data.date_to,
+                     material_keyword=form_data.material_keyword,
+                     min_total=form_data.min_total,
+                     max_total=form_data.max_total,
+                     show_all='1' if request.form.get('show_all') or request.args.get('show_all') else '') }}">{{ p }}</a>
+              </li>
+            {% endfor %}
+          </ul>
+        </nav>
+      </div>
+    {% else %}
+      <div class="alert alert-warning mt-4">⚠️ 没有找到符合条件的订单。</div>
+    {% endif %}
+  {% endif %}
+</div>
 </body>
 </html>

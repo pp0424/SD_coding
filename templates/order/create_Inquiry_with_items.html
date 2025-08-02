@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>创建询价</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;500&family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+  <style>
+    body {
+      padding-top: 70px; /* 给导航栏让出空间 */
+      margin: 0;
+      padding: 0;
+      font-family: 'Roboto', sans-serif;
+      background: url('/static/order_background.png') no-repeat center center fixed;
+      background-size: cover;
+    }
+
+    .container {
+      background-color: rgba(255, 255, 255, 0.95);
+      max-width: 900px;
+      margin: 5% auto;
+      padding: 40px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    }
+
+    h2, h3 {
+      text-align: center;
+      font-family: 'ZCOOL XiaoWei', serif;
+      color: #2c3e50;
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin: 15px 0 5px;
+      font-weight: bold;
+    }
+
+    input[type="text"], input[type="date"], input[type="number"], select, textarea {
+      width: 100%;
+      padding: 10px 14px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      box-sizing: border-box;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    table th, table td {
+      padding: 12px;
+      border: 1px solid #ccc;
+      text-align: center;
+    }
+
+    table thead {
+      background-color: #ecf6fb;
+    }
+
+    button, input[type="submit"] {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      margin-right: 10px;
+      transition: background 0.3s;
+    }
+
+    button:hover, input[type="submit"]:hover {
+      background-color: #2980b9;
+    }
+
+    .add-btn {
+      background-color: #27ae60;
+    }
+
+    .add-btn:hover {
+      background-color: #1e8449;
+    }
+
+    .remove-btn {
+      background-color: #e74c3c;
+      padding: 6px 10px;
+    }
+
+    .remove-btn:hover {
+      background-color: #c0392b;
+    }
+  </style>
+</head>
+<body>
+  <nav style="position: fixed; top: 0; left: 0; right: 0; height: 56px; background: #1b5899; color: white; display: flex; align-items: center; justify-content: space-around; z-index: 9999; font-family: 'Segoe UI', sans-serif; font-size: 15px;">
+  <a href="/order/create-inquiry" style="color: white; text-decoration: none;">📝 创建询价</a>
+  <a href="/order/edit-inquiry" style="color: white; text-decoration: none;">✏️ 修改询价</a>
+  <a href="/order/query-inquiry" style="color: white; text-decoration: none;">🔍 查询询价</a>
+  <a href="/order/create-quote" style="color: white; text-decoration: none;">📄 创建报价</a>
+  <a href="/order/edit-quote" style="color: white; text-decoration: none;">🖋️ 修改报价</a>
+  <a href="/order/query-quote" style="color: white; text-decoration: none;">📊 查询报价</a>
+  <a href="/order/create-order" style="color: white; text-decoration: none;">🛒 创建订单</a>
+  <a href="/order/edit-order" style="color: white; text-decoration: none;">🔁 修改订单</a>
+  <a href="/order/query-order" style="color: white; text-decoration: none;">💾 查询订单</a>
+</nav>
+  <div class="container">
+    <h2>创建询价</h2>
+
+    <form method="POST">
+      {{ form.hidden_tag() }}
+
+      <div class="form-group">
+        <label>{{ form.inquiry_id.label }}</label>
+        {{ form.inquiry_id() }}
+      </div>
+
+      <div class="form-group">
+        <label>{{ form.customer_id.label }}</label>
+        {{ form.customer_id() }}
+      </div>
+
+      <div class="form-group">
+        <label>{{ form.inquiry_date.label }}</label>
+        {{ form.inquiry_date() }}
+      </div>
+
+      <div class="form-group">
+        <label>{{ form.expected_delivery_date.label }}</label>
+        {{ form.expected_delivery_date() }}
+      </div>
+
+      <div class="form-group">
+        <label>{{ form.status.label }}</label>
+        {{ form.status() }}
+      </div>
+
+      <div class="form-group">
+        <label>{{ form.expected_total_amount.label }}</label>
+        {{ form.expected_total_amount() }}
+      </div>
+
+      <div class="form-group">
+        <label>{{ form.salesperson_id.label }}</label>
+        {{ form.salesperson_id() }}
+      </div>
+
+      <div class="form-group">
+        <label>{{ form.remarks.label }}</label>
+        {{ form.remarks() }}
+      </div>
+
+      <h3>询价物品</h3>
+      <table id="item-table">
+        <thead>
+          <tr>
+            <th>物料编号</th>
+            <th>数量</th>
+            <th>单价</th>
+            <th>单位</th>
+            <th>备注</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="items-body">
+          <!-- JS 动态插入 -->
+        </tbody>
+      </table>
+
+      <button type="button" class="add-btn" onclick="addItemRow()">➕ 添加物品</button>
+      <input type="hidden" name="item_count" id="item-count" value="0">
+
+      <br><br>
+      <button type="submit" name="save">保存为草稿</button>
+      <button type="submit" name="submit">提交审核</button>
+    </form>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul style="color: green;">
+          {% for msg in messages %}
+            <li>{{ msg }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  <script>
+    let itemIndex = 0;
+    function addItemRow() {
+      const tbody = document.getElementById('items-body');
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td><input type="text" name="material_id_${itemIndex}" required></td>
+        <td><input type="number" name="inquiry_quantity_${itemIndex}" required></td>
+        <td><input type="number" step="0.01" name="expected_unit_price_${itemIndex}"></td>
+        <td><input type="text" name="unit_${itemIndex}"></td>
+        <td><input type="text" name="item_remarks_${itemIndex}"></td>
+        <td><button type="button" class="remove-btn" onclick="this.parentElement.parentElement.remove()">❌</button></td>
+      `;
+      tbody.appendChild(row);
+      itemIndex++;
+      document.getElementById('item-count').value = itemIndex;
+    }
+  </script>
+</body>
+</html>
+

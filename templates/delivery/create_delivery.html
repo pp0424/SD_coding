@@ -1,0 +1,70 @@
+{% extends "delivery/base.html" %}
+{% block title %}创建发货单{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h4 class="mb-0">创建发货单</h4>
+    </div>
+    <div class="card-body">
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">{{ form.sales_order_id.label }}</label>
+                    {{ form.sales_order_id(class="form-control") }}
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">{{ form.expected_delivery_date.label }}</label>
+                    {{ form.expected_delivery_date(class="form-control") }}
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">{{ form.warehouse_code.label }}</label>
+                    {{ form.warehouse_code(class="form-control") }}
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <h5>发货行项</h5>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped">
+                        <thead class="table-light">
+                            <tr>
+                                <th>物料编号</th>
+                                <th>物料描述</th>
+                                <th>订单数量</th>
+                                <th>未发货数量</th>
+                                <th>计划发货数量</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item_form in form.items %}
+                            <tr>
+                                <td>
+                                    {{ item_form.material_id(class="form-control", readonly=True) }}
+                                </td>
+                                <td>{{ item_form.material_desc.data }}</td>
+                                <td>{{ item_form.order_quantity.data }}</td>
+                                <td>{{ item_form.unshipped_quantity.data }}</td>
+                                <td>
+                                    {{ item_form.planned_delivery_quantity(
+                                        class="form-control",
+                                        **{"data-max": item_form.unshipped_quantity.data}
+                                    ) }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="d-flex justify-content-end">
+                <button type="submit" class="btn btn-primary px-4">
+                    <i class="bi bi-check-lg"></i> 创建发货单
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

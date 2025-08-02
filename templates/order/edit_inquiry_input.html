@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <title>修改询价单 - 输入编号</title>
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+  <style>
+    /* 浅蓝背景渐变 */
+    body {
+      padding-top: 70px; /* 给导航栏让出空间 */
+      min-height: 100vh;
+      background: url('/static/order_background.png') no-repeat center center fixed;
+      background-size: cover;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* 卡片容器 */
+    .card-container {
+      background: #ffffffdd;
+      border-radius: 1rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      padding: 2.5rem 3rem;
+      width: 400px;
+      text-align: center;
+    }
+
+    /* 艺术字体 + 投影 */
+    h3 {
+      font-family: 'Brush Script MT', cursive, 'Segoe UI', sans-serif;
+      font-size: 2.5rem;
+      color: #004a99;
+      text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.25);
+      margin-bottom: 2rem;
+    }
+
+    /* 表单标签 */
+    label {
+      font-weight: 600;
+      color: #004a99;
+    }
+
+    /* 输入框 */
+    input.form-control {
+      border-radius: 0.5rem;
+      border: 1.5px solid #007bff;
+      box-shadow: inset 0 1px 3px rgba(0, 123, 255, 0.15);
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    input.form-control:focus {
+      border-color: #0056b3;
+      box-shadow: 0 0 8px rgba(0, 86, 179, 0.6);
+      outline: none;
+    }
+
+    /* 高亮按钮，风格一致 */
+    .btn-primary {
+      background: linear-gradient(45deg, #0069d9, #004a99);
+      border: none;
+      border-radius: 2rem;
+      padding: 0.75rem 0;
+      font-weight: 700;
+      font-size: 1.2rem;
+      box-shadow: 0 4px 12px rgba(0, 74, 153, 0.6);
+      transition: background 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .btn-primary:hover,
+    .btn-primary:focus {
+      background: linear-gradient(45deg, #004a99, #003366);
+      box-shadow: 0 6px 16px rgba(0, 51, 102, 0.8);
+    }
+  </style>
+</head>
+<body>
+  <nav style="position: fixed; top: 0; left: 0; right: 0; height: 56px; background: #1b5899; color: white; display: flex; align-items: center; justify-content: space-around; z-index: 9999; font-family: 'Segoe UI', sans-serif; font-size: 15px;">
+  <a href="/order/create-inquiry" style="color: white; text-decoration: none;">📝 创建询价</a>
+  <a href="/order/edit-inquiry" style="color: white; text-decoration: none;">✏️ 修改询价</a>
+  <a href="/order/query-inquiry" style="color: white; text-decoration: none;">🔍 查询询价</a>
+  <a href="/order/create-quote" style="color: white; text-decoration: none;">📄 创建报价</a>
+  <a href="/order/edit-quote" style="color: white; text-decoration: none;">🖋️ 修改报价</a>
+  <a href="/order/query-quote" style="color: white; text-decoration: none;">📊 查询报价</a>
+  <a href="/order/create-order" style="color: white; text-decoration: none;">🛒 创建订单</a>
+  <a href="/order/edit-order" style="color: white; text-decoration: none;">🔁 修改订单</a>
+  <a href="/order/query-order" style="color: white; text-decoration: none;">💾 查询订单</a>
+</nav>
+  <div class="card-container">
+    <h3>请输入要修改的询价单号</h3>
+    <form method="POST" class="">
+      <div class="mb-4 text-start">
+        <label for="inquiry_id" class="form-label">询价单号</label>
+        <input
+          type="text"
+          class="form-control"
+          id="inquiry_id"
+          name="inquiry_id"
+          required
+          placeholder="请输入编号"
+        />
+      </div>
+      <button type="submit" class="btn btn-primary w-100">查询</button>
+    </form>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul style="color: green;">
+          {% for msg in messages %}
+            <li>{{ msg }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+  </div>
+</body>
+</html>

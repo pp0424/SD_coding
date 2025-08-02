@@ -1,0 +1,53 @@
+{% extends "delivery/base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">编辑发货单: {{ delivery_note.delivery_note_id }}</h2>
+    
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">基本信息</h5>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                {{ form.as_p }}
+                
+                <hr>
+                <h5 class="mb-3">发货行项</h5>
+                
+                {{ formset.management_form }}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>物料编号</th>
+                                <th>物料描述</th>
+                                <th>计划数量</th>
+                                <th>订单未发货数量</th>
+                                <th>调整后数量</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for form in formset %}
+                            <tr>
+                                <td>{{ form.instance.material.material_id }}</td>
+                                <td>{{ form.instance.material.description }}</td>
+                                <td>{{ form.instance.planned_delivery_quantity }}</td>
+                                <td>{{ form.instance.sales_order_item.unshipped_quantity }}</td>
+                                <td>{{ form.planned_delivery_quantity }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <button type="submit" class="btn btn-primary mt-3">保存修改</button>
+                <a href="{% url 'post_delivery' delivery_note.delivery_note_id %}" 
+                   class="btn btn-success mt-3 ml-2">执行过账</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

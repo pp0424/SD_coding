@@ -1,0 +1,97 @@
+{% extends "delivery/base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">库存变动查询</h2>
+    
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            {{ search_form.material_id.label_tag }}
+                            {{ search_form.material_id }}
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            {{ search_form.warehouse_code.label_tag }}
+                            {{ search_form.warehouse_code }}
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            {{ search_form.start_date.label_tag }}
+                            {{ search_form.start_date }}
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            {{ search_form.end_date.label_tag }}
+                            {{ search_form.end_date }}
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">查询</button>
+                <a href="{% url 'inventory_movement' %}" class="btn btn-secondary ml-2">重置</a>
+            </form>
+        </div>
+    </div>
+    
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">库存变动记录</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>物料编号</th>
+                            <th>物料描述</th>
+                            <th>变动时间</th>
+                            <th>仓库</th>
+                            <th>变动前</th>
+                            <th>变动后</th>
+                            <th>变动量</th>
+                            <th>关联单据</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for movement in movements %}
+                        <tr>
+                            <td>{{ movement.material.material_id }}</td>
+                            <td>{{ movement.material.description }}</td>
+                            <td>{{ movement.movement_date|date:"Y-m-d H:i" }}</td>
+                            <td>{{ movement.warehouse_code }}</td>
+                            <td>{{ movement.quantity_before }}</td>
+                            <td>{{ movement.quantity_after }}</td>
+                            <td class="{% if movement.changed_quantity < 0 %}text-danger{% else %}text-success{% endif %}">
+                                {{ movement.changed_quantity }}
+                            </td>
+                            <td>
+                                {% if movement.delivery_note %}
+                                <a href="{% url 'edit_delivery' movement.delivery_note.delivery_note_id %}">
+                                    {{ movement.delivery_note.delivery_note_id }}
+                                </a>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center">未找到库存变动记录</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- 分页代码同delivery_list.html -->
+        </div>
+    </div>
+</div>
+{% endblock %}

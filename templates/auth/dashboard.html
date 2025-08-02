@@ -1,99 +1,135 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>SD系统模块选择</title>
   <link href="https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&family=Pacifico&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css">
   <style>
+    :root {
+      --primary-color: #4db6ac;
+      --card-radius: 18px;
+      --card-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    }
+
+    
     body {
       margin: 0;
-      font-family: 'ZCOOL XiaoWei', 'Microsoft YaHei', sans-serif;
-      background: url("/static/background.jpg") no-repeat center center fixed;
+      font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+      font-size: 1rem;
+      line-height: 1.6;
+      background: url("/static/background.png") no-repeat center center fixed;
       background-size: cover;
       color: #fff;
     }
 
     .overlay {
-      background-color: rgba(0, 0, 0, 0.6);
+      background-color: rgba(0, 0, 0, 0.55);
       min-height: 100vh;
-      padding: 40px;
+      padding: 60px 40px;
     }
 
     .header {
       text-align: center;
-      margin-bottom: 40px;
+      margin-bottom: 50px;
     }
 
     .logo {
-      height: 80px;
+      height: 90px;
       margin-bottom: 20px;
     }
 
     .title {
       font-family: 'Pacifico', cursive;
-      font-size: 42px;
+      font-size: clamp(2rem, 5vw, 3.5rem); /* 自动缩放标题 */
       color: #ffffff;
+      letter-spacing: 1px;
       margin-bottom: 10px;
     }
 
     .subtitle {
-      font-size: 20px;
-      color: #eeeeee;
+      font-size: clamp(1rem, 2.5vw, 1.25rem);
+      color: #dddddd;
     }
 
     .module-container {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
       gap: 30px;
-      max-width: 1600px;
+      max-width: 1300px;
       margin: 0 auto;
       margin-top: 60px;
+      padding: 0 10px;
     }
 
     .module-card {
-      background-color: rgba(255, 255, 255, 0.95);
-      border-radius: 16px;
+      background: linear-gradient(135deg, #ffffff, #f5f5f5);
+      border-radius: var(--card-radius);
       text-align: center;
-      transition: all 0.3s ease;
-      box-shadow: 0 6px 16px rgba(0,0,0,0.3);
-      padding: 20px;
-      color: #333;
+      padding: 25px 20px;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      box-shadow: var(--card-shadow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .module-card::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(0,0,0,0.05) 10%, transparent 70%);
+      z-index: 0;
+      transition: opacity 0.4s ease;
+      opacity: 0;
     }
 
     .module-card:hover {
       transform: translateY(-8px);
-      box-shadow: 0 12px 28px rgba(0,0,0,0.4);
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35);
     }
 
-    .module-card img {
-      width: 100px;
-      height: 100px;
-      object-fit: cover;
-      border-radius: 12px;
-      margin-bottom: 15px;
-    }
-
-    .module-card div {
-      font-size: 18px;
-      font-weight: bold;
+    .module-card:hover::after {
+      opacity: 1;
     }
 
     .module-card a {
       text-decoration: none;
-      color: inherit;
+      color: #333;
+      position: relative;
+      z-index: 1;
       display: block;
     }
 
-    @media (max-width: 992px) {
-      .module-container {
-        grid-template-columns: repeat(2, 1fr);
-      }
+    .module-card img {
+      width: 96px;
+      height: 96px;
+      object-fit: contain;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      transition: transform 0.3s ease;
     }
 
-    @media (max-width: 600px) {
-      .module-container {
-        grid-template-columns: 1fr;
+    .module-card:hover img {
+      transform: scale(1.08);
+    }
+
+    .module-card div {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #222;
+    }
+
+    @media (max-width: 768px) {
+      .title {
+        font-size: 36px;
+      }
+
+      .module-card img {
+        width: 80px;
+        height: 80px;
       }
     }
   </style>
@@ -103,7 +139,7 @@
     <div class="header">
       <img class="logo" src="/static/logo.png" alt="SD系统 Logo">
       <div class="title">SD系统模块选择</div>
-      <div class="subtitle">欢迎来到SD系统</div>
+      <div class="subtitle">欢迎来到 SD 系统，请选择您要进入的模块</div>
     </div>
 
     <div class="module-container">
@@ -135,4 +171,3 @@
   </div>
 </body>
 </html>
-
