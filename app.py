@@ -12,12 +12,14 @@ app.config['SECRET_KEY'] = 'dev'
 
 db = db_init(app)
 
+
 # 注册模块蓝图（只注册一次）
 app.register_blueprint(auth_bp)
 app.register_blueprint(customer_bp)
 app.register_blueprint(order_bp, url_prefix='/order')
 app.register_blueprint(delivery_bp)
 app.register_blueprint(finance_bp)
+
 
 if __name__ == '__main__':
     app.run(debug=True)

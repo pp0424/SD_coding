@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - 客户管理系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>{{ title }}</h1>
+        
+        <div class="navbar">
+            <ul>
+                <li><a href="{{ url_for('customer.index') }}">首页</a></li>
+                <li><a href="{{ url_for('customer.list_customers') }}">客户管理</a></li>
+                <li><a href="{{ url_for('customer.list_contacts') }}">联系人管理</a></li>
+                <li><a href="{{ url_for('customer.list_relationships') }}">业务伙伴关系</a></li>
+            </ul>
+        </div>
+
+        <!-- 消息提示 -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'success' if category == 'success' else 'error' }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="form-container">
+            <form method="POST">
+                {{ form.hidden_tag() }}
+                
+                <div class="form-group">
+                    {{ form.customer_name.label }}
+                    {{ form.customer_name(class="form-control") }}
+                    {% if form.customer_name.errors %}
+                        <div class="error-message">
+                            {% for error in form.customer_name.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.customer_type.label }}
+                    {{ form.customer_type(class="form-control") }}
+                    {% if form.customer_type.errors %}
+                        <div class="error-message">
+                            {% for error in form.customer_type.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.address.label }}
+                    {{ form.address(class="form-control") }}
+                    {% if form.address.errors %}
+                        <div class="error-message">
+                            {% for error in form.address.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.phone.label }}
+                    {{ form.phone(class="form-control") }}
+                    {% if form.phone.errors %}
+                        <div class="error-message">
+                            {% for error in form.phone.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.email.label }}
+                    {{ form.email(class="form-control") }}
+                    {% if form.email.errors %}
+                        <div class="error-message">
+                            {% for error in form.email.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.credit_limit.label }}
+                    {{ form.credit_limit(class="form-control", step="0.01") }}
+                    {% if form.credit_limit.errors %}
+                        <div class="error-message">
+                            {% for error in form.credit_limit.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.payment_terms_code.label }}
+                    {{ form.payment_terms_code(class="form-control") }}
+                    {% if form.payment_terms_code.errors %}
+                        <div class="error-message">
+                            {% for error in form.payment_terms_code.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.sales_region_code.label }}
+                    {{ form.sales_region_code(class="form-control") }}
+                    {% if form.sales_region_code.errors %}
+                        <div class="error-message">
+                            {% for error in form.sales_region_code.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.status.label }}
+                    {{ form.status(class="form-control") }}
+                    {% if form.status.errors %}
+                        <div class="error-message">
+                            {% for error in form.status.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group" style="text-align: center; margin-top: 30px;">
+                    <button type="submit" class="btn btn-primary">保存</button>
+                    <a href="{{ url_for('customer.list_customers') }}" class="btn btn-secondary">取消</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <style>
+        .error-message {
+            color: #e74c3c;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        .error-message span {
+            display: block;
+        }
+    </style>
+</body>
+</html>

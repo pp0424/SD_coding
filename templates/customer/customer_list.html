@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>客户列表 - 客户管理系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>客户列表</h1>
+        
+        <div class="navbar">
+            <ul>
+                <li><a href="{{ url_for('customer.index') }}">首页</a></li>
+                <li><a href="{{ url_for('customer.list_customers') }}">客户管理</a></li>
+                <li><a href="{{ url_for('customer.list_contacts') }}">联系人管理</a></li>
+                <li><a href="{{ url_for('customer.list_relationships') }}">业务伙伴关系</a></li>
+            </ul>
+        </div>
+
+        <!-- 消息提示 -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'success' if category == 'success' else 'error' }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- 搜索表单 -->
+        <div class="search-container">
+            <h3>搜索客户</h3>
+            <form method="POST" action="{{ url_for('customer.search_customers') }}" class="search-form">
+                {{ search_form.hidden_tag() }}
+                <div class="form-group">
+                    {{ search_form.search_type.label }}
+                    {{ search_form.search_type(class="form-control") }}
+                </div>
+                <div class="form-group">
+                    {{ search_form.search_value.label }}
+                    {{ search_form.search_value(class="form-control", placeholder="请输入搜索内容") }}
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">搜索</button>
+                    <a href="{{ url_for('customer.list_customers') }}" class="btn btn-secondary">重置</a>
+                </div>
+            </form>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div style="margin-bottom: 20px;">
+            <a href="{{ url_for('customer.create_customer') }}" class="btn btn-success">新增客户</a>
+        </div>
+
+        <!-- 客户列表 -->
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>客户编号</th>
+                        <th>客户名称</th>
+                        <th>客户类型</th>
+                        <th>联系电话</th>
+                        <th>邮箱</th>
+                        <th>状态</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for customer in customers %}
+                    <tr>
+                        <td>{{ customer.customer_id }}</td>
+                        <td>{{ customer.customer_name }}</td>
+                        <td>
+                            {% if customer.customer_type == 'person' %}个人
+                            {% elif customer.customer_type == 'group' %}团体
+                            {% elif customer.customer_type == 'organization' %}组织
+                            {% else %}{{ customer.customer_type }}
+                            {% endif %}
+                        </td>
+                        <td>{{ customer.phone }}</td>
+                        <td>{{ customer.email }}</td>
+                        <td>
+                            <span class="status-badge status-{{ customer.status }}">
+                                {{ customer.status }}
+                            </span>
+                        </td>
+                        <td>{{ customer.created_at.strftime('%Y-%m-%d %H:%M') if customer.created_at else '' }}</td>
+                        <td>
+                            <a href="{{ url_for('customer.view_customer', customer_id=customer.customer_id) }}" class="btn btn-primary" style="padding: 5px 10px; font-size: 12px;">查看</a>
+                            <a href="{{ url_for('customer.edit_customer', customer_id=customer.customer_id) }}" class="btn btn-secondary" style="padding: 5px 10px; font-size: 12px;">编辑</a>
+                            <form method="POST" action="{{ url_for('customer.delete_customer', customer_id=customer.customer_id) }}" style="display: inline;" onsubmit="return confirm('确定要删除这个客户吗？这将同时删除相关的联系人和业务伙伴关系！')">
+                                <button type="submit" class="btn btn-danger" style="padding: 5px 10px; font-size: 12px;">删除</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 30px; color: #666;">
+                            暂无客户数据
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <style>
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-正常 {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status-已停用 {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .status-已注销 {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</body>
+</html>

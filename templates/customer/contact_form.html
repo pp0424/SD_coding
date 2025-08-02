@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - 客户管理系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>{{ title }}</h1>
+        
+        <div class="navbar">
+            <ul>
+                <li><a href="{{ url_for('customer.index') }}">首页</a></li>
+                <li><a href="{{ url_for('customer.list_customers') }}">客户管理</a></li>
+                <li><a href="{{ url_for('customer.list_contacts') }}">联系人管理</a></li>
+                <li><a href="{{ url_for('customer.list_relationships') }}">业务伙伴关系</a></li>
+            </ul>
+        </div>
+
+        <!-- 消息提示 -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'success' if category == 'success' else 'error' }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="form-container">
+            <form method="POST">
+                {{ form.hidden_tag() }}
+                
+                <div class="form-group">
+                    {{ form.customer_id.label }}
+                    {{ form.customer_id(class="form-control") }}
+                    {% if form.customer_id.errors %}
+                        <div class="error-message">
+                            {% for error in form.customer_id.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.first_name.label }}
+                    {{ form.first_name(class="form-control") }}
+                    {% if form.first_name.errors %}
+                        <div class="error-message">
+                            {% for error in form.first_name.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.last_name.label }}
+                    {{ form.last_name(class="form-control") }}
+                    {% if form.last_name.errors %}
+                        <div class="error-message">
+                            {% for error in form.last_name.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.country_language.label }}
+                    {{ form.country_language(class="form-control", id="country_language_select") }}
+                    {% if form.country_language.errors %}
+                        <div class="error-message">
+                            {% for error in form.country_language.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group" id="other_country_group" style="display: none;">
+                    {{ form.country_language_other.label }}
+                    {{ form.country_language_other(class="form-control", placeholder="请输入国家/语言，如：荷兰/荷兰语") }}
+                    {% if form.country_language_other.errors %}
+                        <div class="error-message">
+                            {% for error in form.country_language_other.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.contact_info.label }}
+                    {{ form.contact_info(class="form-control", placeholder="请输入电话、手机或邮箱") }}
+                    {% if form.contact_info.errors %}
+                        <div class="error-message">
+                            {% for error in form.contact_info.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.position.label }}
+                    {{ form.position(class="form-control") }}
+                    {% if form.position.errors %}
+                        <div class="error-message">
+                            {% for error in form.position.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.status.label }}
+                    {{ form.status(class="form-control") }}
+                    {% if form.status.errors %}
+                        <div class="error-message">
+                            {% for error in form.status.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group" style="text-align: center; margin-top: 30px;">
+                    <button type="submit" class="btn btn-primary">保存</button>
+                    <a href="{{ url_for('customer.list_contacts') }}" class="btn btn-secondary">取消</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <style>
+        .error-message {
+            color: #e74c3c;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        .error-message span {
+            display: block;
+        }
+    </style>
+
+    <script>
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            const countrySelect = document.getElementById('country_language_select');
+            const otherGroup = document.getElementById('other_country_group');
+
+            // 检查初始状态
+            toggleOtherInput();
+
+            // 监听选择变化
+            countrySelect.addEventListener('change', toggleOtherInput);
+
+            function toggleOtherInput() {
+                if (countrySelect.value === '其他') {
+                    otherGroup.style.display = 'block';
+                    // 设置为必填
+                    document.querySelector('#other_country_group input').setAttribute('required', 'required');
+                } else {
+                    otherGroup.style.display = 'none';
+                    // 移除必填
+                    document.querySelector('#other_country_group input').removeAttribute('required');
+                    // 如果不是编辑模式或者选择了其他预定义选项，清空值
+                    if (countrySelect.value !== '') {
+                        document.querySelector('#other_country_group input').value = '';
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

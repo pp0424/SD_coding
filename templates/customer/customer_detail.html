@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>客户详情 - 客户管理系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>客户详情</h1>
+        
+        <div class="navbar">
+            <ul>
+                <li><a href="{{ url_for('customer.index') }}">首页</a></li>
+                <li><a href="{{ url_for('customer.list_customers') }}">客户管理</a></li>
+                <li><a href="{{ url_for('customer.list_contacts') }}">联系人管理</a></li>
+                <li><a href="{{ url_for('customer.list_relationships') }}">业务伙伴关系</a></li>
+            </ul>
+        </div>
+
+        <!-- 客户基本信息 -->
+        <div class="card">
+            <h3>基本信息</h3>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <label>客户编号:</label>
+                    <span>{{ customer.customer_id }}</span>
+                </div>
+                <div class="detail-item">
+                    <label>客户名称:</label>
+                    <span>{{ customer.customer_name }}</span>
+                </div>
+                <div class="detail-item">
+                    <label>客户类型:</label>
+                    <span>
+                        {% if customer.customer_type == 'person' %}个人
+                        {% elif customer.customer_type == 'group' %}团体
+                        {% elif customer.customer_type == 'organization' %}组织
+                        {% else %}{{ customer.customer_type }}
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="detail-item">
+                    <label>地址:</label>
+                    <span>{{ customer.address }}</span>
+                </div>
+                <div class="detail-item">
+                    <label>电话:</label>
+                    <span>{{ customer.phone }}</span>
+                </div>
+                <div class="detail-item">
+                    <label>邮箱:</label>
+                    <span>{{ customer.email }}</span>
+                </div>
+                <div class="detail-item">
+                    <label>信用额度:</label>
+                    <span>{{ customer.credit_limit or 0 }}</span>
+                </div>
+                <div class="detail-item">
+                    <label>付款条件代码:</label>
+                    <span>{{ customer.payment_terms_code or '无' }}</span>
+                </div>
+                <div class="detail-item">
+                    <label>销售区域代码:</label>
+                    <span>{{ customer.sales_region_code or '无' }}</span>
+                </div>
+                <div class="detail-item">
+                    <label>状态:</label>
+                    <span class="status-badge status-{{ customer.status }}">{{ customer.status }}</span>
+                </div>
+                <div class="detail-item">
+                    <label>创建时间:</label>
+                    <span>{{ customer.created_at.strftime('%Y-%m-%d %H:%M:%S') if customer.created_at else '无' }}</span>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <a href="{{ url_for('customer.edit_customer', customer_id=customer.customer_id) }}" class="btn btn-primary">编辑客户</a>
+                <a href="{{ url_for('customer.list_customers') }}" class="btn btn-secondary">返回列表</a>
+            </div>
+        </div>
+
+        <!-- 联系人信息 -->
+        <div class="card">
+            <h3>联系人信息</h3>
+            {% if contacts %}
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>联系人ID</th>
+                                <th>姓名</th>
+                                <th>国家/语言</th>
+                                <th>联系方式</th>
+                                <th>职位</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for contact in contacts %}
+                            <tr>
+                                <td>{{ contact.contact_id }}</td>
+                                <td>{{ contact.first_name }} {{ contact.last_name }}</td>
+                                <td>{{ contact.country_language or '无' }}</td>
+                                <td>{{ contact.contact_info }}</td>
+                                <td>{{ contact.position or '无' }}</td>
+                                <td>
+                                    <span class="status-badge status-{{ contact.status }}">{{ contact.status }}</span>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('customer.edit_contact', contact_id=contact.contact_id) }}" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;">编辑</a>
+                                    <form method="POST" action="{{ url_for('customer.delete_contact', contact_id=contact.contact_id) }}" style="display: inline;" onsubmit="return confirm('确定要删除这个联系人吗？')">
+                                        <button type="submit" class="btn btn-danger" style="padding: 3px 8px; font-size: 11px;">删除</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p style="text-align: center; color: #666; padding: 20px;">暂无联系人信息</p>
+            {% endif %}
+            
+            <div style="text-align: center; margin-top: 15px;">
+                <a href="{{ url_for('customer.create_contact') }}?customer_id={{ customer.customer_id }}" class="btn btn-success">添加联系人</a>
+            </div>
+        </div>
+
+        <!-- 业务伙伴关系 -->
+        <div class="card">
+            <h3>业务伙伴关系</h3>
+            {% if relationships %}
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>关系ID</th>
+                                <th>联系人</th>
+                                <th>关系类型</th>
+                                <th>关系描述</th>
+                                <th>生效日期</th>
+                                <th>失效日期</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for relationship in relationships %}
+                            <tr>
+                                <td>{{ relationship.relationship_id }}</td>
+                                <td>
+                                    {% if relationship.contact_person %}
+                                        {{ relationship.contact_person.first_name }} {{ relationship.contact_person.last_name }}
+                                        {% if relationship.contact_person.position %}
+                                            <br><small style="color: #666;">{{ relationship.contact_person.position }}</small>
+                                        {% endif %}
+                                    {% else %}
+                                        <span style="color: #999;">无</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ relationship.relationship_type }}</td>
+                                <td>{{ relationship.description or '无' }}</td>
+                                <td>{{ relationship.effective_date.strftime('%Y-%m-%d') if relationship.effective_date else '无' }}</td>
+                                <td>{{ relationship.expiry_date.strftime('%Y-%m-%d') if relationship.expiry_date else '无' }}</td>
+                                <td>
+                                    <span class="status-badge status-{{ relationship.status }}">{{ relationship.status }}</span>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('customer.edit_relationship', relationship_id=relationship.relationship_id) }}" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;">编辑</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p style="text-align: center; color: #666; padding: 20px;">暂无业务伙伴关系</p>
+            {% endif %}
+            
+            <div style="text-align: center; margin-top: 15px;">
+                <a href="{{ url_for('customer.create_relationship') }}?customer_id={{ customer.customer_id }}" class="btn btn-success">添加业务伙伴关系</a>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .detail-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        
+        .detail-item label {
+            font-weight: bold;
+            margin-right: 10px;
+            min-width: 120px;
+            color: #2c3e50;
+        }
+        
+        .detail-item span {
+            flex: 1;
+        }
+        
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .status-正常, .status-有效 {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .status-已停用, .status-无效 {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-已注销, .status-已终止 {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</body>
+</html>
