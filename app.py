@@ -9,6 +9,7 @@ from auth.views import auth_bp
 from auth.models import User
 from flask_login import LoginManager
 
+
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///sd_system.db'
 app.config['SECRET_KEY'] = 'dev'
@@ -30,10 +31,19 @@ def load_user(user_id):
         return User(user_id)
     return None
 
+##数据表与db实时同步
+from order_event_listener import attach_csv_export_listeners
+
+with app.app_context():
+    attach_csv_export_listeners()
+
+
 #07261928发货模块
 with app.app_context():
     from delivery.models import DeliveryNote, DeliveryItem  # 确保导入模型
     db.create_all()
+
+
 
 # 注册模块蓝图（只注册一次）
 app.register_blueprint(auth_bp)

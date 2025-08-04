@@ -1,4 +1,3 @@
-
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify,session
 from .forms import InquiryForm
 from .forms import InquirySearchForm
@@ -11,6 +10,7 @@ from .models import Quotation, QuotationItem
 from .forms import QuotationSearchForm
 from sqlalchemy import and_, or_, func
 from math import ceil
+
 import random
 import decimal
 
@@ -61,6 +61,8 @@ def create_inquiry():
             db.session.add(item)
 
         db.session.commit()
+
+
 
         if status == '已评审':
             flash('提交成功！询价状态为：已评审')
@@ -873,6 +875,7 @@ def preview_changes():
                     db.session.add(new_item)
 
             db.session.commit()
+            
             session.pop('temp_update')
             return redirect(url_for('order.order_detail', sales_order_id=order_id))
 
