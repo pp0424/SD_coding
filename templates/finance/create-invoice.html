@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>创建发票</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f0f8ff, #e6f2ff);
+            min-height: 100vh;
+            padding: 20px;
+            color: #2c3e50;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            padding: 30px 0;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            font-size: 2.8rem;
+            color: #1a3a6c;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+            position: relative;
+            display: inline-block;
+        }
+        
+        h1:after {
+            content: "";
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 4px;
+            background: linear-gradient(to right, #3498db, #1a3a6c);
+            border-radius: 2px;
+        }
+        
+        .search-section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(52, 152, 219, 0.2);
+            padding: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .search-title {
+            color: #1a3a6c;
+            font-size: 1.5rem;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .search-title i {
+            margin-right: 10px;
+            background: #1a3a6c;
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .search-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .search-form {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #1a3a6c;
+        }
+        
+        input, textarea {
+            padding: 14px;
+            border: 2px solid #d6e4f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+        
+        input:focus, textarea:focus {
+            border-color: #3498db;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+        }
+        
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        
+        .note {
+            font-size: 0.85rem;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+        
+        button {
+            background: linear-gradient(to right, #1a3a6c, #3498db);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 14px 25px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            align-self: flex-end;
+            box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
+        }
+        
+        button:hover {
+            background: linear-gradient(to right, #152a4f, #2980b9);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(52, 152, 219, 0.4);
+        }
+        
+        .results-section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(52, 152, 219, 0.2);
+            padding: 30px;
+            overflow-x: auto;
+        }
+        
+        .results-title {
+            color: #1a3a6c;
+            font-size: 1.5rem;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .results-title i {
+            margin-right: 10px;
+            background: #1a3a6c;
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 16px 20px;
+            text-align: left;
+            border-bottom: 1px solid #e0e7f0;
+        }
+        
+        th {
+            background-color: #f5f9ff;
+            color: #1a3a6c;
+            font-weight: 600;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #fafcff;
+        }
+        
+        tr:hover {
+            background-color: #f0f7ff;
+        }
+        
+        .detail-btn {
+            background: linear-gradient(to right, #3498db, #2ecc71);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .detail-btn:hover {
+            background: linear-gradient(to right, #2980b9, #27ae60);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(46, 204, 113, 0.3);
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>创建发票</h1>
+        </header>
+        
+        <section class="search-section">
+            <h2 class="search-title"><i class="fas fa-search"></i> 搜索订单信息</h2>
+            <div class="search-form">
+                <div class="form-group">
+                    <label for="order-number">订单号</label>
+                    <input type="text" id="order-number" placeholder="请输入订单号">
+                </div>
+                
+                <div class="form-group">
+                    <label for="delivery-numbers">发货单号</label>
+                    <textarea id="delivery-numbers" placeholder="请输入发货单号，多个单号请用逗号分隔"></textarea>
+                    <span class="note">可输入多个发货单号，用逗号分隔</span>
+                </div>
+                
+                <button id="search-btn">
+                    <i class="fas fa-search"></i> 搜索
+                </button>
+            </div>
+        </section>
+        
+        <section class="results-section">
+            <h2 class="results-title"><i class="fas fa-list"></i> 搜索结果</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>订单号</th>
+                        <th>发货单号</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>具体信息</td>
+                        <td>具体信息</td>
+                        <td><button class="detail-btn">查看详情</button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+        
+        <footer>
+            <p> 2025 ERP财务管理系统</p >
+        </footer>
+    </div>
+
+    <script>
+        // 搜索按钮点击事件
+        document.getElementById('search-btn').addEventListener('click', function() {
+            const orderNumber = document.getElementById('order-number').value;
+            const deliveryNumbers = document.getElementById('delivery-numbers').value;
+            
+            if (!orderNumber && !deliveryNumbers) {
+                alert('请输入订单号或发货单号！');
+                return;
+            }
+            
+            // 在实际应用中，这里会发送AJAX请求获取数据
+            // 这里模拟搜索过程
+            alert(`搜索订单号: ${orderNumber || '无'}\n发货单号: ${deliveryNumbers || '无'}\n\n正在搜索中...`);
+        });
+        
+        // 详情按钮点击事件
+        document.querySelectorAll('.detail-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const row = this.closest('tr');
+                const orderNumber = row.cells[0].textContent;
+                alert(`正在跳转到订单 ${orderNumber} 的详情页面...`);
+                window.location.href = `invoice content.html?order=${encodeURIComponent(orderNumber)}`;
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERP系统 - 单据查询</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f9ff 0%, #e6f0ff 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #d0e3ff;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .nav-btn {
+            padding: 10px 20px;
+            background: #1a6cbc;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(26, 108, 188, 0.2);
+        }
+        
+        .nav-btn:hover {
+            background: #155999;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(26, 108, 188, 0.3);
+        }
+        
+        .nav-btn.back {
+            background: #4a6fa5;
+        }
+        
+        .nav-btn.back:hover {
+            background: #3a5a85;
+        }
+        
+        .page-title {
+            color: #1a3a6c;
+            font-size: 2.2rem;
+            text-align: center;
+            flex-grow: 1;
+        }
+        
+        .search-section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 20px rgba(26, 58, 108, 0.15);
+        }
+        
+        .section-title {
+            color: #1a3a6c;
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e6f2ff;
+        }
+        
+        .search-form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .form-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .form-label {
+            color: #1a3a6c;
+            font-weight: 600;
+            min-width: 80px;
+        }
+        
+        .form-select, .form-input {
+            padding: 12px 15px;
+            border: 1px solid #c2d8ff;
+            border-radius: 8px;
+            font-size: 1rem;
+            min-width: 200px;
+            background: #f8fbff;
+            transition: all 0.3s ease;
+        }
+        
+        .form-select:focus, .form-input:focus {
+            outline: none;
+            border-color: #1a6cbc;
+            box-shadow: 0 0 0 3px rgba(26, 108, 188, 0.2);
+        }
+        
+        .search-btn {
+            padding: 12px 25px;
+            background: #1a6cbc;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .search-btn:hover {
+            background: #155999;
+            transform: translateY(-2px);
+        }
+        
+        .results-section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 8px 20px rgba(26, 58, 108, 0.15);
+            min-height: 400px;
+            margin-bottom: 30px;
+        }
+        
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .results-title {
+            color: #1a3a6c;
+            font-size: 1.4rem;
+        }
+        
+        .results-count {
+            color: #4a6fa5;
+            font-size: 1rem;
+            background: #e6f2ff;
+            padding: 5px 15px;
+            border-radius: 30px;
+        }
+        
+        .results-container {
+            border: 1px solid #e0ebff;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .results-table th {
+            background: #f0f7ff;
+            color: #1a3a6c;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #d0e3ff;
+        }
+        
+        .results-table td {
+            padding: 15px;
+            border-bottom: 1px solid #e0ebff;
+            color: #4a6fa5;
+        }
+        
+        .results-table tr:hover {
+            background: #f8fbff;
+        }
+        
+        .status {
+            padding: 5px 12px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        .status.pending {
+            background: #fff8e6;
+            color: #e6a700;
+        }
+        
+        .status.completed {
+            background: #e6fff2;
+            color: #00a651;
+        }
+        
+        .status.rejected {
+            background: #ffe6e6;
+            color: #e60000;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 50px;
+            color: #4a6fa5;
+            display: none;
+        }
+        
+        .no-results i {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: #d0e3ff;
+        }
+        
+        .detail-btn {
+            background: transparent;
+            border: 2px solid #1a6cbc;
+            color: #1a6cbc;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        
+        .detail-btn:hover {
+            background: #1a6cbc;
+            color: white;
+            transform: scale(1.1);
+        }
+        
+        .detail-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .actions-cell {
+            display: flex;
+            justify-content: center;
+        }
+        
+        footer {
+            text-align: center;
+            color: #4a6fa5;
+            padding: 20px;
+            margin-top: auto;
+            width: 100%;
+            font-size: 0.9rem;
+            border-top: 1px solid #e0ebff;
+        }
+        
+        @media (max-width: 900px) {
+            .search-form {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .form-group {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .form-label {
+                margin-bottom: 5px;
+            }
+            
+            .form-select, .form-input {
+                width: 100%;
+            }
+            
+            .search-btn {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .results-table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+        
+        @media (max-width: 600px) {
+            .header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+            
+            .page-title {
+                text-align: left;
+                font-size: 1.8rem;
+            }
+            
+            .nav-buttons {
+                width: 100%;
+                justify-content: space-between;
+            }
+            
+            .nav-btn {
+                flex-grow: 1;
+                justify-content: center;
+            }
+            
+            .results-table th, .results-table td {
+                padding: 10px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="nav-buttons">
+                <button class="nav-btn back" onclick="goBack()">
+                    <i class="fas fa-arrow-left"></i> 返回上一页
+                </button>
+                <button class="nav-btn" onclick="goToFinancePage()">
+                    <i class="fas fa-calculator"></i> 财务主页
+                </button>
+            </div>
+            <h1 class="page-title">单据查询系统</h1>
+            <div></div> <!-- 空元素用于占位保持布局 -->
+        </div>
+        
+        <div class="search-section">
+            <h2 class="section-title">查询条件</h2>
+            <div class="search-form">
+                <div class="form-group">
+                    <span class="form-label">查询对象</span>
+                    <select class="form-select" id="search-object">
+                        <option value="">请选择客户</option>
+                        <option value="C10001">C10001</option>
+                        <option value="C10002">C10002</option>
+                        <option value="C10004">C10004</option>
+                        <option value="C10005">C10005</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <span class="form-label">编号</span>
+                    <input type="text" class="form-input" id="document-id" placeholder="请输入单据编号" value="INV">
+                </div>
+                
+                <button class="search-btn" onclick="searchDocuments()">
+                    <i class="fas fa-search"></i> 查询单据
+                </button>
+            </div>
+        </div>
+        
+        <div class="results-section">
+            <div class="results-header">
+                <h2 class="results-title">单据查询结果</h2>
+                <div class="results-count" id="results-count">共 0 条记录</div>
+            </div>
+            
+            <div class="results-container">
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>单据编号</th>
+                            <th>客户名称</th>
+                            <th>单据类型</th>
+                            <th>金额</th>
+                            <th>创建日期</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="results-body">
+                        <!-- 查询结果将在这里显示 -->
+                    </tbody>
+                </table>
+                <div class="no-results" id="no-results">
+                    <i class="fas fa-file-alt"></i>
+                    <h3>暂无单据数据</h3>
+                    <p>请设置查询条件并点击"查询单据"按钮</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <p>© 2025 ERP财务管理系统</p>
+    </footer>
+
+    <script>
+        // 模拟数据
+        const documents = [
+            { id: "INV202307001", customer: "C10001", type: "销售发票", amount: "¥28,560.00", date: "2023-07-15", status: "completed" },
+            { id: "REC202307045", customer: "C10002", type: "收款记录", amount: "¥15,000.00", date: "2023-07-18", status: "completed" },
+            { id: "INV202307102", customer: "C10003", type: "销售发票", amount: "¥42,380.00", date: "2023-07-20", status: "pending" },
+            { id: "REC202307156", customer: "C10001", type: "收款记录", amount: "¥28,560.00", date: "2023-07-22", status: "completed" },
+            { id: "INV202307201", customer: "C10004", type: "采购发票", amount: "¥36,720.00", date: "2023-07-25", status: "pending" },
+            { id: "REC202307230", customer: "C10005", type: "收款记录", amount: "¥22,500.00", date: "2023-07-26", status: "rejected" },
+            { id: "INV202307251", customer: "C10002", type: "销售发票", amount: "¥19,870.00", date: "2023-07-27", status: "completed" }
+        ];
+        
+        // 页面导航函数
+        function goBack() {
+            alert("返回上一页");
+            window.history.back();
+        }
+        
+        function goToFinancePage() {
+            window.location.href = "1.html";
+            alert("跳转到财务主页 (1.html)");
+        }
+        
+        // 查看详细信息
+        function viewDetails(documentId) {
+            // 实际应用中：window.location.href = `flowinfo.html?id=${documentId}`;
+            alert(`跳转到单据 ${documentId} 的详细信息页面 (3flowinfo.html?id=${documentId})`);
+        }
+        
+        // 查询单据函数
+        function searchDocuments() {
+            const searchId = document.getElementById('document-id').value.trim();
+            const resultsBody = document.getElementById('results-body');
+            const noResults = document.getElementById('no-results');
+            const resultsCount = document.getElementById('results-count');
+            
+            // 清空当前结果
+            resultsBody.innerHTML = '';
+            
+            // 如果没有输入查询条件
+            if (!searchId) {
+                noResults.style.display = 'flex';
+                resultsCount.textContent = '共 0 条记录';
+                return;
+            }
+            
+            // 模拟查询 - 实际应用中应连接后端API
+            const filteredDocs = documents.filter(doc => 
+                doc.id.includes(searchId) || 
+                doc.customer.includes(searchId)
+            );
+            
+            // 显示结果数量
+            resultsCount.textContent = `共 ${filteredDocs.length} 条记录`;
+            
+            // 如果没有结果
+            if (filteredDocs.length === 0) {
+                noResults.style.display = 'flex';
+                return;
+            }
+            
+            // 隐藏"无结果"消息
+            noResults.style.display = 'none';
+            
+            // 显示结果
+            filteredDocs.forEach(doc => {
+                const row = document.createElement('tr');
+                
+                // 根据状态获取对应的CSS类和显示文本
+                let statusClass = '';
+                let statusText = '';
+                
+                switch(doc.status) {
+                    case 'completed':
+                        statusClass = 'status completed';
+                        statusText = '已完成';
+                        break;
+                    case 'pending':
+                        statusClass = 'status pending';
+                        statusText = '待处理';
+                        break;
+                    case 'rejected':
+                        statusClass = 'status rejected';
+                        statusText = '已拒绝';
+                        break;
+                }
+                
+                row.innerHTML = `
+                    <td>${doc.id}</td>
+                    <td>${doc.customer}</td>
+                    <td>${doc.type}</td>
+                    <td><strong>${doc.amount}</strong></td>
+                    <td>${doc.date}</td>
+                    <td><span class="${statusClass}">${statusText}</span></td>
+                    <td class="actions-cell">
+                        <button class="detail-btn" onclick="viewDetails('${doc.id}')">
+                            &gt;
+                        </button>
+                    </td>
+                `;
+                
+                resultsBody.appendChild(row);
+            });
+        }
+        
+        // 初始化页面
+        document.addEventListener('DOMContentLoaded', function() {
+            // 设置默认显示无结果
+            document.getElementById('no-results').style.display = 'flex';
+            document.getElementById('results-count').textContent = '共 0 条记录';
+            
+            // 为输入框添加回车键搜索功能
+            document.getElementById('document-id').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchDocuments();
+                }
+            });
+            
+            // 默认执行一次查询
+            setTimeout(searchDocuments, 500);
+        });
+    </script>
+</body>
+</html>

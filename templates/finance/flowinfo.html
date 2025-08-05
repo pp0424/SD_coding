@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文件流信息</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4edf9 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 82, 204, 0.15);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(90deg, #0052cc 0%, #0066ff 100%);
+            color: white;
+            padding: 25px 30px;
+            text-align: center;
+            position: relative;
+        }
+        
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .client-info {
+            background: #e6f0ff;
+            padding: 20px 30px;
+            border-bottom: 1px solid #d0e0ff;
+        }
+        
+        .info-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .info-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .label {
+            width: 120px;
+            font-weight: 600;
+            color: #0052cc;
+            font-size: 1.1rem;
+        }
+        
+        .value {
+            flex: 1;
+            font-size: 1.1rem;
+            color: #333;
+        }
+        
+        .material-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .pagination {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .pagination-btn {
+            background: #0052cc;
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 8px rgba(0, 82, 204, 0.3);
+        }
+        
+        .pagination-btn:hover {
+            background: #003d99;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 12px rgba(0, 82, 204, 0.4);
+        }
+        
+        .pagination-btn:disabled {
+            background: #a0b9e0;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .file-flow {
+            padding: 30px;
+        }
+        
+        .section-title {
+            color: #0052cc;
+            font-size: 1.8rem;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e6f0ff;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .section-title i {
+            background: #e6f0ff;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: #0052cc;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 82, 204, 0.1);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            min-width: 800px;
+        }
+        
+        thead th {
+            background: linear-gradient(90deg, #0052cc 0%, #0066ff 100%);
+            color: white;
+            padding: 18px 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        
+        thead th:first-child {
+            border-top-left-radius: 10px;
+        }
+        
+        thead th:last-child {
+            border-top-right-radius: 10px;
+        }
+        
+        tbody tr {
+            transition: background 0.2s;
+        }
+        
+        tbody tr:nth-child(even) {
+            background-color: #f8fbff;
+        }
+        
+        tbody tr:nth-child(odd) {
+            background-color: white;
+        }
+        
+        tbody tr:hover {
+            background-color: #e6f0ff;
+        }
+        
+        td {
+            padding: 16px 15px;
+            color: #333;
+            border-bottom: 1px solid #e0eeff;
+        }
+        
+        .document-id {
+            font-weight: 600;
+            color: #0052cc;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        
+        .status.complete {
+            background: #e6ffe6;
+            color: #009900;
+        }
+        
+        .status.not-complete {
+            background: #ffe6e6;
+            color: #cc0000;
+        }
+        
+        .status.in-progress {
+            background: #fff9e6;
+            color: #e6ac00;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 25px;
+            background: #f0f7ff;
+            color: #668cbf;
+            font-size: 0.95rem;
+            border-top: 1px solid #d0e0ff;
+        }
+        
+        @media (max-width: 768px) {
+            .info-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            
+            .label {
+                width: 100%;
+            }
+            
+            header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>文件流信息</h1>
+        </header>
+        
+        <div class="client-info">
+            <div class="info-row">
+                <div class="label">客户编号：</div>
+                <div class="value">12345</div>
+            </div>
+            <div class="info-row">
+                <div class="label">物料编号：</div>
+                <div class="value material-controls">
+                    <span>aaa123</span>
+                    <div class="pagination">
+                        <button class="pagination-btn" id="prev-btn" disabled>
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button class="pagination-btn" id="next-btn">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="file-flow">
+            <h2 class="section-title">
+                <i class="fas fa-file-contract"></i>
+                文件流信息
+            </h2>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>单据类型</th>
+                            <th>单据编号</th>
+                            <th>数量</th>
+                            <th>单位</th>
+                            <th>总价</th>
+                            <th>日期</th>
+                            <th>状态</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>询价单</td>
+                            <td class="document-id">具体信息</td>
+                            <td>具体信息</td>
+                            <td>件</td>
+                            <td>具体信息</td>
+                            <td>具体信息</td>
+                            <td><span class="status complete">complete</span></td>
+                        </tr>
+                        <tr>
+                            <td>报价单</td>
+                            <td class="document-id">具体信息</td>
+                            <td>具体信息</td>
+                            <td>件</td>
+                            <td>具体信息</td>
+                            <td>具体信息</td>
+                            <td><span class="status complete">complete</span></td>
+                        </tr>
+                        <tr>
+                            <td>订单</td>
+                            <td class="document-id">具体信息</td>
+                            <td>具体信息</td>
+                            <td>件</td>
+                            <td>具体信息</td>
+                            <td>具体信息</td>
+                            <td><span class="status complete">complete</span></td>
+                        </tr>
+                        <tr>
+                            <td>发货单</td>
+                            <td class="document-id">具体信息</td>
+                            <td>具体信息</td>
+                            <td>件</td>
+                            <td>具体信息</td>
+                            <td>具体信息</td>
+                            <td><span class="status complete">complete</span></td>
+                        </tr>
+                        <tr>
+                            <td>发货单</td>
+                            <td class="document-id">具体信息</td>
+                            <td>具体信息</td>
+                            <td>件</td>
+                            <td>具体信息</td>
+                            <td>具体信息</td>
+                            <td><span class="status in-progress">in progress</span></td>
+                        </tr>
+                        <tr>
+                            <td>发票</td>
+                            <td class="document-id">具体信息</td>
+                            <td>具体信息</td>
+                            <td>件</td>
+                            <td>具体信息</td>
+                            <td>具体信息</td>
+                            <td><span class="status complete">complete</span></td>
+                        </tr>
+                        <tr>
+                            <td>收款记录</td>
+                            <td class="document-id">具体信息</td>
+                            <td>具体信息</td>
+                            <td>件</td>
+                            <td>具体信息</td>
+                            <td>具体信息</td>
+                            <td><span class="status complete">complete</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="footer">
+            © 2025 ERP财务管理系统
+        </div>
+    </div>
+
+    <script>
+        // 模拟物料数据
+        const materials = [
+            {
+                id: "MTL-2023-0856",
+                documents: [
+                    { type: "询价单", id: "具体信息", qty: 1, unit: "件", price: "具体信息", date: "具体信息", status: "complete" },
+                    { type: "报价单", id: "具体信息", qty: 1, unit: "件", price: "具体信息", date: "具体信息", status: "complete" },
+                    { type: "订单", id: "具体信息", qty: 1, unit: "件", price: "具体信息", date: "具体信息", status: "complete" },
+                    { type: "发货单", id: "具体信息", qty: 1, unit: "件", price: "具体信息", date: "具体信息", status: "complete" },
+                    { type: "发货单", id: "具体信息", qty: 1, unit: "件", price: "具体信息", date: "具体信息", status: "in-progress" },
+                    { type: "发票", id: "具体信息", qty: 1, unit: "件", price: "具体信息", date: "具体信息", status: "complete" },
+                    { type: "收款记录", id: "具体信息", qty: 1, unit: "件", price: "具体信息", date: "具体信息", status: "complete" },
+                ]
+            },
+            {
+                id: "MTL-2023-0912",
+                documents: [
+                    { type: "询价单", id: "具体信息", qty: 1, unit: "件", price: "具体信息", date: "具体信息", status: "complete" },
+                    { type: "报价单", id: "具体信息", qty: 1, unit: "件", price: "具体信息", date: "具体信息", status: "complete" },
+                    { type: "订单", id: "具体信息", qty: 1, unit: "件", price: "具体信息", date: "具体信息", status: "complete" },
+                    { type: "发货单", id: "具体信息", qty: 1, unit: "件", price: "具体信息", date: "具体信息", status: "in-progress" },
+                    { type: "发票", id: "具体信息", qty: 1, unit: "件", price: "具体信息", date: "具体信息", status: "complete" },
+                    { type: "收款记录", id: "具体信息", qty: 1, unit: "件", price: "具体信息", date: "具体信息", status: "in-progress" }
+                ]
+            },
+        ];
+
+        // DOM元素
+        const materialIdElement = document.querySelector('.value.material-controls span');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const tableBody = document.querySelector('tbody');
+        
+        // 当前物料索引
+        let currentIndex = 0;
+        
+        // 更新表格内容
+        function updateTable() {
+            // 清空表格
+            tableBody.innerHTML = '';
+            
+            // 获取当前物料数据
+            const currentMaterial = materials[currentIndex];
+            
+            // 更新物料编号显示
+            materialIdElement.textContent = currentMaterial.id;
+            
+            // 更新按钮状态
+            prevBtn.disabled = currentIndex === 0;
+            nextBtn.disabled = currentIndex === materials.length - 1;
+            
+            // 填充表格数据
+            currentMaterial.documents.forEach(doc => {
+                const row = document.createElement('tr');
+                
+                // 根据状态确定CSS类
+                let statusClass = '';
+                let statusText = '';
+                
+                if (doc.status === 'complete') {
+                    statusClass = 'complete';
+                    statusText = 'complete';
+                } else if (doc.status === 'not-complete') {
+                    statusClass = 'not-complete';
+                    statusText = 'not complete';
+                } else if (doc.status === 'in-progress') {
+                    statusClass = 'in-progress';
+                    statusText = 'in progress';
+                }
+                
+                row.innerHTML = `
+                    <td>${doc.type}</td>
+                    <td class="document-id">${doc.id}</td>
+                    <td>${doc.qty}</td>
+                    <td>${doc.unit}</td>
+                    <td>${doc.price}</td>
+                    <td>${doc.date}</td>
+                    <td><span class="status ${statusClass}">${statusText}</span></td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+        }
+        
+        // 上一页按钮事件
+        prevBtn.addEventListener('click', () => {
+            if (currentIndex > 0) {
+                currentIndex--;
+                updateTable();
+            }
+        });
+        
+        // 下一页按钮事件
+        nextBtn.addEventListener('click', () => {
+            if (currentIndex < materials.length - 1) {
+                currentIndex++;
+                updateTable();
+            }
+        });
+        
+        // 初始化表格
+        updateTable();
+    </script>
+</body>
+</html>

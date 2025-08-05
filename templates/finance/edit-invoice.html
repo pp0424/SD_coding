@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>修改发票记录</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f0f8ff, #e6f7ff);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+        }
+        
+        /* 导航按钮 */
+        .nav-buttons {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            gap: 12px;
+        }
+        
+        .nav-button {
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 16px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 8px rgba(26, 115, 232, 0.3);
+        }
+        
+        .nav-button:hover {
+            background: #0d62d0;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(26, 115, 232, 0.4);
+        }
+        
+        .nav-button:active {
+            transform: translateY(0);
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            padding: 40px 30px;
+            box-shadow: 0 10px 30px rgba(0, 60, 128, 0.15);
+            margin-top: 30px;
+        }
+        
+        .header {
+            margin-bottom: 40px;
+        }
+        
+        h1 {
+            color: #1a4b8c;
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .subtitle {
+            color: #4a6fa5;
+            font-size: 1.2rem;
+            font-weight: 300;
+        }
+        
+        .input-container {
+            display: flex;
+            margin: 30px 0;
+            box-shadow: 0 5px 15px rgba(0, 0, 128, 0.1);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .invoice-input {
+            flex-grow: 1;
+            padding: 18px 25px;
+            border: none;
+            font-size: 1.2rem;
+            color: #1a4b8c;
+            background: white;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        
+        .invoice-input::placeholder {
+            color: #a0c0e8;
+        }
+        
+        .invoice-input:focus {
+            background: #f8fbff;
+            box-shadow: inset 0 0 0 2px #1a73e8;
+        }
+        
+        .go-button {
+            background: #1a73e8;
+            color: white;
+            border: none;
+            padding: 0 35px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .go-button:hover {
+            background: #0d62d0;
+        }
+        
+        .go-button:active {
+            background: #0a56c0;
+            transform: translateY(2px);
+        }
+        
+        .instructions {
+            margin-top: 30px;
+            color: #4a6fa5;
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+        
+        .footer {
+            margin-top: 50px;
+            color: #a0c0e8;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 2.2rem;
+            }
+            
+            .nav-buttons {
+                top: 15px;
+                left: 15px;
+                flex-direction: column;
+            }
+            
+            .input-container {
+                flex-direction: column;
+            }
+            
+            .go-button {
+                padding: 15px;
+            }
+            
+            .container {
+                padding: 30px 20px;
+                margin-top: 70px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 左上角导航按钮 -->
+    <div class="nav-buttons">
+        <button class="nav-button" id="backButton">
+            <i class="fas fa-arrow-left"></i>
+            返回上一页
+        </button>
+        <button class="nav-button" id="homeButton">
+            <i class="fas fa-home"></i>
+            财务主页
+        </button>
+    </div>
+    
+    <!-- 主要内容区 -->
+    <div class="container">
+        <div class="header">
+            <h1>修改发票信息</h1>
+            <div class="subtitle">输入发票号以查询发票信息</div>
+        </div>
+        
+        <div class="input-container">
+            <input type="text" 
+                   class="invoice-input" 
+                   placeholder="输入发票号"
+                   id="invoiceInput">
+            <button class="go-button" id="goButton">GO</button>
+        </div>
+        
+        <div class="instructions">
+            <p>请准确输入发票号进行查询</p >
+                    </div>
+        
+        <div class="footer">
+            ERP财务管理系统
+        </div>
+    </div>
+
+    <script>
+        // 导航按钮功能
+        document.getElementById('backButton').addEventListener('click', function() {
+            alert('确认返回上一页吗？');
+            history.back();
+        });
+        
+        document.getElementById('homeButton').addEventListener('click', function() {
+            alert('确认返回财务主页吗？');
+            window.location.href = '1.html';
+        });
+        
+        // 查询功能
+        document.getElementById('goButton').addEventListener('click', function() {
+            const invoiceNumber = document.getElementById('invoiceInput').value;
+            if (invoiceNumber.trim() === '') {
+                alert('请输入发票号');
+                return;
+            }
+            
+            // 添加查询逻辑
+            alert(`正在查询发票号: ${invoiceNumber}`);
+        });
+        
+        // 允许按Enter键提交
+        document.getElementById('invoiceInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('goButton').click();
+            }
+        });
+        
+        // 页面加载后自动聚焦到输入框
+        window.onload = function() {
+            document.getElementById('invoiceInput').focus();
+        };
+    </script>
+</body>
+</html>
