@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>创建收款记录</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #e6f7ff 0%, #f0f9ff 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #1a3c6c;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 15px 0;
+            border-bottom: 1px solid #d1e7ff;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .nav-btn {
+            background: linear-gradient(135deg, #1a73e8 0%, #0d5cb6 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(26, 115, 232, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(26, 115, 232, 0.4);
+        }
+        
+        .invoice-info {
+            display: flex;
+            gap: 30px;
+            background: white;
+            padding: 20px 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0, 100, 255, 0.1);
+            margin-bottom: 40px;
+        }
+        
+        .info-box {
+            flex: 1;
+        }
+        
+        .info-label {
+            font-size: 1rem;
+            color: #5a7eb5;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        .info-value {
+            font-size: 1.4rem;
+            color: #1a3c6c;
+            font-weight: 700;
+            background: #f0f8ff;
+            padding: 12px 20px;
+            border-radius: 10px;
+            border: 1px solid #c2dcff;
+        }
+        
+        .form-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 100, 255, 0.15);
+            padding: 40px;
+            margin-bottom: 40px;
+            max-width: 800px;
+            margin: 0 auto 40px;
+        }
+        
+        .form-row {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 30px;
+        }
+        
+        .form-label {
+            font-size: 1.1rem;
+            color: #1a73e8;
+            margin-bottom: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+        }
+        
+        .form-label i {
+            margin-right: 10px;
+            font-size: 1.2rem;
+        }
+        
+        .form-input {
+            padding: 15px 20px;
+            border: 2px solid #c2dcff;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            background: #f8fbff;
+        }
+        
+        .form-input:focus {
+            border-color: #1a73e8;
+            box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.2);
+            outline: none;
+            background: white;
+        }
+        
+        .form-input::placeholder {
+            color: #a0c1f1;
+        }
+        
+        select.form-input {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231a73e8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 20px center;
+            background-size: 20px;
+        }
+        
+        textarea.form-input {
+            min-height: 120px;
+            resize: vertical;
+        }
+        
+        .save-container {
+            display: flex;
+            justify-content: flex-end;
+            padding: 0 40px;
+        }
+        
+        .save-btn {
+            background: linear-gradient(135deg, #1a73e8 0%, #0d5cb6 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 16px 50px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 6px 20px rgba(26, 115, 232, 0.4);
+            transition: all 0.3s ease;
+        }
+        
+        .save-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(26, 115, 232, 0.5);
+        }
+        
+        .save-btn:active {
+            transform: translateY(0);
+        }
+        
+        @media (max-width: 768px) {
+            .invoice-info {
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            .form-container {
+                padding: 30px 20px;
+            }
+            
+            .save-container {
+                padding: 0 20px;
+            }
+        }
+        
+        /* 动画效果 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .form-container {
+            animation: fadeIn 0.6s ease-out;
+        }
+        
+        .save-btn {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 6px 20px rgba(26, 115, 232, 0.4); }
+            50% { box-shadow: 0 6px 30px rgba(26, 115, 232, 0.6); }
+            100% { box-shadow: 0 6px 20px rgba(26, 115, 232, 0.4); }
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航按钮 -->
+    <div class="header">
+        <div class="nav-buttons">
+            <button class="nav-btn" onclick="history.back()">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <button class="nav-btn" onclick="window.location.href='/'">
+                <i class="fas fa-home"></i>
+            </button>
+        </div>
+        <h1>创建收款记录</h1>
+        <div style="width: 65px;"></div> <!-- 占位保持平衡 -->
+    </div>
+    
+    <!-- 发票信息展示 -->
+    <div class="invoice-info">
+        <div class="info-box">
+            <div class="info-label">发票号</div>
+            <div class="info-value">INV-2023-07528</div>
+        </div>
+        <div class="info-box">
+            <div class="info-label">发票总金额</div>
+            <div class="info-value">¥12,580.00</div>
+        </div>
+    </div>
+    
+    <!-- 收款表单 -->
+    <div class="form-container">
+        <div class="form-row">
+            <label class="form-label">
+                <i class="fas fa-money-bill-wave"></i>收款金额
+            </label>
+            <input type="number" class="form-input" placeholder="请输入收款金额">
+        </div>
+        
+        <div class="form-row">
+            <label class="form-label">
+                <i class="fas fa-calendar-day"></i>收款日期
+            </label>
+            <input type="date" class="form-input">
+        </div>
+        
+        <div class="form-row">
+            <label class="form-label">
+                <i class="fas fa-credit-card"></i>付款方式
+            </label>
+            <select class="form-input">
+                <option value="">请选择付款方式</option>
+                <option value="bank">银行转账</option>
+                <option value="alipay">支付宝</option>
+                <option value="wechat">微信支付</option>
+                <option value="cash">现金</option>
+                <option value="check">支票</option>
+                <option value="other">其他</option>
+            </select>
+        </div>
+        
+        <div class="form-row">
+            <label class="form-label">
+                <i class="fas fa-comment"></i>备注
+            </label>
+            <textarea class="form-input" placeholder="请输入备注信息（可选）"></textarea>
+        </div>
+    </div>
+    
+    <!-- 保存按钮 -->
+    <div class="save-container">
+        <button class="save-btn" onclick="savePayment()">
+            <i class="fas fa-save"></i>保存记录
+        </button>
+    </div>
+    
+    <script>
+        // 设置默认日期为今天
+        const today = new Date().toISOString().split('T')[0];
+        document.querySelector("input[type='date']").value = today;
+        
+        // 保存功能
+        function savePayment() {
+            const amount = document.querySelector("input[type='number']").value;
+            const date = document.querySelector("input[type='date']").value;
+            const method = document.querySelector("select").value;
+            const note = document.querySelector("textarea").value;
+            
+            if (!amount) {
+                alert("请输入收款金额");
+                return;
+            }
+            
+            if (!method) {
+                alert("请选择付款方式");
+                return;
+            }
+            
+            // 创建数据对象
+            const paymentData = {
+                invoice: "INV-2023-07528",
+                amount: amount,
+                date: date,
+                method: method,
+                note: note
+            };
+            
+            // 这里在实际应用中会发送数据到服务器
+            console.log("保存的收款记录:", paymentData);
+            
+            // 显示成功消息
+            alert(`收款记录保存成功！\n金额: ¥${amount}\n日期: ${date}\n方式: ${getMethodText(method)}\n收款单号：？？`);
+            
+            // 重置表单（实际应用中可能需要跳转页面）
+            document.querySelector("input[type='number']").value = "";
+            document.querySelector("select").value = "";
+            document.querySelector("textarea").value = "";
+        }
+        
+        // 获取付款方式文本
+        function getMethodText(method) {
+            const methods = {
+                "bank": "银行转账",
+                "alipay": "支付宝",
+                "wechat": "微信支付",
+                "cash": "现金",
+                "check": "支票",
+                "other": "其他"
+            };
+            return methods[method] || method;
+        }
+    </script>
+</body>
+</html>
