@@ -16,6 +16,9 @@ app.config['SECRET_KEY'] = 'dev'
 
 db = db_init(app)
 
+
+
+
 # 初始化 Flask-Login
 login_manager = LoginManager()
 login_manager.init_app(app)  # 将登录管理器绑定到应用实例
@@ -41,6 +44,10 @@ with app.app_context():
 #07261928发货模块
 with app.app_context():
     from delivery.models import DeliveryNote, DeliveryItem  # 确保导入模型
+    db.create_all()
+
+with app.app_context():
+    from customer.models import Customer,ContactPerson,BPRelationship  
     db.create_all()
 
 
