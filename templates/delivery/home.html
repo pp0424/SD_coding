@@ -1,0 +1,176 @@
+{% extends 'delivery/base.html' %}
+{% block title %}发货管理首页{% endblock %}
+
+{% block head_extra %}
+<style>
+  body {
+      margin: 0;
+      font-family: "Microsoft YaHei", sans-serif;
+      background-image: url('/static/delivery_background.png');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+
+
+  h3.page-title {
+    font-weight: 700;
+    color: #0d6efd;
+  }
+
+  .card {
+    border-radius: 14px;
+    background: linear-gradient(135deg, #ffffff, #f5f9ff);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s ease;
+  }
+
+  .card:hover {
+    transform: scale(1.01);
+  }
+
+  .card-title {
+    font-weight: 600;
+    color: #34495e;
+  }
+
+  .card-text {
+    font-size: 0.95rem;
+    color: #6c757d;
+  }
+
+  .btn-sm {
+    font-size: 0.85rem;
+    border-radius: 8px;
+  }
+
+  .list-group-item a {
+    text-decoration: none;
+    color: #0d6efd;
+    font-weight: 500;
+  }
+
+  .list-group-item:hover {
+    background-color: #f7faff;
+  }
+
+  .table-sm thead {
+    background-color: #eef4ff;
+    font-size: 0.85rem;
+  }
+
+  .table-sm td {
+    font-size: 0.85rem;
+    vertical-align: middle;
+  }
+
+  .table-sm tbody tr:hover {
+    background-color: #f0f8ff;
+    transition: background-color 0.2s ease;
+  }
+
+  .text-danger {
+    font-weight: bold;
+  }
+
+  hr {
+    border-top: 1px solid #dee2e6;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-title-container">
+    <h1 class="form-title">
+      🚚 发货管理首页
+    </h1>
+  </div>
+
+<div class="row g-4">
+  <!-- 系统概览卡片 -->
+  <div class="col-md-4">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">📆 今日概览（{{ today.strftime('%Y-%m-%d') }}）</h5>
+        <p class="card-text">
+          <strong>待过账发货单：</strong> {{ pending_postings }}<br>
+          <strong>最新过账：</strong> {{ recent_changes|length }} 条<br>
+        </p>
+        <a href="{{ url_for('delivery.delivery_list') }}" class="btn btn-sm btn-primary">查看发货列表</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 快捷操作 -->
+  <div class="col-md-4">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">⚡ 快捷操作</h5>
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item"><a href="{{ url_for('delivery.create_delivery') }}">📝 创建发货单</a></li>
+          <li class="list-group-item"><a href="{{ url_for('delivery.stock_changes') }}">📊 库存变动查询</a></li>
+          <li class="list-group-item"><a href="{{ url_for('delivery.posted_stock_changes') }}">🧾 过账变动追溯</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- 最近动态 -->
+  <div class="col-md-4">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">🕒 最新发货单</h5>
+        <ul class="list-group list-group-flush">
+          {% for d in recent_deliveries %}
+          <li class="list-group-item">
+            <a href="{{ url_for('delivery.delivery_detail', delivery_id=d.delivery_note_id) }}">
+              📄 {{ d.delivery_note_id }}
+            </a> - <span class="badge bg-light text-dark">{{ d.status }}</span>
+            <small class="text-muted">[{{ d.delivery_date.strftime('%Y-%m-%d') }}]</small>
+          </li>
+          {% else %}
+          <li class="list-group-item text-muted">暂无记录</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="my-4">
+
+<!-- 最新过账记录列表 -->
+<h5 class="fw-bold mb-3">📋 最新过账记录</h5>
+<div class="table-responsive">
+  <table class="table table-sm table-hover align-middle table-bordered">
+    <thead>
+      <tr>
+        <th>时间</th>
+        <th>物料</th>
+        <th>数量</th>
+        <th>仓库</th>
+        <th>发货单</th>
+        <th>操作人</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in recent_changes %}
+      <tr>
+        <td>{{ c.change_time.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td>{{ c.material_id }}</td>
+        <td class="text-danger">{{ c.quantity_change }}</td>
+        <td>{{ c.warehouse_code }}</td>
+        <td>{{ c.reference_doc or '-' }}</td>
+        <td>{{ c.operator }}</td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="6" class="text-muted text-center">
+          <i class="bi bi-info-circle"></i> 暂无记录
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

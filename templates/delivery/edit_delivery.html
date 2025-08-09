@@ -1,53 +1,40 @@
-{% extends "delivery/base.html" %}
-{% load static %}
-
+{% extends 'delivery/base.html' %}
+{% block title %}修改发货单{% endblock %}
 {% block content %}
-<div class="container mt-4">
-    <h2 class="mb-4">编辑发货单: {{ delivery_note.delivery_note_id }}</h2>
-    
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-info text-white">
-            <h5 class="mb-0">基本信息</h5>
-        </div>
-        <div class="card-body">
-            <form method="post">
-                {% csrf_token %}
-                {{ form.as_p }}
-                
-                <hr>
-                <h5 class="mb-3">发货行项</h5>
-                
-                {{ formset.management_form }}
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead class="thead-light">
-                            <tr>
-                                <th>物料编号</th>
-                                <th>物料描述</th>
-                                <th>计划数量</th>
-                                <th>订单未发货数量</th>
-                                <th>调整后数量</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for form in formset %}
-                            <tr>
-                                <td>{{ form.instance.material.material_id }}</td>
-                                <td>{{ form.instance.material.description }}</td>
-                                <td>{{ form.instance.planned_delivery_quantity }}</td>
-                                <td>{{ form.instance.sales_order_item.unshipped_quantity }}</td>
-                                <td>{{ form.planned_delivery_quantity }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                
-                <button type="submit" class="btn btn-primary mt-3">保存修改</button>
-                <a href="{% url 'post_delivery' delivery_note.delivery_note_id %}" 
-                   class="btn btn-success mt-3 ml-2">执行过账</a>
-            </form>
-        </div>
-    </div>
-</div>
+<div class="form-title-container">
+    <h1 class="form-title">
+      ✏️ 修改发货单 {{ delivery.delivery_note_id }}
+    </h1>
+  </div>
+
+<p class="text-muted">订单：{{ delivery.sales_order_id }} | 仓库：{{ delivery.warehouse_code }} | 状态：{{ delivery.status }}</p>
+
+<form method="post" class="card p-3 shadow-sm">
+  {{ form.csrf_token }}
+  <div class="row g-3">
+    <div class="col-md-4">{{ form.expected_delivery_date.label }} {{ form.expected_delivery_date(class="form-control", type="date") }}</div>
+    <div class="col-md-4">{{ form.warehouse_code.label }} {{ form.warehouse_code(class="form-control") }}</div>
+    <div class="col-md-4">{{ form.remarks.label }} {{ form.remarks(class="form-control") }}</div>
+  </div>
+  <hr>
+  <h6>行项（仅计划信息显示，数量调整可由重新创建发货或扩展此页）</h6>
+  <div class="table-responsive">
+    <table class="table table-sm">
+      <thead><tr><th>行号</th><th>物料</th><th>计划</th><th>实际</th><th>单位</th></tr></thead>
+      <tbody>
+        {% for it in delivery.items %}
+        <tr>
+          <td>{{ it.item_no }}</td>
+          <td>{{ it.material_id }}</td>
+          <td>{{ it.planned_delivery_quantity }}</td>
+          <td>{{ it.actual_delivery_quantity }}</td>
+          <td>{{ it.unit }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <button class="btn btn-primary">保存</button>
+  <a class="btn btn-outline-secondary" href="{{ url_for('delivery.delivery_detail', delivery_id=delivery.delivery_note_id) }}">返回</a>
+</form>
 {% endblock %}

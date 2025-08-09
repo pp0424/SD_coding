@@ -8,6 +8,7 @@ from finance.views import bp as finance_bp
 from auth.views import auth_bp
 from auth.models import User
 from flask_login import LoginManager
+from flask_moment import Moment
 
 
 app = Flask(__name__)
@@ -16,8 +17,7 @@ app.config['SECRET_KEY'] = 'dev'
 
 db = db_init(app)
 
-
-
+moment = Moment(app)
 
 # 初始化 Flask-Login
 login_manager = LoginManager()
@@ -27,12 +27,7 @@ login_manager.login_view = 'auth.login'  # 设置登录视图端点
 # 用户加载器回调
 @login_manager.user_loader
 def load_user(user_id):
-    # 延迟导入，避免循环依赖
-    from auth.views import users
-    if user_id in users:
-        from auth.models import User
-        return User(user_id)
-    return None
+    return User.query.get(user_id)
 
 ##数据表与db实时同步
 from order_event_listener import attach_csv_export_listeners

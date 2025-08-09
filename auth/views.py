@@ -6,7 +6,7 @@ from .models import User
 auth_bp = Blueprint('auth', __name__)
 
 # 临时登录用户，后期可从数据库读取
-users = {'admin': '123456'}
+#users = {'admin': '123456'}
 
 @auth_bp.route('/', methods=['GET', 'POST'])
 def login():
@@ -14,8 +14,11 @@ def login():
         username = request.form['username']
         password = request.form['password']
         
-        if username in users and users[username] == password:
-            user = User(username)
+        # 从数据库查询用户
+        user = User.query.filter_by(username=username).first()
+        
+        # 校验用户存在且密码正确
+        if user and user.password_hash == password:
             login_user(user)
             return redirect(url_for('auth.dashboard'))
         else:

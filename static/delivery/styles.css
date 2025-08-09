@@ -1,0 +1,5 @@
+body { background: #f7f9fb; }
+.navbar-brand { font-weight: 600; letter-spacing: .3px; }
+.table thead th { white-space: nowrap; }
+.card { border-radius: .6rem; }
+.alert { border-radius: .5rem; }
