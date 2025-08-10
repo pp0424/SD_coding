@@ -20,10 +20,14 @@ class CreateDeliveryForm(FlaskForm):
     remarks = TextAreaField('备注', validators=[Optional()])
     submit = SubmitField('创建发货单')
 
+class DeliveryItemEditForm(FlaskForm):
+    planned_delivery_quantity = DecimalField('计划发货数量', validators=[DataRequired(), NumberRange(min=0)])
+
 class EditDeliveryForm(FlaskForm):
     expected_delivery_date = DateField('预计发货日期', validators=[DataRequired()])
     warehouse_code = StringField('发货仓库代码', validators=[DataRequired()])
     remarks = TextAreaField('备注', validators=[Optional()])
+    items = FieldList(FormField(DeliveryItemEditForm), min_entries=0)
     submit = SubmitField('保存')
 
 class SearchDeliveryForm(FlaskForm):
@@ -56,3 +60,16 @@ class ChangeStatusForm(FlaskForm):
     ], validators=[DataRequired()])
     remarks = TextAreaField('备注', validators=[Optional()], render_kw={'rows': 2, 'placeholder': '状态变更备注（可选）'})
     submit = SubmitField('确认变更')
+
+class SearchInventoryMovementForm(FlaskForm):
+    material_id = StringField('物料编号', validators=[Optional()])
+    start_date = DateField('起始日期', validators=[Optional()])
+    end_date = DateField('结束日期', validators=[Optional()])
+    delivery_id = StringField('发货单编号', validators=[Optional()])
+    warehouse_code = StringField('仓库代码', validators=[Optional()])
+    movement_type = SelectField('移动类型', choices=[
+        ('all', '全部'),
+        ('IN', '入库'),
+        ('OUT', '出库')
+    ], validators=[Optional()])
+    submit = SubmitField('查询')

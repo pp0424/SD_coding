@@ -66,7 +66,7 @@
 {% block content %}
 <div class="form-title-container">
     <h1 class="form-title">
-      <i class="bi bi-truck"></i> 发货单 #{{ delivery.delivery_note_id }}
+      🧾 发货单 #{{ delivery.delivery_note_id }}
     </h1>
   </div>
   
@@ -75,12 +75,13 @@
     <div class="btn-toolbar">
       {% if delivery.status == '已创建' %}
         <a href="{{ url_for('delivery.edit_delivery', delivery_id=delivery.delivery_note_id) }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i> 编辑</a>
-        <a href="{{ url_for('delivery.change_delivery_status', delivery_id=delivery.delivery_note_id) }}" class="btn btn-info btn-sm"><i class="bi bi-arrow-repeat"></i> 变更状态</a>
+        <a href="{{ url_for('delivery.pick_delivery', delivery_id=delivery.delivery_note_id) }}" class="btn btn-warning btn-sm"><i class="bi bi-box-seam"></i> 拣货</a>
         <a href="{{ url_for('delivery.cancel_delivery', delivery_id=delivery.delivery_note_id) }}" class="btn btn-outline-danger btn-sm"><i class="bi bi-x-circle"></i> 取消</a>
       {% elif delivery.status == '已拣货' %}
         <a href="{{ url_for('delivery.post_delivery', delivery_id=delivery.delivery_note_id) }}" class="btn btn-success btn-sm"><i class="bi bi-check2-circle"></i> 过账</a>
-        <a href="{{ url_for('delivery.change_delivery_status', delivery_id=delivery.delivery_note_id) }}" class="btn btn-info btn-sm"><i class="bi bi-arrow-repeat"></i> 变更状态</a>
         <a href="{{ url_for('delivery.cancel_delivery', delivery_id=delivery.delivery_note_id) }}" class="btn btn-outline-danger btn-sm"><i class="bi bi-x-circle"></i> 取消</a>
+      {% elif delivery.status == '待发货' %}
+        <a href="{{ url_for('delivery.ship_delivery', delivery_id=delivery.delivery_note_id) }}" class="btn btn-info btn-sm"><i class="bi bi-truck"></i> 发货</a>
       {% endif %}
       <a href="{{ url_for('delivery.delivery_list') }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-arrow-return-left"></i> 返回列表</a>
     </div>
@@ -115,6 +116,8 @@
         <tr>
           <th style="width:80px">行号</th>
           <th style="min-width:140px">物料编号</th>
+          <th style="min-width:200px">物料描述</th>
+          <th style="width:120px">库存位置</th>
           <th style="width:120px" class="text-end">计划发货</th>
           <th style="width:120px" class="text-end">实际发货</th>
           <th style="width:90px">单位</th>
@@ -122,12 +125,15 @@
       </thead>
       <tbody>
         {% for l in delivery.items %}
+        {% set material = l.material %}
         <tr>
           <td>{{ l.item_no }}</td>
           <td>{{ l.material_id }}</td>
+          <td>{{ material.description if material else '' }}</td>
+          <td>{{ material.storage_location if material else '未知' }}</td>
           <td class="text-end">{{ "%.2f"|format(l.planned_delivery_quantity or 0) }}</td>
           <td class="text-end">{{ "%.2f"|format(l.actual_delivery_quantity or 0) }}</td>
-          <td>{{ l.unit }}</td>
+          <td>{{ material.base_unit if material else l.unit }}</td>
         </tr>
         {% endfor %}
       </tbody>

@@ -1,40 +1,78 @@
-{% extends 'delivery/base.html' %}
-{% block title %}修改发货单{% endblock %}
+{% extends "delivery/base.html" %}
+
 {% block content %}
 <div class="form-title-container">
     <h1 class="form-title">
-      ✏️ 修改发货单 {{ delivery.delivery_note_id }}
+      ✏️ 编辑发货单: {{ delivery.delivery_note_id }}
     </h1>
   </div>
 
-<p class="text-muted">订单：{{ delivery.sales_order_id }} | 仓库：{{ delivery.warehouse_code }} | 状态：{{ delivery.status }}</p>
+<div class="container mt-4">
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <div class="card mb-4">
+            <div class="card-header">抬头信息</div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            {{ form.expected_delivery_date.label(class="form-label") }}
+                            {{ form.expected_delivery_date(class="form-control") }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            {{ form.warehouse_code.label(class="form-label") }}
+                            {{ form.warehouse_code(class="form-control") }}
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    {{ form.remarks.label(class="form-label") }}
+                    {{ form.remarks(class="form-control", rows=3) }}
+                </div>
+            </div>
+        </div>
 
-<form method="post" class="card p-3 shadow-sm">
-  {{ form.csrf_token }}
-  <div class="row g-3">
-    <div class="col-md-4">{{ form.expected_delivery_date.label }} {{ form.expected_delivery_date(class="form-control", type="date") }}</div>
-    <div class="col-md-4">{{ form.warehouse_code.label }} {{ form.warehouse_code(class="form-control") }}</div>
-    <div class="col-md-4">{{ form.remarks.label }} {{ form.remarks(class="form-control") }}</div>
-  </div>
-  <hr>
-  <h6>行项（仅计划信息显示，数量调整可由重新创建发货或扩展此页）</h6>
-  <div class="table-responsive">
-    <table class="table table-sm">
-      <thead><tr><th>行号</th><th>物料</th><th>计划</th><th>实际</th><th>单位</th></tr></thead>
-      <tbody>
-        {% for it in delivery.items %}
-        <tr>
-          <td>{{ it.item_no }}</td>
-          <td>{{ it.material_id }}</td>
-          <td>{{ it.planned_delivery_quantity }}</td>
-          <td>{{ it.actual_delivery_quantity }}</td>
-          <td>{{ it.unit }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  <button class="btn btn-primary">保存</button>
-  <a class="btn btn-outline-secondary" href="{{ url_for('delivery.delivery_detail', delivery_id=delivery.delivery_note_id) }}">返回</a>
-</form>
+        <div class="card mb-4">
+            <div class="card-header">行项目</div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>物料编号</th>
+                                <th>物料描述</th>
+                                <th>计划发货数量</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item_form in item_forms %}
+                            <tr>
+                                <td>{{ delivery.items[loop.index0].material_id }}</td>
+                                <td>{{ delivery.items[loop.index0].material.description }}</td>
+                                <td>
+                                    {{ item_form.hidden_tag() }}
+                                    {{ item_form.planned_delivery_quantity(class="form-control") }}
+                                    {% if item_form.planned_delivery_quantity.errors %}
+                                        <div class="invalid-feedback" style="display: block;">
+                                            {{ item_form.planned_delivery_quantity.errors[0] }}
+                                        </div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between">
+            <a href="{{ url_for('delivery.delivery_detail', delivery_id=delivery.delivery_note_id) }}" 
+               class="btn btn-secondary">取消</a>
+            <button type="submit" class="btn btn-primary">保存更改</button>
+        </div>
+    </form>
+</div>
 {% endblock %}

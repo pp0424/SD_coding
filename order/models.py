@@ -66,7 +66,7 @@ class Material(db.Model):
     description = db.Column(db.String(255), nullable=False, comment='物料描述')
     base_unit = db.Column(db.String(255), nullable=False, comment='基本计量单位')
     storage_location = db.Column(db.String(255), nullable=False, comment='存储位置')
-    available_stock = db.Column(db.Numeric, comment='当前可用库存')
+    available_stock = db.Column(db.Numeric, default=0, comment='可用库存数量')
 
 
 # models.py
@@ -100,4 +100,3 @@ class OrderItem(db.Model):
     unshipped_quantity = db.Column(db.Numeric)
     item_amount = db.Column(db.Numeric)
     unit = db.Column(db.String(255))
-

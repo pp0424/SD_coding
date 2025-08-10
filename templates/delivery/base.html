@@ -15,6 +15,20 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
 
+    <link rel="stylesheet" href="{{ url_for('static', filename='delivery/delivery_styles.css') }}">
+    
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/4.3.1/css/bootstrap.min.css">
+
+    <!-- jQuery（Bootstrap JS 依赖） -->
+    <script src="https://cdn.staticfile.org/jquery/3.2.1/jquery.min.js"></script>
+
+    <!-- Popper.js（用于弹出框等组件） -->
+    <script src="https://cdn.staticfile.org/popper.js/1.15.0/umd/popper.min.js"></script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.staticfile.org/twitter-bootstrap/4.3.1/js/bootstrap.min.js"></script>
+
     <style>
       :root {
         --brand-1: #0d6efd;
@@ -289,13 +303,19 @@
             </li>
             <li class="nav-item mx-1">
               <a class="nav-link text-white fw-medium position-relative" href="{{ url_for('delivery.delivery_list') }}" style="transition: all 0.3s; color: white !important;">
-              <h6>📊 库存变动查询</h6>
+              <h6>🔍 发货单查询</h6>
                 <span class="position-absolute bottom-0 start-0 w-100 bg-white" style="height:2px; opacity:0; transition: opacity 0.3s;"></span>
               </a>
             </li>
             <li class="nav-item mx-1">
-              <a class="nav-link text-white fw-medium position-relative" href="{{ url_for('delivery.stock_changes') }}" style="transition: all 0.3s; color: white !important;">
-              <h6>🧾 过账变动追溯</h6>
+              <a class="nav-link text-white fw-medium position-relative" href="{{ url_for('delivery.inventory_movement') }}" style="transition: all 0.3s; color: white !important;">
+              <h6>📊 库存变动查询</h6>
+                <span class="position-absolute bottom-0 start-0 w-100 bg-white" style="height:2px; opacity:0; transition: opacity 0.3s;"></span>
+              </a>
+            </li>
+                        <li class="nav-item mx-1">
+              <a class="nav-link text-white fw-medium position-relative" href="{{ url_for('delivery.posted_stock_changes') }}" style="transition: all 0.3s; color: white !important;">
+              <h6>📜 过账库存变动追溯</h6>
                 <span class="position-absolute bottom-0 start-0 w-100 bg-white" style="height:2px; opacity:0; transition: opacity 0.3s;"></span>
               </a>
             </li>

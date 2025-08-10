@@ -108,8 +108,9 @@
         <h5 class="card-title">⚡ 快捷操作</h5>
         <ul class="list-group list-group-flush">
           <li class="list-group-item"><a href="{{ url_for('delivery.create_delivery') }}">📝 创建发货单</a></li>
-          <li class="list-group-item"><a href="{{ url_for('delivery.stock_changes') }}">📊 库存变动查询</a></li>
-          <li class="list-group-item"><a href="{{ url_for('delivery.posted_stock_changes') }}">🧾 过账变动追溯</a></li>
+          <li class="list-group-item"><a href="{{ url_for('delivery.delivery_list') }}">🔍 发货单查询</a></li>
+          <li class="list-group-item"><a href="{{ url_for('delivery.inventory_movement') }}">📊 库存变动查询</a></li>
+          <li class="list-group-item"><a href="{{ url_for('delivery.posted_stock_changes') }}">📜 过账库存变动追溯</a></li>
         </ul>
       </div>
     </div>

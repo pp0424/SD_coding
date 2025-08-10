@@ -1,5 +1,4 @@
 {% extends "delivery/base.html" %}
-{% load static %}
 
 {% block head_extra %}
 <style>
@@ -98,7 +97,7 @@
         </div>
         <div class="mt-3">
           <button type="submit" class="btn btn-primary me-2"><i class="bi bi-search"></i> 查询</button>
-          <a href="{% url 'inventory_movement' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-clockwise"></i> 重置</a>
+          <a href="{{ url_for('delivery.inventory_movement') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-clockwise"></i> 重置</a>
         </div>
       </form>
     </div>
@@ -128,7 +127,7 @@
             <tr>
               <td>{{ movement.material.material_id }}</td>
               <td>{{ movement.material.description }}</td>
-              <td>{{ movement.movement_date|date:"Y-m-d H:i" }}</td>
+              <td>{{ movement.movement_date}}</td>
               <td>{{ movement.warehouse_code }}</td>
               <td>{{ movement.quantity_before }}</td>
               <td>{{ movement.quantity_after }}</td>
@@ -137,7 +136,7 @@
               </td>
               <td>
                 {% if movement.delivery_note %}
-                <a href="{% url 'edit_delivery' movement.delivery_note.delivery_note_id %}">
+                <a href="{{ url_for('delivery.edit_delivery', delivery_note_id=movement.delivery_note.delivery_note_id) }}">
                   {{ movement.delivery_note.delivery_note_id }}
                 </a>
                 {% else %}
@@ -145,7 +144,7 @@
                 {% endif %}
               </td>
             </tr>
-            {% empty %}
+            {% else %}
             <tr>
               <td colspan="8" class="text-center text-muted">
                 <i class="bi bi-info-circle"></i> 未找到库存变动记录

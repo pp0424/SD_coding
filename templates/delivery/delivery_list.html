@@ -9,7 +9,7 @@
 <!-- 查询表单 -->
 <div class="form-title-container">
     <h1 class="form-title">
-      🔍 发货查询
+      🔍 发货单查询
     </h1>
   </div>
 
@@ -75,7 +75,7 @@
           <th style="width: 140px;">发货单号</th>
           <th style="width: 120px;">销售订单号</th>
           <th style="width: 100px;">发货日期</th>
-          <th style="width: 80px;">仓库代码</th>
+          <th style="width: 100px;">仓库代码</th>
           <th style="width: 80px;">状态</th>
           <th style="width: 100px;">过账人</th>
           <th style="width: 120px;">过账时间</th>
@@ -102,7 +102,16 @@
             <span class="badge bg-light text-dark">{{ delivery.warehouse_code }}</span>
           </td>
           <td>
-            <span class="status-badge status-{{ delivery.status }}">
+            <span class="badge 
+              {% if delivery.status == '已创建' %}bg-primary
+              {% elif delivery.status == '待拣货' %}bg-info
+              {% elif delivery.status == '已拣货' %}bg-warning
+              {% elif delivery.status == '待发货' %}bg-secondary
+              {% elif delivery.status == '已发货' %}bg-dark
+              {% elif delivery.status == '已过账' %}bg-success
+              {% elif delivery.status == '已完成' %}bg-light text-dark
+              {% elif delivery.status == '已取消' %}bg-danger
+              {% else %}bg-secondary{% endif %}">
               {{ delivery.status }}
             </span>
           </td>
@@ -118,35 +127,57 @@
             <small class="text-muted">{{ delivery.remarks[:30] + '...' if delivery.remarks and delivery.remarks|length > 30 else (delivery.remarks or '-') }}</small>
           </td>
           <td>
-<div class="d-flex flex-wrap gap-1">
+            <div class="d-flex flex-wrap gap-1">
               <a href="{{ url_for('delivery.delivery_detail', delivery_id=delivery.delivery_note_id) }}" 
                  class="btn btn-outline-info btn-action" title="查看详情">
                 <i class="bi bi-eye"></i>
               </a>
               
-              {% if delivery.status in ['已创建', '已拣货'] %}
+              {# 编辑: 仅适用于'已创建'和'待拣货'状态 #}
+              {% if delivery.status in ['已创建', '待拣货'] %}
               <a href="{{ url_for('delivery.edit_delivery', delivery_id=delivery.delivery_note_id) }}" 
                  class="btn btn-outline-warning btn-action" title="编辑">
                 <i class="bi bi-pencil"></i>
               </a>
+              {% endif %}
+              
+              {# 过账: 仅适用于'已拣货'或'已发货'状态 #}
+              {% if delivery.status in ['已拣货', '已发货'] %}
               <a href="{{ url_for('delivery.post_delivery', delivery_id=delivery.delivery_note_id) }}" 
                  class="btn btn-outline-success btn-action" title="过账">
                 <i class="bi bi-check-circle"></i>
               </a>
+              {% endif %}
+              
+              {# 变更状态: 适用于所有非最终状态 #}
+              {% if delivery.status not in ['已过账', '已完成', '已取消'] %}
               <a href="{{ url_for('delivery.change_delivery_status', delivery_id=delivery.delivery_note_id) }}" 
                  class="btn btn-outline-primary btn-action" title="变更状态">
                 <i class="bi bi-arrow-repeat"></i>
               </a>
+              {% endif %}
+              
+              {# 取消: 仅适用于'已创建'或'待拣货'状态 #}
+              {% if delivery.status in ['已创建', '待拣货'] %}
               <a href="{{ url_for('delivery.cancel_delivery', delivery_id=delivery.delivery_note_id) }}" 
                  class="btn btn-outline-danger btn-action" title="取消">
                 <i class="bi bi-x-circle"></i>
               </a>
               {% endif %}
               
+              {# 已过账状态显示禁用按钮 #}
               {% if delivery.status == '已过账' %}
               <button type="button" class="btn btn-outline-secondary btn-action" 
                       title="已过账" disabled>
                 <i class="bi bi-check-circle-fill"></i>
+              </button>
+              {% endif %}
+              
+              {# 已完成状态显示禁用按钮 #}
+              {% if delivery.status == '已完成' %}
+              <button type="button" class="btn btn-outline-light btn-action" 
+                      title="已完成" disabled>
+                <i class="bi bi-check2-all"></i>
               </button>
               {% endif %}
             </div>
@@ -199,7 +230,7 @@
   <div class="alert alert-info alert-dismissible fade show" role="alert">
     <i class="bi bi-info-circle me-2"></i>
     <strong>操作提示：</strong>
-    点击发货单号可查看详情；状态为"已创建"或"已拣货"的发货单可以编辑和过账；已过账的发货单不可修改。
+    点击发货单号可查看详情；状态为"已创建"或"待拣货"的发货单可以编辑；状态为"已拣货"或"已发货"的发货单可以过账；已过账的发货单不可修改。
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
 </div>
