@@ -3,6 +3,18 @@
 
 {% block head_extra %}
 <link rel="stylesheet" href="{{ url_for('static', filename='delivery/delivery_styles.css') }}">
+<style>
+      /* 表格所有单元格不换行 */
+      .delivery-table th,
+      .delivery-table td {
+        white-space: nowrap;   /* 禁止自动换行 */
+        vertical-align: middle; /* 让内容垂直居中，可选 */
+      }
+
+      .delivery-card {
+        width: 100%;
+      }
+</style>
 {% endblock %}
 
 {% block content %}

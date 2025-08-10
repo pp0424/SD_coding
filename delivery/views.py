@@ -378,7 +378,11 @@ def pick_delivery(delivery_id):
                     .with_for_update()
                     .first())
         
-        # 执行状态转换
+        # 先过渡到待拣货状态
+        delivery.status = '待拣货'
+        db.session.flush()
+        
+        # 再执行状态转换到已拣货
         delivery.change_status('已拣货')
         
         # 更新操作信息
@@ -930,19 +934,26 @@ def change_delivery_status(delivery_id):
     
     return render_template('delivery/change_status.html', form=form, delivery=delivery)
 
+# imports（新增）
+from decimal import Decimal
+from sqlalchemy import text
+from sqlalchemy.orm import joinedload
+
 @delivery_bp.get('/api/sales_orders/<sales_order_id>')
 @login_required
 def api_sales_order_items(sales_order_id):
     try:
-        # Verify database connection
-        db.session.execute('SELECT 1')
-        
-        # Get sales order with items
-        so = (db.session.query(SalesOrder)
-              .options(db.joinedload(SalesOrder.items))
-              .filter_by(sales_order_id=sales_order_id.strip())
-              .first())
-        
+        # 可选：数据库连通性检查（SQLAlchemy 2.0 需要 text()）
+        db.session.execute(text('SELECT 1'))
+
+        # joinedload 使用 sqlalchemy.orm.joinedload
+        so = (
+            db.session.query(SalesOrder)
+            .options(joinedload(SalesOrder.items))
+            .filter(SalesOrder.sales_order_id == sales_order_id.strip())
+            .first()
+        )
+
         if not so:
             current_app.logger.info(f"Sales order {sales_order_id} not found")
             return jsonify({'found': False, 'items': []}), 200
@@ -955,43 +966,49 @@ def api_sales_order_items(sales_order_id):
                 unshipped = ordered - shipped
                 if unshipped <= 0:
                     continue
-                
-                material_desc = ''
-                if oi.material_id:
-                    material = Material.query.get(oi.material_id)
-                    if material:
-                        material_desc = material.description or ''
+
+                # 确保 material 总是已定义
+                material = None
+                if getattr(oi, 'material_id', None):
+                    # Flask‑SQLAlchemy 3.x 推荐 session.get；老版本用 Material.query.get 也可
+                    material = db.session.get(Material, oi.material_id)
+
+                base_unit = (material.base_unit if material else (oi.unit or ''))
+                storage_location = (material.storage_location if material else '未知')
+                material_desc = (material.description if material else '') or ''
 
                 items.append({
                     'sales_order_item_no': oi.item_no,
                     'material_id': oi.material_id,
                     'material_desc': material_desc,
-                    'base_unit': material.base_unit if material else oi.unit or '',
-                    'storage_location': material.storage_location if material else '未知',
+                    'base_unit': base_unit,
+                    'storage_location': storage_location,
                     'unit': oi.unit or '',
                     'order_quantity': str(ordered),
                     'unshipped_quantity': str(unshipped),
-                    'planned_delivery_quantity': str(unshipped)
+                    'planned_delivery_quantity': str(unshipped),
                 })
             except Exception as item_error:
-                current_app.logger.error(f"Error processing item {oi.item_no}: {str(item_error)}")
+                current_app.logger.error(
+                    f"Error processing item {getattr(oi, 'item_no', '?')}: {item_error}",
+                    exc_info=True
+                )
 
         return jsonify({
             'found': True,
             'items': items,
-            'order_status': so.status if so else None
+            'order_status': so.status
         }), 200
 
     except SQLAlchemyError as db_error:
-        current_app.logger.error(f"Database error: {str(db_error)}", exc_info=True)
+        current_app.logger.error(f"Database error: {db_error}", exc_info=True)
         return jsonify({
             'error': 'Database error',
             'details': str(db_error)
         }), 500
     except Exception as e:
-        current_app.logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+        current_app.logger.error(f"Unexpected error: {e}", exc_info=True)
         return jsonify({
             'error': 'Internal server error',
-            'details': str(e),
-            'stacktrace': traceback.format_exc()
+            'details': str(e)
         }), 500

@@ -292,12 +292,20 @@
       soLoading.style.display = '';
       const res = await fetch(`/delivery/api/sales_orders/${encodeURIComponent(so)}`);
       
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        console.error('API Error:', errorData);
-        alert(`加载销售订单失败: ${errorData.error || '未知错误'}`);
-        return;
+    if (!res.ok) {
+      const raw = await res.text();
+      let msg = '';
+      try {
+        const err = JSON.parse(raw);
+        msg = err.error || err.details || res.statusText;
+      } catch {
+        msg = raw?.slice(0, 200) || res.statusText;
       }
+      console.error('API Error:', msg);
+      alert(`加载销售订单失败: ${msg}`);
+      return;
+    }
+
       
       const data = await res.json();
       if (data && data.found) {
