@@ -1,127 +1,159 @@
-{% extends "delivery/base.html" %}
-{% block title %}库存变动查询{% endblock %}
+{% extends 'delivery/base.html' %}
+{% block title %}库存变动{% endblock %}
+
+{% block head_extra %}
+<style>
+  h3.page-title {
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: #0d6efd;
+    margin-bottom: 1.5rem;
+  }
+
+  .form-label {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #334155;
+    margin-bottom: 0.4rem;
+    }
+
+  .form-control {
+    font-size: 0.85rem;
+    border-radius: 8px;
+  }
+
+  .btn-primary {
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(13,110,253,0.2);
+  }
+
+  .table-sm thead th {
+    background-color: #f5f9ff;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #334;
+    border-bottom: 1px solid #dee2e6;
+  }
+
+  .table-sm td {
+    font-size: 0.85rem;
+    vertical-align: middle;
+  }
+
+  .table-sm tbody tr:hover {
+    background-color: #f8fbff;
+    transition: background-color 0.2s ease;
+  }
+
+  .text-success, .text-danger {
+    font-weight: bold;
+  }
+
+  .pagination .page-link {
+    border-radius: 6px;
+    font-size: 0.85rem;
+  }
+
+  .pagination .active .page-link {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: #fff;
+  }
+
+  .card {
+    border-radius: 14px;
+    background: linear-gradient(135deg, #fff, #f4f8fc);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.05);
+    padding: 24px;
+  }
+
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="card">
-    <div class="card-header bg-primary text-white">
-        <h4 class="mb-0">库存变动查询</h4>
-    </div>
-    <div class="card-body">
-        <form method="GET">
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <label class="form-label">物料编号</label>
-                    <input type="text" class="form-control" name="material_id" value="{{ request.args.get('material_id', '') }}">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">开始日期</label>
-                    <input type="date" class="form-control" name="start_date" value="{{ request.args.get('start_date', '') }}">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">结束日期</label>
-                    <input type="date" class="form-control" name="end_date" value="{{ request.args.get('end_date', '') }}">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">发货单编号</label>
-                    <input type="text" class="form-control" name="delivery_id" value="{{ request.args.get('delivery_id', '') }}">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">仓库代码</label>
-                    <input type="text" class="form-control" name="warehouse_code" value="{{ request.args.get('warehouse_code', '') }}">
-                </div>
-                <div class="col-md-12 d-flex justify-content-end mt-3">
-                    <button type="submit" class="btn btn-primary me-2">
-                        <i class="bi bi-search"></i> 查询
-                    </button>
-                    <a href="{{ url_for('delivery.stock_changes') }}" class="btn btn-secondary">
-                        <i class="bi bi-arrow-clockwise"></i> 重置
-                    </a>
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
+<div class="form-title-container">
+    <h1 class="form-title">
+      📊 库存变动查询
+    </h1>
+  </div>
 
-<div class="card">
-    <div class="card-header bg-info text-white">
-        <h4 class="mb-0">库存变动记录</h4>
+<div class="container mt-4">
+  <form method="get" class="row g-3 align-items-end mb-4">
+    <div class="col-md-2">
+      <label class="form-label">物料编号</label>
+      <input class="form-control" type="text" name="material_id" value="{{ request.args.get('material_id','') }}">
     </div>
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-hover table-striped">
-                <thead class="table-light">
-                    <tr>
-                        <th>变动时间</th>
-                        <th>物料编号</th>
-                        <th>物料描述</th>
-                        <th>变动类型</th>
-                        <th>变动数量</th>
-                        <th>变动前库存</th>
-                        <th>变动后库存</th>
-                        <th>关联发货单</th>
-                        <th>仓库</th>
-                        <th>操作人</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for change in changes %}
-                    <tr>
-                        <td>{{ change.change_time.strftime('%Y-%m-%d %H:%M') }}</td>
-                        <td>{{ change.material_id }}</td>
-                        <td>{{ change.material.description }}</td>
-                        <td>{{ change.change_type }}</td>
-                        <td class="{{ 'text-danger' if change.quantity_change < 0 else 'text-success' }}">
-                            {{ change.quantity_change }}
-                        </td>
-                        <td>{{ change.before_quantity }}</td>
-                        <td>{{ change.after_quantity }}</td>
-                        <td>
-                            {% if change.reference_doc %}
-                            <a href="{{ url_for('delivery.delivery_detail', delivery_id=change.reference_doc) }}">
-                                {{ change.reference_doc }}
-                            </a>
-                            {% else %}
-                            -
-                            {% endif %}
-                        </td>
-                        <td>{{ change.warehouse_code }}</td>
-                        <td>{{ change.operator }}</td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="10" class="text-center">没有找到库存变动记录</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        
-        <div class="d-flex justify-content-between align-items-center mt-4">
-            <div>共 {{ changes|length }} 条记录</div>
-            <nav>
-                <ul class="pagination">
-                    <li class="page-item {{ 'disabled' if page == 1 }}">
-                        <a class="page-link" href="{{ url_for('delivery.stock_changes', page=page-1, **request.args) }}">
-                            上一页
-                        </a>
-                    </li>
-                    
-                    {% for p in range(1, total_pages+1) %}
-                    <li class="page-item {{ 'active' if p == page }}">
-                        <a class="page-link" href="{{ url_for('delivery.stock_changes', page=p, **request.args) }}">
-                            {{ p }}
-                        </a>
-                    </li>
-                    {% endfor %}
-                    
-                    <li class="page-item {{ 'disabled' if page == total_pages }}">
-                        <a class="page-link" href="{{ url_for('delivery.stock_changes', page=page+1, **request.args) }}">
-                            下一页
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-        </div>
+    <div class="col-md-2">
+      <label class="form-label">发货单号</label>
+      <input class="form-control" type="text" name="delivery_id" value="{{ request.args.get('delivery_id','') }}">
     </div>
+    <div class="col-md-2">
+      <label class="form-label">仓库</label>
+      <input class="form-control" type="text" name="warehouse_code" value="{{ request.args.get('warehouse_code','') }}">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">起始日期</label>
+      <input class="form-control" type="date" name="start_date" value="{{ request.args.get('start_date','') }}">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">结束日期</label>
+      <input class="form-control" type="date" name="end_date" value="{{ request.args.get('end_date','') }}">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label d-block">&nbsp;</label>
+      <button class="btn btn-primary w-100"><i class="bi bi-search"></i> 查询</button>
+    </div>
+  </form>
+
+  <div class="card shadow-sm mb-4">
+    <div class="table-responsive">
+      <table class="table table-hover table-sm align-middle">
+        <thead>
+          <tr>
+            <th>时间</th>
+            <th>物料</th>
+            <th>仓库</th>
+            <th>变动前</th>
+            <th>变动数量</th>
+            <th>变动后</th>
+            <th>发货单</th>
+            <th>类型</th>
+            <th>操作人</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in changes %}
+          <tr>
+            <td>{{ m.change_time.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+            <td>{{ m.material_id }}</td>
+            <td>{{ m.warehouse_code }}</td>
+            <td>{{ m.before_quantity }}</td>
+            <td class="{% if m.quantity_change < 0 %}text-danger{% else %}text-success{% endif %}">{{ m.quantity_change }}</td>
+            <td>{{ m.after_quantity }}</td>
+            <td>{{ m.reference_doc or '-' }}</td>
+            <td>{{ m.change_type }}</td>
+            <td>{{ m.operator }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="9" class="text-center text-muted">
+              <i class="bi bi-info-circle"></i> 无记录
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <nav aria-label="pager">
+    <ul class="pagination justify-content-center">
+      {% for p in range(1, total_pages+1) %}
+        <li class="page-item {% if p == page %}active{% endif %}">
+          <a class="page-link" href="?page={{ p }}&{{ request.query_string.decode('utf-8')|replace('page=' ~ page, 'page=' ~ p) }}">{{ p }}</a>
+        </li>
+      {% endfor %}
+    </ul>
+  </nav>
 </div>
 {% endblock %}

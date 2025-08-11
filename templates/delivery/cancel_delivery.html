@@ -1,0 +1,57 @@
+{% extends 'delivery/base.html' %}
+{% block title %}取消发货单{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="card border-0 shadow-sm">
+    <div class="card-header text-white text-center" style="background: linear-gradient(135deg, #dc3545, #ff6b6b); border-radius: 0.5rem 0.5rem 0 0;">
+      <h4 class="mb-0 text-center">
+        🗑️ 取消发货单
+      </h4>
+    </div>
+    <div class="card-body">
+      <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <strong>警告：</strong>取消发货单是不可逆操作，请谨慎操作！
+      </div>
+      
+      <div class="delivery-info mb-4">
+        <h5>发货单信息</h5>
+        <ul class="list-group">
+          <li class="list-group-item">
+            <strong>发货单号：</strong> {{ delivery.delivery_note_id }}
+          </li>
+          <li class="list-group-item">
+            <strong>销售订单：</strong> {{ delivery.sales_order_id }}
+          </li>
+          <li class="list-group-item">
+            <strong>当前状态：</strong> 
+            <span class="badge bg-warning">{{ delivery.status }}</span>
+          </li>
+          <li class="list-group-item">
+            <strong>计划发货日期：</strong> 
+            {{ delivery.delivery_date.strftime('%Y-%m-%d') if delivery.delivery_date else '-' }}
+          </li>
+        </ul>
+      </div>
+      
+      <form method="post">
+        {{ form.csrf_token }}
+        <div class="mb-3">
+          {{ form.cancel_reason.label(class="form-label fw-bold") }}
+          {{ form.cancel_reason(class="form-control", rows=4, placeholder="请输入取消原因") }}
+          <small class="form-text text-muted">请详细说明取消原因，以便后续追踪</small>
+        </div>
+        
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+          <a href="{{ url_for('delivery.delivery_detail', delivery_id=delivery.delivery_note_id) }}" 
+             class="btn btn-secondary me-md-2">
+            <i class="bi bi-arrow-left me-1"></i> 返回详情
+          </a>
+          {{ form.submit(class="btn btn-danger") }}
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

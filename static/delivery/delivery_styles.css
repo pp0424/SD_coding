@@ -1,0 +1,204 @@
+/* 基础卡片样式 */
+.delivery-card {
+    border-radius: 16px;
+    background: linear-gradient(135deg, #ffffff, #f8fafc);
+    box-shadow: 0 8px 24px rgba(23, 43, 77, 0.08);
+    padding: 28px;
+    margin-bottom: 24px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.delivery-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(23, 43, 77, 0.12);
+}
+
+/* 查询表单样式 */
+.query-form .form-label {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #334155;
+    margin-bottom: 0.4rem;
+}
+
+.query-form .form-control,
+.query-form .form-select {
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    font-size: 0.95rem;
+    padding: 0.6rem 0.8rem;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.query-form .form-control:focus,
+.query-form .form-select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+}
+
+/* 按钮样式 */
+.btn-delivery {
+    border-radius: 10px;
+    font-weight: 600;
+    padding: 0.6rem 1.2rem;
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.btn-search {
+    background: linear-gradient(90deg, #2563eb, #3b82f6);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.25);
+}
+
+.btn-search:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(37, 99, 235, 0.35);
+}
+
+.btn-action {
+    border-radius: 8px;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-action i {
+    margin-right: 4px;
+}
+
+/* 表格样式 */
+.delivery-table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.delivery-table thead th {
+    background: linear-gradient(to bottom, #f8fafc, #f1f5f9);
+    border-bottom: 2px solid #e2e8f0;
+    font-weight: 700;
+    color: #334155;
+    padding: 1rem;
+    position: sticky;
+    top: 0;
+}
+
+.delivery-table tbody td {
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.delivery-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.delivery-table tbody tr:hover {
+    background-color: rgba(59, 130, 246, 0.04);
+}
+
+/* 状态标签 */
+.status-badge {
+    font-size: 0.85rem;
+    padding: 0.35rem 0.7rem;
+    border-radius: 8px;
+    font-weight: 600;
+    display: inline-block;
+    min-width: 80px;
+    text-align: center;
+}
+
+.status-已创建 { 
+    background-color: #fffbeb; 
+    color: #d97706;
+    border: 1px solid #fcd34d;
+}
+
+.status-已拣货 { 
+    background-color: #ecfeff; 
+    color: #0e7490;
+    border: 1px solid #67e8f9;
+}
+
+.status-已过账 { 
+    background-color: #f0fdf4; 
+    color: #15803d;
+    border: 1px solid #86efac;
+}
+
+.status-已取消 { 
+    background-color: #fef2f2; 
+    color: #b91c1c;
+    border: 1px solid #fca5a5;
+}
+
+/* 空状态 */
+.empty-state {
+    padding: 3rem 0;
+    text-align: center;
+    background-color: rgba(241, 245, 249, 0.5);
+    border-radius: 0 0 14px 14px;
+}
+
+.empty-state i {
+    font-size: 3.5rem;
+    color: #cbd5e1;
+    margin-bottom: 1.5rem;
+}
+
+/* 加载动画 */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade {
+    animation: fadeIn 0.5s ease forwards;
+}
+
+/* 响应式优化 */
+@media (max-width: 992px) {
+    .delivery-card {
+        padding: 20px;
+    }
+    
+    .delivery-table thead th,
+    .delivery-table tbody td {
+        padding: 0.8rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .query-form .col-md-2 {
+        margin-bottom: 1.2rem;
+    }
+    
+    .toolbar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .delivery-table {
+        font-size: 0.9rem;
+    }
+    
+    .btn-action {
+        margin-bottom: 0.3rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .delivery-card {
+        padding: 16px;
+        border-radius: 12px;
+    }
+    
+    .status-badge {
+        font-size: 0.8rem;
+        padding: 0.3rem 0.5rem;
+        min-width: 70px;
+    }
+}

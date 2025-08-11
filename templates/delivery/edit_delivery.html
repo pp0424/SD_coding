@@ -1,53 +1,78 @@
 {% extends "delivery/base.html" %}
-{% load static %}
 
 {% block content %}
+<div class="form-title-container">
+    <h1 class="form-title">
+      ✏️ 编辑发货单: {{ delivery.delivery_note_id }}
+    </h1>
+  </div>
+
 <div class="container mt-4">
-    <h2 class="mb-4">编辑发货单: {{ delivery_note.delivery_note_id }}</h2>
-    
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-info text-white">
-            <h5 class="mb-0">基本信息</h5>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <div class="card mb-4">
+            <div class="card-header">抬头信息</div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            {{ form.expected_delivery_date.label(class="form-label") }}
+                            {{ form.expected_delivery_date(class="form-control") }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            {{ form.warehouse_code.label(class="form-label") }}
+                            {{ form.warehouse_code(class="form-control") }}
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    {{ form.remarks.label(class="form-label") }}
+                    {{ form.remarks(class="form-control", rows=3) }}
+                </div>
+            </div>
         </div>
-        <div class="card-body">
-            <form method="post">
-                {% csrf_token %}
-                {{ form.as_p }}
-                
-                <hr>
-                <h5 class="mb-3">发货行项</h5>
-                
-                {{ formset.management_form }}
+
+        <div class="card mb-4">
+            <div class="card-header">行项目</div>
+            <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead class="thead-light">
+                    <table class="table table-bordered">
+                        <thead class="table-light">
                             <tr>
                                 <th>物料编号</th>
                                 <th>物料描述</th>
-                                <th>计划数量</th>
-                                <th>订单未发货数量</th>
-                                <th>调整后数量</th>
+                                <th>计划发货数量</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for form in formset %}
+                            {% for item_form in item_forms %}
                             <tr>
-                                <td>{{ form.instance.material.material_id }}</td>
-                                <td>{{ form.instance.material.description }}</td>
-                                <td>{{ form.instance.planned_delivery_quantity }}</td>
-                                <td>{{ form.instance.sales_order_item.unshipped_quantity }}</td>
-                                <td>{{ form.planned_delivery_quantity }}</td>
+                                <td>{{ delivery.items[loop.index0].material_id }}</td>
+                                <td>{{ delivery.items[loop.index0].material.description }}</td>
+                                <td>
+                                    {{ item_form.hidden_tag() }}
+                                    {{ item_form.planned_delivery_quantity(class="form-control") }}
+                                    {% if item_form.planned_delivery_quantity.errors %}
+                                        <div class="invalid-feedback" style="display: block;">
+                                            {{ item_form.planned_delivery_quantity.errors[0] }}
+                                        </div>
+                                    {% endif %}
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
-                
-                <button type="submit" class="btn btn-primary mt-3">保存修改</button>
-                <a href="{% url 'post_delivery' delivery_note.delivery_note_id %}" 
-                   class="btn btn-success mt-3 ml-2">执行过账</a>
-            </form>
+            </div>
         </div>
-    </div>
+
+        <div class="d-flex justify-content-between">
+            <a href="{{ url_for('delivery.delivery_detail', delivery_id=delivery.delivery_note_id) }}" 
+               class="btn btn-secondary">取消</a>
+            <button type="submit" class="btn btn-primary">保存更改</button>
+        </div>
+    </form>
 </div>
 {% endblock %}

@@ -1,0 +1,63 @@
+{% extends 'delivery/base.html' %}
+{% block title %}变更发货单状态{% endblock %}
+
+{% block content %}
+<div class="form-title-container">
+    <h1 class="form-title">
+      💬 变更发货单状态
+    </h1>
+  </div>
+
+<div class="container mt-4">
+  <div class="card border-0 shadow-sm">
+    <div class="card-body">
+      <div class="alert alert-info">
+        <i class="bi bi-info-circle me-2"></i>
+        <strong>注意：</strong>发货单状态只能在"已创建"和"已拣货"之间切换
+      </div>
+      
+      <div class="delivery-info mb-4">
+        <h5>发货单信息</h5>
+        <ul class="list-group">
+          <li class="list-group-item">
+            <strong>发货单号：</strong> {{ delivery.delivery_note_id }}
+          </li>
+          <li class="list-group-item">
+            <strong>销售订单：</strong> {{ delivery.sales_order_id }}
+          </li>
+          <li class="list-group-item">
+            <strong>当前状态：</strong> 
+            <span class="badge bg-info">{{ delivery.status }}</span>
+          </li>
+          <li class="list-group-item">
+            <strong>计划发货日期：</strong> 
+            {{ delivery.delivery_date.strftime('%Y-%m-%d') if delivery.delivery_date else '-' }}
+          </li>
+        </ul>
+      </div>
+      
+      <form method="post">
+        {{ form.csrf_token }}
+        <div class="mb-3">
+          {{ form.new_status.label(class="form-label fw-bold") }}
+          {{ form.new_status(class="form-select") }}
+        </div>
+        
+        <div class="mb-3">
+          {{ form.remarks.label(class="form-label fw-bold") }}
+          {{ form.remarks(class="form-control", rows=3, placeholder="状态变更备注（可选）") }}
+          <small class="form-text text-muted">请简要说明状态变更的原因</small>
+        </div>
+        
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+          <a href="{{ url_for('delivery.delivery_detail', delivery_id=delivery.delivery_note_id) }}" 
+             class="btn btn-secondary me-md-2">
+            <i class="bi bi-arrow-left me-1"></i> 返回详情
+          </a>
+          {{ form.submit(class="btn btn-primary") }}
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

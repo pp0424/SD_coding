@@ -1,84 +1,143 @@
-{% extends "delivery/base.html" %}
-{% block title %}发货单详情 - {{ delivery.delivery_note_id }}{% endblock %}
+{% extends 'delivery/base.html' %}
+{% block title %}发货详情{% endblock %}
+
+{% block head_extra %}
+<style>
+  .card-detail {
+    border-radius: 14px;
+    background: linear-gradient(180deg, #ffffff, #f9fbff);
+    box-shadow: 0 6px 20px rgba(34, 34, 34, 0.04);
+    padding: 24px;
+    margin-top: 1rem;
+  }
+
+  .card-detail h3 {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  .delivery-meta {
+    font-size: 0.95rem;
+    color: #556;
+    margin-bottom: 0.5rem;
+  }
+
+  .delivery-meta .badge {
+    font-size: 0.85rem;
+    padding: 0.4em 0.6em;
+  }
+
+  .delivery-remarks {
+    background-color: #f8fbff;
+    border-left: 4px solid var(--brand-1);
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: #223;
+    margin-bottom: 1rem;
+  }
+
+  .table th {
+    background-color: #f1f6ff;
+    font-weight: 600;
+    color: #334;
+    border-bottom: 1px solid rgba(34, 34, 34, 0.08);
+  }
+
+  .table td {
+    vertical-align: middle;
+  }
+
+  .table tbody tr:nth-child(odd) {
+    background-color: #fcfcfe;
+  }
+
+  .table tfoot td {
+    background-color: #f7faff;
+    font-weight: 600;
+  }
+
+  .btn-toolbar a {
+    margin-right: 0.5rem;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="card">
-    <div class="card-header bg-info text-white d-flex justify-content-between">
-        <h4 class="mb-0">发货单详情: {{ delivery.delivery_note_id }}</h4>
-        <div>
-            <span class="status-badge status-{{ delivery.status|lower }}">{{ delivery.status }}</span>
-        </div>
+<div class="form-title-container">
+    <h1 class="form-title">
+      🧾 发货单 #{{ delivery.delivery_note_id }}
+    </h1>
+  </div>
+  
+<div class="card-detail">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="btn-toolbar">
+      {% if delivery.status == '已创建' %}
+        <a href="{{ url_for('delivery.edit_delivery', delivery_id=delivery.delivery_note_id) }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i> 编辑</a>
+        <a href="{{ url_for('delivery.pick_delivery', delivery_id=delivery.delivery_note_id) }}" class="btn btn-warning btn-sm"><i class="bi bi-box-seam"></i> 拣货</a>
+        <a href="{{ url_for('delivery.cancel_delivery', delivery_id=delivery.delivery_note_id) }}" class="btn btn-outline-danger btn-sm"><i class="bi bi-x-circle"></i> 取消</a>
+      {% elif delivery.status == '已拣货' %}
+        <a href="{{ url_for('delivery.post_delivery', delivery_id=delivery.delivery_note_id) }}" class="btn btn-success btn-sm"><i class="bi bi-check2-circle"></i> 过账</a>
+        <a href="{{ url_for('delivery.cancel_delivery', delivery_id=delivery.delivery_note_id) }}" class="btn btn-outline-danger btn-sm"><i class="bi bi-x-circle"></i> 取消</a>
+      {% elif delivery.status == '待发货' %}
+        <a href="{{ url_for('delivery.ship_delivery', delivery_id=delivery.delivery_note_id) }}" class="btn btn-info btn-sm"><i class="bi bi-truck"></i> 发货</a>
+      {% endif %}
+      <a href="{{ url_for('delivery.delivery_list') }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-arrow-return-left"></i> 返回列表</a>
     </div>
-    <div class="card-body">
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <div class="mb-3">
-                    <strong>销售订单:</strong> {{ delivery.sales_order_id }}
-                </div>
-                <div class="mb-3">
-                    <strong>预计发货日期:</strong> {{ delivery.delivery_date.strftime('%Y-%m-%d') }}
-                </div>
-                <div class="mb-3">
-                    <strong>仓库代码:</strong> {{ delivery.warehouse_code }}
-                </div>
-            </div>
-            <div class="col-md-6">
-                {% if delivery.status == '已过账' %}
-                <div class="mb-3">
-                    <strong>过账人:</strong> {{ delivery.posted_by }}
-                </div>
-                <div class="mb-3">
-                    <strong>过账时间:</strong> {{ delivery.posted_at.strftime('%Y-%m-%d %H:%M') }}
-                </div>
-                {% endif %}
-                <div class="mb-3">
-                    <strong>备注:</strong> {{ delivery.remarks or '无' }}
-                </div>
-            </div>
-        </div>
-        
-        <h5 class="mb-3">发货行项</h5>
-        <div class="table-responsive">
-            <table class="table table-bordered table-striped">
-                <thead class="table-light">
-                    <tr>
-                        <th>#</th>
-                        <th>物料编号</th>
-                        <th>物料描述</th>
-                        <th>单位</th>
-                        <th>计划数量</th>
-                        <th>实际数量</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in delivery.items %}
-                    <tr>
-                        <td>{{ item.item_no }}</td>
-                        <td>{{ item.material_id }}</td>
-                        <td>{{ item.material.description }}</td>
-                        <td>{{ item.unit }}</td>
-                        <td>{{ item.planned_delivery_quantity }}</td>
-                        <td>{{ item.actual_delivery_quantity }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        
-        <div class="d-flex justify-content-end mt-4">
-            {% if delivery.status == '已创建' %}
-            <a href="{{ url_for('delivery.edit_delivery', delivery_id=delivery.delivery_note_id) }}" 
-               class="btn btn-warning me-2">
-                <i class="bi bi-pencil"></i> 修改
-            </a>
-            <a href="{{ url_for('delivery.post_delivery', delivery_id=delivery.delivery_note_id) }}" 
-               class="btn btn-success me-2">
-                <i class="bi bi-check-circle"></i> 执行过账
-            </a>
-            {% endif %}
-            <a href="{{ url_for('delivery.delivery_list') }}" class="btn btn-secondary">
-                <i class="bi bi-arrow-left"></i> 返回列表
-            </a>
-        </div>
-    </div>
+  </div>
+
+  <div class="delivery-meta">
+    <span><i class="bi bi-file-earmark-text"></i> 销售订单：<strong>{{ delivery.sales_order_id }}</strong></span> |
+    <span><i class="bi bi-geo-alt"></i> 仓库：{{ delivery.warehouse_code }}</span> |
+    <span><i class="bi bi-calendar"></i> 发货日期：{{ delivery.delivery_date.strftime('%Y-%m-%d') }}</span> |
+    <span>状态：
+      {% if delivery.status == '已过账' %}
+        <span class="badge bg-success">已过账</span>
+      {% elif delivery.status == '已创建' %}
+        <span class="badge bg-primary">已创建</span>
+      {% elif delivery.status == '已拣货' %}
+        <span class="badge bg-warning">已拣货</span>
+      {% elif delivery.status == '已取消' %}
+        <span class="badge bg-secondary">已取消</span>
+      {% else %}
+        <span class="badge bg-secondary">{{ delivery.status }}</span>
+      {% endif %}
+    </span>
+  </div>
+
+  <div class="delivery-remarks">
+    <i class="bi bi-chat-dots"></i> {{ delivery.remarks or '无备注信息' }}
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-sm table-bordered">
+      <thead>
+        <tr>
+          <th style="width:80px">行号</th>
+          <th style="min-width:140px">物料编号</th>
+          <th style="min-width:200px">物料描述</th>
+          <th style="width:120px">库存位置</th>
+          <th style="width:120px" class="text-end">计划发货</th>
+          <th style="width:120px" class="text-end">实际发货</th>
+          <th style="width:90px">单位</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for l in delivery.items %}
+        {% set material = l.material %}
+        <tr>
+          <td>{{ l.item_no }}</td>
+          <td>{{ l.material_id }}</td>
+          <td>{{ material.description if material else '' }}</td>
+          <td>{{ material.storage_location if material else '未知' }}</td>
+          <td class="text-end">{{ "%.2f"|format(l.planned_delivery_quantity or 0) }}</td>
+          <td class="text-end">{{ "%.2f"|format(l.actual_delivery_quantity or 0) }}</td>
+          <td>{{ material.base_unit if material else l.unit }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}

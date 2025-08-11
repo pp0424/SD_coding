@@ -1,70 +1,414 @@
-{% extends "delivery/base.html" %}
-{% block title %}创建发货单{% endblock %}
+{% extends 'delivery/base.html' %}
+{% block title %}新建发货单{% endblock %}
+
+{% block head_extra %}
+
+<style>
+  /* 卡片与标题增强 */
+  .card {
+    border: 1px solid rgba(34, 34, 34, 0.06);
+    border-radius: 14px;
+    overflow: hidden;
+    background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(250,252,255,0.88));
+  }
+
+  /* 输入组图标一致性 */
+  .input-group-text {
+    background: #f8fbff;
+    border-color: rgba(34,34,34,0.08);
+    color: #5b6b7a;
+  }
+  .form-control:focus {
+    box-shadow: 0 0 0 .2rem rgba(11,110,240,0.12);
+    border-color: rgba(11,110,240,0.3);
+  }
+
+  /* 表格粘性表头与细节 */
+  .table-zone {
+    border: 1px solid rgba(34,34,34,0.06);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .table-responsive.table-sticky {
+    max-height: 56vh;
+  }
+  .table-sticky thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #ffffff;
+  }
+  .table tbody tr:hover {
+    background: rgba(13,110,253,0.03);
+  }
+  .table tfoot td {
+    background: #fcfdff;
+    font-weight: 600;
+  }
+
+  /* 工具栏按钮 */
+  .toolbar .btn {
+    border-radius: 10px;
+  }
+
+  /* 数值列统一右对齐 */
+  .text-end-sm {
+    text-align: right;
+  }
+
+  /* 提交区 */
+  .card-footer {
+    background: linear-gradient(90deg,#ffffff,#f7fbff);
+    border-top: 1px solid rgba(34,34,34,0.06);
+  }
+
+  /* 小屏优化 */
+  @media (max-width: 767.98px) {
+    .table-responsive.table-sticky { max-height: 50vh; }
+  }
+
+  .form-label {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #334155;
+    margin-bottom: 0.4rem;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="card">
-    <div class="card-header bg-primary text-white">
-        <h4 class="mb-0">创建发货单</h4>
-    </div>
-    <div class="card-body">
-        <form method="POST">
-            {{ form.hidden_tag() }}
-            
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <label class="form-label">{{ form.sales_order_id.label }}</label>
-                    {{ form.sales_order_id(class="form-control") }}
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">{{ form.expected_delivery_date.label }}</label>
-                    {{ form.expected_delivery_date(class="form-control") }}
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">{{ form.warehouse_code.label }}</label>
-                    {{ form.warehouse_code(class="form-control") }}
-                </div>
-            </div>
-            
-            <div class="mb-4">
-                <h5>发货行项</h5>
-                <div class="table-responsive">
-                    <table class="table table-bordered table-striped">
-                        <thead class="table-light">
-                            <tr>
-                                <th>物料编号</th>
-                                <th>物料描述</th>
-                                <th>订单数量</th>
-                                <th>未发货数量</th>
-                                <th>计划发货数量</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item_form in form.items %}
-                            <tr>
-                                <td>
-                                    {{ item_form.material_id(class="form-control", readonly=True) }}
-                                </td>
-                                <td>{{ item_form.material_desc.data }}</td>
-                                <td>{{ item_form.order_quantity.data }}</td>
-                                <td>{{ item_form.unshipped_quantity.data }}</td>
-                                <td>
-                                    {{ item_form.planned_delivery_quantity(
-                                        class="form-control",
-                                        **{"data-max": item_form.unshipped_quantity.data}
-                                    ) }}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            
-            <div class="d-flex justify-content-end">
-                <button type="submit" class="btn btn-primary px-4">
-                    <i class="bi bi-check-lg"></i> 创建发货单
-                </button>
-            </div>
-        </form>
-    </div>
+<div class="form-title-container">
+    <h1 class="form-title">
+      📝 发货单基本信息
+    </h1>
+  </div>
+
+<div class="card shadow-sm mt-4">
+  <div class="card-body">
+    <form method="post" id="delivery-form" novalidate>
+      {{ form.csrf_token }}
+
+      <div class="row g-3">
+        <div class="col-md-4">
+          <div >{{ form.sales_order_id.label(class="form-label") }}</div>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-receipt"></i></span>
+            {{ form.sales_order_id(class="form-control", id="sales_order_id", placeholder="输入销售订单编号") }}
+            <span class="input-group-text bg-white" id="so-loading" style="display:none">
+              <span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span>
+            </span>
+          </div>
+        </div>
+        <div class="col-md-4">
+          {{ form.expected_delivery_date.label(class="form-label") }}
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
+            {{ form.expected_delivery_date(class="form-control", type="date") }}
+          </div>
+        </div>
+        <div class="col-md-4">
+          {{ form.warehouse_code.label(class="form-label") }}
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+            {{ form.warehouse_code(class="form-control", placeholder="选择或输入仓库代码") }}
+          </div>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-outline-soft btn-sm" id="btn-fill-unshipped">
+            <i class="bi bi-arrow-right-square"></i> 填充未发为计划
+          </button>
+          <button type="button" class="btn btn-outline-soft btn-sm" id="btn-clear-plan">
+            <i class="bi bi-eraser"></i> 清空计划
+          </button>
+        </div>
+        <div class="text-muted small">
+          小提示：计划发货 ≤ 未发数量；可用 Tab/Enter 快速录入
+        </div>
+      </div>
+
+      <!-- 表格区域 -->
+      <div class="table-zone mt-3">
+        <div class="table-responsive table-sticky">
+          <table class="table table-sm table-bordered align-middle mb-0">
+            <thead>
+              <tr>
+                <th style="width:80px">行号</th>
+                <th style="min-width:140px">物料编号</th>
+                <th style="min-width:200px">物料描述</th>
+                <th style="width:90px">单位</th>
+                <th style="min-width:120px">库存位置</th>
+                <th class="text-end" style="width:120px">订单数量</th>
+                <th class="text-end" style="width:120px">未发数量</th>
+                <th class="text-end" style="width:140px">计划发货</th>
+              </tr>
+            </thead>
+            <tbody id="items-tbody">
+              {% for item_form in form.items %}
+              <tr>
+                <td>
+                  {{ item_form.sales_order_item_no(class="d-none") }}
+                  <span class="form-text">{{ item_form.sales_order_item_no.data }}</span>
+                </td>
+                <td>{{ item_form.material_id(class="form-control form-control-sm", readonly=true) }}</td>
+                <td>{{ item_form.material_desc(class="form-control form-control-sm", readonly=true) }}</td>
+                <td>
+                  <input type="text"
+                         class="form-control form-control-sm"
+                         value="{{ item_form.base_unit.data if item_form.base_unit else (item_form.unit.data if item_form.unit else '') }}"
+                         readonly>
+                </td>
+                <td>
+                  <input type="text"
+                         class="form-control form-control-sm"
+                         value="{{ item_form.storage_location.data if item_form.storage_location else '未知' }}"
+                         readonly>
+                </td>
+                <td>
+                  {{ item_form.order_quantity(class="form-control form-control-sm text-end", readonly=true) }}
+                </td>
+                <td>
+                  {{ item_form.unshipped_quantity(class="form-control form-control-sm text-end", readonly=true) }}
+                </td>
+                <td>
+                  {{ item_form.planned_delivery_quantity(
+                       class="form-control form-control-sm text-end planned-input",
+                       step="0.01", min="0",
+                       data_unshipped=item_form.unshipped_quantity.data if item_form.unshipped_quantity else 0) }}
+                  <div class="invalid-feedback">计划发货不能超过未发数量</div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="7" class="text-end">合计计划发货：</td>
+                <td class="text-end"><span id="total-planned">0</span></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div class="card-footer d-flex flex-wrap gap-2 justify-content-between align-items-center">
+        <div class="text-muted small">
+          校验：若存在红框字段，请按提示修正后再提交
+        </div>
+        <div>
+          {{ form.submit(class="btn btn-primary me-2", id="submit-btn") }}
+          <a href="{{ url_for('delivery.delivery_home') }}" class="btn btn-outline-secondary">取消</a>
+        </div>
+      </div>
+    </form>
+  </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // 防抖
+  function debounce(fn, delay) {
+    let timer = null;
+    return function(...args) {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn.apply(this, args), delay);
+    };
+  }
+
+  const soInput = document.getElementById('sales_order_id');
+  const tbody   = document.getElementById('items-tbody');
+  const soLoading = document.getElementById('so-loading');
+  const totalSpan = document.getElementById('total-planned');
+  const submitBtn = document.getElementById('submit-btn');
+  const formEl = document.getElementById('delivery-form');
+
+  // 构建单元格：带 invalid-feedback
+  function makeCellInput(idx, name, value, opts = {}) {
+    const { readonly=false, type='text', step, min, classes='' } = opts;
+    const td = document.createElement('td');
+
+    const inp = document.createElement('input');
+    inp.name = `items-${idx}-${name}`;
+    inp.value = value ?? '';
+    inp.type = type;
+    if (readonly) inp.readOnly = true;
+    if (step != null) inp.step = step;
+    if (min != null)  inp.min = min;
+    inp.className = `form-control form-control-sm ${classes}`.trim();
+
+    td.appendChild(inp);
+
+    // 对计划列追加 invalid-feedback 容器
+    if (name === 'planned_delivery_quantity') {
+      const fb = document.createElement('div');
+      fb.className = 'invalid-feedback';
+      fb.textContent = '计划发货不能超过未发数量';
+      td.appendChild(fb);
+    }
+    return { td, input: inp };
+  }
+
+  // 重建 items 行
+  function rebuildItems(items) {
+    tbody.innerHTML = '';
+    items.forEach((it, idx) => {
+      const tr = document.createElement('tr');
+
+      // 行号 + hidden
+      const tdNo = document.createElement('td');
+      const hid = document.createElement('input');
+      hid.name  = `items-${idx}-sales_order_item_no`;
+      hid.value = it.sales_order_item_no ?? '';
+      hid.type  = 'hidden';
+      tdNo.appendChild(hid);
+      tdNo.appendChild(document.createTextNode(it.sales_order_item_no ?? ''));
+      tr.appendChild(tdNo);
+
+      tr.appendChild(makeCellInput(idx, 'material_id', it.material_id, {readonly:true}).td);
+      tr.appendChild(makeCellInput(idx, 'material_desc', it.material_desc, {readonly:true}).td);
+      tr.appendChild(makeCellInput(idx, 'unit', it.base_unit || it.unit, {readonly:true}).td);
+      tr.appendChild(makeCellInput(idx, 'storage_location', it.storage_location || '未知', {readonly:true}).td);
+      tr.appendChild(makeCellInput(idx, 'order_quantity', it.order_quantity, {readonly:true, classes:'text-end'}).td);
+      tr.appendChild(makeCellInput(idx, 'unshipped_quantity', it.unshipped_quantity, {readonly:true, classes:'text-end'}).td);
+
+      const { td: planTd, input: planInp } = makeCellInput(
+        idx, 'planned_delivery_quantity', it.planned_delivery_quantity,
+        { type:'number', step:'0.01', min:'0', classes:'text-end planned-input' }
+      );
+      // 存储未发数量用于校验
+      planInp.dataset.unshipped = it.unshipped_quantity ?? '0';
+      tr.appendChild(planTd);
+
+      tbody.appendChild(tr);
+    });
+    attachRowBehaviors();
+    updateTotalAndValidity();
+  }
+
+  // 自动加载销售订单行
+  const autoLoad = debounce(async () => {
+    const so = soInput.value.trim();
+    if (!so) { rebuildItems([]); return; }
+    try {
+      soLoading.style.display = '';
+      const res = await fetch(`/delivery/api/sales_orders/${encodeURIComponent(so)}`);
+      
+    if (!res.ok) {
+      const raw = await res.text();
+      let msg = '';
+      try {
+        const err = JSON.parse(raw);
+        msg = err.error || err.details || res.statusText;
+      } catch {
+        msg = raw?.slice(0, 200) || res.statusText;
+      }
+      console.error('API Error:', msg);
+      alert(`加载销售订单失败: ${msg}`);
+      return;
+    }
+
+      
+      const data = await res.json();
+      if (data && data.found) {
+        rebuildItems(data.items || []);
+      } else {
+        rebuildItems([]);
+        alert('未找到该销售订单或订单无有效行项目');
+      }
+    } catch (e) {
+      console.error('Network Error:', e);
+      alert('网络错误，请检查连接后重试');
+      rebuildItems([]);
+    } finally {
+      soLoading.style.display = 'none';
+    }
+  }, 450);
+
+  soInput.addEventListener('input',  autoLoad);
+  soInput.addEventListener('blur',   autoLoad);
+
+  // 计算合计 + 校验
+  function updateTotalAndValidity() {
+    let total = 0;
+    let allValid = true;
+    const inputs = tbody.querySelectorAll('.planned-input');
+    inputs.forEach(inp => {
+      const val = parseFloat(inp.value || '0');
+      const unshipped = parseFloat(inp.dataset.unshipped || inp.closest('tr')?.querySelector('input[name*="unshipped_quantity"]')?.value || '0');
+      const invalid = isNaN(val) || val < 0 || val > unshipped;
+      if (!isNaN(val)) total += val;
+      inp.classList.toggle('is-invalid', invalid);
+      if (invalid) allValid = false;
+    });
+    totalSpan.textContent = Number.isFinite(total) ? total.toFixed(2) : '0.00';
+    submitBtn.disabled = !allValid;
+  }
+
+  function attachRowBehaviors() {
+    const inputs = tbody.querySelectorAll('.planned-input');
+    inputs.forEach((inp, idx) => {
+      // 输入时校验与合计
+      inp.addEventListener('input', updateTotalAndValidity);
+      // Enter -> 跳到下一行
+      inp.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const next = inputs[idx + 1];
+          if (next) next.focus();
+        }
+      });
+    });
+  }
+
+  // 工具栏：填充未发为计划
+  document.getElementById('btn-fill-unshipped').addEventListener('click', () => {
+    tbody.querySelectorAll('tr').forEach(tr => {
+      const plan = tr.querySelector('.planned-input');
+      const unshipped = parseFloat(
+        plan?.dataset.unshipped ||
+        tr.querySelector('input[name*="unshipped_quantity"]')?.value || '0'
+      );
+      if (plan) {
+        plan.value = Number.isFinite(unshipped) ? unshipped : 0;
+      }
+    });
+    updateTotalAndValidity();
+  });
+
+  // 工具栏：清空计划
+  document.getElementById('btn-clear-plan').addEventListener('click', () => {
+    tbody.querySelectorAll('.planned-input').forEach(inp => inp.value = '');
+    updateTotalAndValidity();
+  });
+
+  // 初始挂载（服务器端首屏渲染的数据也参与校验）
+  window.addEventListener('DOMContentLoaded', () => {
+    // 给服务器端渲染的计划输入补充 data-unshipped
+    tbody.querySelectorAll('tr').forEach(tr => {
+      const plan = tr.querySelector('.planned-input');
+      const un = tr.querySelector('input[name*="unshipped_quantity"]');
+      if (plan && un && !plan.dataset.unshipped) {
+        plan.dataset.unshipped = un.value || '0';
+      }
+    });
+    attachRowBehaviors();
+    updateTotalAndValidity();
+  });
+
+  // 提交防重复 + 视觉反馈
+  formEl.addEventListener('submit', (e) => {
+    updateTotalAndValidity();
+    if (submitBtn.disabled) {
+      e.preventDefault();
+      return;
+    }
+    submitBtn.disabled = true;
+    const original = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>提交中…';
+    // 可选：超时回退
+    setTimeout(() => {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = original;
+    }, 12000);
+  });
+</script>
 {% endblock %}
