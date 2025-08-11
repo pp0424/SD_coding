@@ -8,6 +8,7 @@ from finance.views import bp as finance_bp
 from auth.views import auth_bp
 from auth.models import User
 from flask_login import LoginManager
+from finance.models import CustomerInvoice, InvoiceItem, CustomerPayment
 
 from flask_moment import Moment
 
@@ -23,6 +24,8 @@ app.config['SECRET_KEY'] = 'dev'
 db = db_init(app)
 
 moment = Moment(app)
+
+
 
 
 

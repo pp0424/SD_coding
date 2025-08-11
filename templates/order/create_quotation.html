@@ -50,6 +50,26 @@
 <div class="container py-5">
   <div class="main-card mx-auto" style="max-width: 1000px;">
     <h2 class="text-center mb-4">创建报价单</h2>
+    <div class="copy-section">
+      <h6>📋 从询价单复制行项信息</h6>
+      <div class="row align-items-end">
+        <div class="col-md-8">
+          <label class="form-label">输入询价单号</label>
+          <div class="inquiry-input-group">
+            <input type="text" class="form-control" id="copyInquiryId" placeholder="请输入要复制的询价单号">
+            <div class="loading-spinner" id="loadingSpinner"></div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <button type="button" class="btn btn-copy w-100" onclick="copyFromInquiry()">
+            🔄 复制询价信息
+          </button>
+        </div>
+      </div>
+      <div id="copyResult" class="mt-2" style="display: none;">
+        <small class="text-muted">复制结果将在这里显示</small>
+      </div>
+    </div>
     <form method="POST">
       <!-- 主信息 -->
       <div class="row g-3">
@@ -117,7 +137,7 @@
       <div class="mt-4 d-flex gap-3">
         <input type="hidden" name="status" value="草稿" id="statusField">
         <button type="submit" class="btn btn-highlight" onclick="document.getElementById('statusField').value='草稿'">保存草稿</button>
-        <button type="submit" class="btn btn-success" onclick="document.getElementById('statusField').value='已评审'">提交审核</button>
+        <button type="submit" class="btn btn-success" onclick="document.getElementById('statusField').value='已发送'">提交审核</button>
       </div>
     </form>
     {% with messages = get_flashed_messages() %}
@@ -146,6 +166,101 @@
       row.remove();
     }
   }
+   // 新增功能：从询价单复制信息
+  async function copyFromInquiry() {
+    const inquiryId = document.getElementById('copyInquiryId').value.trim();
+    const resultDiv = document.getElementById('copyResult');
+    const spinner = document.getElementById('loadingSpinner');
+    
+    if (!inquiryId) {
+      showResult('请输入询价单号', 'warning');
+      return;
+    }
+
+    // 显示加载状态
+    spinner.style.display = 'block';
+    resultDiv.style.display = 'none';
+
+    try {
+      const response = await fetch(`/order/api/inquiry/${inquiryId}`);
+      const result = await response.json();
+      
+      spinner.style.display = 'none';
+      
+      if (!result.success) {
+        showResult(result.message || '获取询价单信息失败', 'danger');
+        return;
+      }
+
+      const inquiry = result.data;
+      
+      // 填充主表信息
+      document.getElementById('customer_id').value = inquiry.customer_id || '';
+      document.getElementById('inquiry_id').value = inquiryId;
+      document.getElementById('salesperson_id').value = inquiry.salesperson_id || '';
+      document.getElementById('remarks').value = inquiry.remarks || '';
+
+      // 清空现有行项目（保留第一行作为模板）
+      const tbody = document.getElementById('itemTable').querySelector('tbody');
+      while (tbody.children.length > 1) {
+        tbody.removeChild(tbody.lastChild);
+      }
+
+      // 填充行项目信息
+      if (inquiry.items && inquiry.items.length > 0) {
+        inquiry.items.forEach((item, index) => {
+          let row;
+          if (index === 0) {
+            // 使用第一行
+            row = tbody.children[0];
+          } else {
+            // 创建新行
+            row = tbody.children[0].cloneNode(true);
+            tbody.appendChild(row);
+          }
+
+          // 填充数据
+          row.querySelector('input[name="item_no"]').value = item.item_no;
+          row.querySelector('input[name="material_id"]').value = item.material_id;
+          row.querySelector('input[name="quotation_quantity"]').value = item.inquiry_quantity;
+          row.querySelector('input[name="unit_price"]').value = item.expected_unit_price || '';
+          row.querySelector('input[name="discount_rate"]').value = 0;
+          row.querySelector('input[name="item_amount"]').value = '';
+          row.querySelector('input[name="unit"]').value = item.unit || '';
+          row.querySelector('input[name="inquiry_item_id"]').value = item.item_no;
+        });
+
+        showResult(`✅ 成功复制 ${inquiry.items.length} 个行项目`, 'success');
+      } else {
+        showResult('⚠️ 该询价单没有行项目信息', 'warning');
+      }
+
+    } catch (error) {
+      spinner.style.display = 'none';
+      showResult('❌ 网络错误，请稍后重试', 'danger');
+      console.error('复制询价信息失败:', error);
+    }
+  }
+
+  function showResult(message, type) {
+    const resultDiv = document.getElementById('copyResult');
+    resultDiv.style.display = 'block';
+    resultDiv.className = `mt-2 alert alert-${type}`;
+    resultDiv.innerHTML = message;
+    
+    // 3秒后自动隐藏
+    setTimeout(() => {
+      resultDiv.style.display = 'none';
+    }, 3000);
+  }
+
+  // 回车键快速复制
+  document.getElementById('copyInquiryId').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      copyFromInquiry();
+    }
+  });
 </script>
 
 </body>
