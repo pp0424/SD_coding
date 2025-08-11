@@ -8,11 +8,12 @@ from finance.views import bp as finance_bp
 from auth.views import auth_bp
 from auth.models import User
 from flask_login import LoginManager
-<<<<<<< Updated upstream
+
 from flask_moment import Moment
-=======
+
 from finance.models import CustomerInvoice, InvoiceItem, CustomerPayment
->>>>>>> Stashed changes
+
+from finance.models import CustomerInvoice, InvoiceItem, CustomerPayment
 
 
 app = Flask(__name__)
@@ -22,6 +23,8 @@ app.config['SECRET_KEY'] = 'dev'
 db = db_init(app)
 
 moment = Moment(app)
+
+
 
 
 
