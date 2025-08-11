@@ -56,6 +56,7 @@
           <option {% if not form_data.status or form_data.status == '全部' %}selected{% endif %}>全部</option>
           <option {% if form_data.status == '草稿' %}selected{% endif %}>草稿</option>
           <option {% if form_data.status == '已创建' %}selected{% endif %}>已创建</option>
+          <option {% if form_data.status == '已完成' %}selected{% endif %}>已完成</option>
         </select>
       </div>
       <div class="col-md-2">
