@@ -71,41 +71,43 @@
       </div>
     </div>
     <form method="POST">
-      <!-- 主信息 -->
-      <div class="row g-3">
-        <div class="col-md-6">
-          <label>报价单号</label>
-          <input type="text" class="form-control" name="quotation_id" required>
-        </div>
-        <div class="col-md-6">
-          <label>客户编号</label>
-          <input type="text" class="form-control" name="customer_id">
-        </div>
-        <div class="col-md-6">
-          <label>关联询价单号</label>
-          <input type="text" class="form-control" name="inquiry_id">
-        </div>
-        <div class="col-md-6">
-          <label>报价日期</label>
-          <input type="date" class="form-control" name="quotation_date">
-        </div>
-        <div class="col-md-6">
-          <label>有效期至</label>
-          <input type="date" class="form-control" name="valid_until_date">
-        </div>
-        <div class="col-md-6">
-          <label>销售人员编号</label>
-          <input type="text" class="form-control" name="salesperson_id">
-        </div>
-        <div class="col-md-6">
-          <label>总金额</label>
-          <input type="number" class="form-control" name="total_amount" step="0.01">
-        </div>
-        <div class="col-md-6">
-          <label>备注</label>
-          <input type="text" class="form-control" name="remarks">
-        </div>
-      </div>
+
+     <!-- 主信息 -->
+<div class="row g-3">
+  <div class="col-md-6">
+    <label>报价单号</label>
+    <input type="text" class="form-control" name="quotation_id" required id="quotation_id">
+  </div>
+  <div class="col-md-6">
+    <label>客户编号</label>
+    <input type="text" class="form-control" name="customer_id" id="customer_id">
+  </div>
+  <div class="col-md-6">
+    <label>关联询价单号</label>
+    <input type="text" class="form-control" name="inquiry_id" id="inquiry_id">
+  </div>
+  <div class="col-md-6">
+    <label>报价日期</label>
+    <input type="date" class="form-control" name="quotation_date" id="quotation_date">
+  </div>
+  <div class="col-md-6">
+    <label>有效期至</label>
+    <input type="date" class="form-control" name="valid_until_date" id="valid_until_date">
+  </div>
+  <div class="col-md-6">
+    <label>销售人员编号</label>
+    <input type="text" class="form-control" name="salesperson_id" id="salesperson_id">
+  </div>
+  <div class="col-md-6">
+    <label>总金额</label>
+    <input type="number" class="form-control" name="total_amount" id="total_amount" step="0.01">
+  </div>
+  <div class="col-md-6">
+    <label>备注</label>
+    <input type="text" class="form-control" name="remarks" id="remarks">
+  </div>
+</div>
+
 
       <!-- 明细信息表格 -->
       <h5 class="mt-5 mb-3">报价明细</h5>
@@ -194,11 +196,14 @@
 
       const inquiry = result.data;
       
-      // 填充主表信息
-      document.getElementById('customer_id').value = inquiry.customer_id || '';
-      document.getElementById('inquiry_id').value = inquiryId;
-      document.getElementById('salesperson_id').value = inquiry.salesperson_id || '';
-      document.getElementById('remarks').value = inquiry.remarks || '';
+     
+// 填充主表信息
+document.getElementById('customer_id').value = inquiry.customer_id || '';
+document.getElementById('inquiry_id').value = inquiryId;
+document.getElementById('salesperson_id').value = inquiry.salesperson_id || '';
+document.getElementById('remarks').value = inquiry.remarks || '';
+document.getElementById('total_amount').value = inquiry.expected_total_amount || 0;
+
 
       // 清空现有行项目（保留第一行作为模板）
       const tbody = document.getElementById('itemTable').querySelector('tbody');
