@@ -29,7 +29,10 @@ for mid in materials:
         'description': fake.word() + fake.random_element(['耳机', '显示器', '鼠标', '键盘']),
         'base_unit': random.choice(units),
         'storage_location': f"WH-{fake.province()}",
-        'available_stock': random.randint(100, 10000)
+        'physical_stock': random.randint(100, 10000),
+        'available_stock': random.randint(100, 10000),
+        'allocated_stock': random.randint(100, 10000),
+        'pending_outbound': random.randint(100, 10000)
     })
 write_csv('instance\Material.csv', list(material_data[0].keys()), material_data)
 
@@ -118,7 +121,7 @@ for i, qid in enumerate(quotation_ids[:NUM_RECORDS]):
         'quotation_id': qid,
         'order_date': (today + timedelta(days=i+2)).strftime('%Y-%m-%d'),
         'required_delivery_date': (today + timedelta(days=i+10)).strftime('%Y-%m-%d'),
-        'status': random.choice(['草稿','已创建']),
+        'status': random.choice(['草稿','已创建','已审核','部分发货','已完成','已取消']),
         'total_amount': quotation_data[i]['total_amount'],
         'credit_check_result': random.choice(['通过', '待审核']),
         'remarks': fake.sentence()

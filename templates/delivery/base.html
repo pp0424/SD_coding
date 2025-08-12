@@ -274,7 +274,7 @@
         <div class="d-flex align-items-center">
           
           <!-- 品牌标志 - 美化 -->
-          <a class="navbar-brand text-white d-flex align-items-center gap-2" href="{{ url_for('delivery.delivery_home') }}">
+          <a class="navbar-brand text-white d-flex align-items-center gap-2" >
             <span class="rounded-circle d-inline-flex justify-content-center align-items-center" style="width:40px;height:40px;background:linear-gradient(90deg, #ffffff, #e6f7ff); color:#0d6efd; font-weight:800; box-shadow: 0 0 10px rgba(255,255,255,0.5)">发</span>
             <div class="d-none d-md-block">
               <div style="font-size:1.5rem; font-weight:600; text-shadow: 0 2px 4px rgba(0,0,0,0.2)">发货管理中心</div>
@@ -295,34 +295,53 @@
           <ul class="navbar-nav">
             <li class="nav-item mx-1">
               <a class="nav-link text-white fw-medium position-relative" href="{{ url_for('delivery.delivery_home') }}" style="transition: all 0.3s; color: white !important;">
-              <h6> 🚚 发货管理首页</h6>
+                <h6>🚚 发货管理首页</h6>
                 <span class="position-absolute bottom-0 start-0 w-100 bg-white" style="height:2px; opacity:0; transition: opacity 0.3s;"></span>
               </a>
             </li>
+
+              <li class="nav-item mx-1">
+              <a class="nav-link text-white fw-medium position-relative" href="{{ url_for('delivery.delivery_list') }}" style="transition: all 0.3s; color: white !important;">
+                <h6>🔍 发货单管理</h6>
+                <span class="position-absolute bottom-0 start-0 w-100 bg-white" style="height:2px; opacity:0; transition: opacity 0.3s;"></span>
+              </a>
+            </li>
+            
             <li class="nav-item mx-1">
               <a class="nav-link text-white fw-medium position-relative" href="{{ url_for('delivery.create_delivery') }}" style="transition: all 0.3s; color: white !important;">
-                <h6> 📝 创建发货单</h6>
+                <h6>📝 创建发货单</h6>
                 <span class="position-absolute bottom-0 start-0 w-100 bg-white" style="height:2px; opacity:0; transition: opacity 0.3s;"></span>
               </a>
             </li>
+
             <li class="nav-item mx-1">
-              <a class="nav-link text-white fw-medium position-relative" href="{{ url_for('delivery.delivery_list') }}" style="transition: all 0.3s; color: white !important;">
-              <h6>🔍 发货单查询</h6>
+              <a class="nav-link text-white fw-medium position-relative" href="{{ url_for('delivery.picking_task_list') }}" style="transition: all 0.3s; color: white !important;">
+                <h6>📦 拣货管理</h6>
                 <span class="position-absolute bottom-0 start-0 w-100 bg-white" style="height:2px; opacity:0; transition: opacity 0.3s;"></span>
               </a>
             </li>
+
             <li class="nav-item mx-1">
-              <a class="nav-link text-white fw-medium position-relative" href="{{ url_for('delivery.inventory_movement') }}" style="transition: all 0.3s; color: white !important;">
-              <h6>📊 库存变动查询</h6>
+              <a class="nav-link text-white fw-medium position-relative" href="{{ url_for('delivery.shipment_list')}}" style="transition: all 0.3s; color: white !important;">
+                <h6>📤 发货管理</h6>
                 <span class="position-absolute bottom-0 start-0 w-100 bg-white" style="height:2px; opacity:0; transition: opacity 0.3s;"></span>
               </a>
             </li>
-                        <li class="nav-item mx-1">
-              <a class="nav-link text-white fw-medium position-relative" href="{{ url_for('delivery.posted_stock_changes') }}" style="transition: all 0.3s; color: white !important;">
-              <h6>📜 过账库存变动追溯</h6>
+
+            <li class="nav-item mx-1">
+              <a class="nav-link text-white fw-medium position-relative" href="{{ url_for('delivery.shipment_list' )}}" style="transition: all 0.3s; color: white !important;">
+                <h6>📜 执行过账</h6>
                 <span class="position-absolute bottom-0 start-0 w-100 bg-white" style="height:2px; opacity:0; transition: opacity 0.3s;"></span>
               </a>
             </li>
+
+            <li class="nav-item mx-1">
+              <a class="nav-link text-white fw-medium position-relative" href="{{ url_for('delivery.inventory_movement' )}}" style="transition: all 0.3s; color: white !important;">
+                <h6>📊 库存变动查询</h6>
+                <span class="position-absolute bottom-0 start-0 w-100 bg-white" style="height:2px; opacity:0; transition: opacity 0.3s;"></span>
+              </a>
+            </li>
+            
           </ul>
         </div>
       </div>
