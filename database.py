@@ -8,7 +8,7 @@ db = SQLAlchemy()
 
 def db_init(app):
     db.init_app(app)
-    create_all()#创建新表
+    db.create_all()#创建新表
     return db
 
 
