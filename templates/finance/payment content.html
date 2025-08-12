@@ -289,60 +289,63 @@
     </div>
     
     <script>
-        // 设置默认日期为今天
-        const today = new Date().toISOString().split('T')[0];
-        document.querySelector("input[type='date']").value = today;
-        
-        // 保存功能
         function savePayment() {
-            const amount = document.querySelector("input[type='number']").value;
-            const date = document.querySelector("input[type='date']").value;
-            const method = document.querySelector("select").value;
-            const note = document.querySelector("textarea").value;
-            
-            if (!amount) {
-                alert("请输入收款金额");
-                return;
-            }
-            
-            if (!method) {
-                alert("请选择付款方式");
-                return;
-            }
-            
-            // 创建数据对象
-            const paymentData = {
-                invoice: "INV-2023-07528",
-                amount: amount,
-                date: date,
-                method: method,
-                note: note
-            };
-            
-            // 这里在实际应用中会发送数据到服务器
-            console.log("保存的收款记录:", paymentData);
-            
-            // 显示成功消息
-            alert(`收款记录保存成功！\n金额: ¥${amount}\n日期: ${date}\n方式: ${getMethodText(method)}\n收款单号：？？`);
-            
-            // 重置表单（实际应用中可能需要跳转页面）
-            document.querySelector("input[type='number']").value = "";
-            document.querySelector("select").value = "";
-            document.querySelector("textarea").value = "";
+    const invoiceId = getInvoiceIdFromUrl(); // 从URL获取发票ID
+    const amount = document.querySelector("input[type='number']").value;
+    const date = document.querySelector("input[type='date']").value;
+    const method = document.querySelector("select").value;
+    const note = document.querySelector("textarea").value;
+    
+    if (!amount) {
+        alert("请输入收款金额");
+        return;
+    }
+    
+    if (!method) {
+        alert("请选择付款方式");
+        return;
+    }
+    
+    if (!date) {
+        alert("请选择收款日期");
+        return;
+    }
+    
+    // 发送保存请求
+    fetch('/finance/save-payment', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            invoice_id: invoiceId,
+            payment_amount: parseFloat(amount),
+            payment_date: date,
+            payment_method: method,
+            remarks: note,
+            write_off_amount: 0
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`${data.message}\n收款单号：${data.payment_id}`);
+            window.location.href = '/finance/';
+        } else {
+            alert('保存失败：' + data.message);
         }
-        
-        // 获取付款方式文本
-        function getMethodText(method) {
-            const methods = {
-                "bank": "银行转账",
-                "alipay": "支付宝",
-                "wechat": "微信支付",
-                "cash": "现金",
-                "check": "支票",
-                "other": "其他"
-            };
-            return methods[method] || method;
-        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('保存过程中发生错误');
+    });
+}
+
+function getInvoiceIdFromUrl() {
+    // 从URL路径中提取发票ID
+    const pathParts = window.location.pathname.split('/');
+    return pathParts[pathParts.length - 1];
+}
     </script>
 </body>
 </html>
