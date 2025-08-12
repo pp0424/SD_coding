@@ -1,0 +1,83 @@
+{% extends "delivery/base.html" %}
+
+{% block content %}
+<div class="form-title-container">
+  <h1 class="form-title">📦 拣货任务: {{ task.task_id }}</h1>
+</div>
+
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <a href="{{ url_for('delivery.picking_task_list') }}" class="btn btn-outline-primary">拣货任务列表</a>
+    <a href="{{ url_for('delivery.cancel_picking_task', task_id=task.task_id) }}" class="btn btn-outline-primary">取消拣货</a>
+    {% if delivery %}
+      <a href="{{ url_for('delivery.delivery_detail', delivery_id=delivery.delivery_note_id) }}" class="btn btn-outline-primary">查看发货单</a>
+    {% if task.status == '待拣货' %}
+        <a href="{{ url_for('delivery.confirm_picking_page', delivery_id=delivery.delivery_note_id, task_id=task.task_id) }}"
+          class="btn btn-primary">
+            执行拣货
+        </a>
+    {% else %}
+        <a href="javascript:void(0);"
+          class="btn btn-secondary disabled"
+          aria-disabled="true">
+            执行拣货
+        </a>
+    {% endif %}
+        {% endif %}
+  </div>
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-header bg-light"><h5 class="mb-0">任务信息</h5></div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <p><strong>任务号:</strong> {{ task.task_id }}</p>
+          <p><strong>销售订单:</strong> {{ task.sales_order_id }}</p>
+          <p><strong>仓库:</strong> {{ task.warehouse_code }}</p>
+          <p><strong>拣货员:</strong> {{ task.picker or '-' }}</p>
+        </div>
+        <div class="col-md-6">
+          <p><strong>状态:</strong> {{ task.status }}</p>
+          <p><strong>开始时间:</strong> {{ task.start_time.strftime('%Y-%m-%d %H:%M') if task.start_time else '-' }}</p>
+          <p><strong>完成时间:</strong> {{ task.complete_time.strftime('%Y-%m-%d %H:%M') if task.complete_time else '-' }}</p>
+        </div>
+      </div>
+      <p><strong>备注:</strong> {{ task.remarks or '-' }}</p>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-header bg-light"><h5 class="mb-0">拣货明细</h5></div>
+    <div class="card-body">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th>行号</th>
+            <th>物料编号</th>
+            <th>描述</th>
+            <th>需求数量</th>
+            <th>已拣数量</th>
+            <th>储位</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for it in task.items %}
+          <tr>
+            <td>{{ it.item_no }}</td>
+            <td>{{ it.material_id }}</td>
+            <td>{{ it.material.description if it.material else '-' }}</td>
+            <td>{{ "%.2f"|format(it.required_quantity or 0) }}</td>
+            <td>{{ "%.2f"|format(it.picked_quantity or 0) }}</td>
+            <td>{{ it.storage_location or '-' }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="text-center">暂无明细</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+
+</div>
+{% endblock %}

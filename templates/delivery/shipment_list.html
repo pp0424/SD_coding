@@ -1,0 +1,152 @@
+{% extends 'delivery/base.html' %}
+{% block title %}发货单列表{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='delivery/delivery_styles.css') }}">
+<style>
+      /* 表格所有单元格不换行 */
+      .delivery-table th,
+      .delivery-table td {
+        white-space: nowrap;   /* 禁止自动换行 */
+        vertical-align: middle; /* 让内容垂直居中，可选 */
+      }
+
+      .delivery-card {
+        width: 100%;
+      }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-title-container">
+  <h1 class="form-title">🚚 执行发货</h1>
+</div>
+
+<div class="delivery-card animate-fade">
+  <form method="post" class="row g-3 query-form align-items-end">
+    {{ form.csrf_token }}
+    <div class="col-md-2">
+      {{ form.delivery_id.label(class="form-label") }}
+      {{ form.delivery_id(class="form-control", placeholder="发货单号") }}
+    </div>
+    <div class="col-md-2">
+      {{ form.sales_order_id.label(class="form-label") }}
+      {{ form.sales_order_id(class="form-control", placeholder="销售订单号") }}
+    </div>
+    <div class="col-md-2">
+      {{ form.start_date.label(class="form-label") }}
+      {{ form.start_date(class="form-control", type="date") }}
+    </div>
+    <div class="col-md-2">
+      {{ form.end_date.label(class="form-label") }}
+      {{ form.end_date(class="form-control", type="date") }}
+    </div>
+    <div class="col-md-2">
+      {{ form.submit(class="btn btn-search w-100") }}
+    </div>
+  </form>
+</div>
+
+<div class="delivery-card animate-fade">
+  <div class="card-header">
+    <div class="toolbar">
+      <div>
+        <i class="bi bi-list-ul me-2"></i>
+        <strong>发货单列表</strong>
+        <span class="stats-info ms-3">共找到 {{ deliveries|length }} 条记录</span>
+      </div>
+      <div>
+        <a href="{{ url_for('delivery.create_delivery') }}" class="btn btn-primary btn-sm">
+          <i class="bi bi-plus-circle me-1"></i> 新建发货单
+        </a>
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+          <i class="bi bi-printer me-1"></i> 打印
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-responsive" style="max-height: 70vh;">
+    <table class="delivery-table table-hover">
+      <thead>
+        <tr>
+          <th>发货单号</th>
+          <th>销售订单号</th>
+          <th>发货日期</th>
+          <th>仓库代码</th>
+          <th>状态</th>
+          <th>过账人</th>
+          <th>过账时间</th>
+          <th>备注</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for delivery in deliveries %}
+        <tr>
+          <td><a href="{{ url_for('delivery.delivery_detail', delivery_id=delivery.delivery_note_id) }}" class="text-decoration-none fw-bold text-primary">{{ delivery.delivery_note_id }}</a></td>
+          <td><span class="text-muted">{{ delivery.sales_order_id }}</span></td>
+          <td>{{ delivery.delivery_date.strftime('%Y-%m-%d') if delivery.delivery_date else '-' }}</td>
+          <td><span class="badge bg-light text-dark">{{ delivery.warehouse_code }}</span></td>
+          <td>
+            <span class="badge 
+              {% if delivery.status == '已创建' %}bg-primary
+              {% elif delivery.status == '已拣货' %}bg-warning
+              {% elif delivery.status == '已发货' %}bg-primary
+              {% elif delivery.status == '已过账' %}bg-success
+              {% elif delivery.status == '已完成' %}bg-light text-dark
+              {% elif delivery.status == '已取消' %}bg-danger
+              {% else %}bg-secondary{% endif %}">
+              {{ delivery.status }}
+            </span>
+          </td>
+          <td><small class="text-muted">{{ delivery.posted_by or '-' }}</small></td>
+          <td><small class="text-muted">{{ delivery.posted_at.strftime('%Y-%m-%d %H:%M') if delivery.posted_at else '-' }}</small></td>
+          <td><small class="text-muted">{{ delivery.remarks or '-' }}</small></td>
+          <td>
+            <div class="d-flex flex-wrap gap-1">
+              <!-- 发货按钮 -->
+              {% if delivery.status == '已拣货' %}
+              <form action="{{ url_for('delivery.shipment', delivery_id=delivery.delivery_note_id) }}" method="POST">
+                {{ form.csrf_token }}
+                <button type="submit" class="btn btn-outline-primary btn-action" title="发货">
+                  <i class="bi bi-box-arrow-up"></i>
+                </button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" class="empty-state">
+            <i class="bi bi-inbox display-4 d-block mb-2"></i>
+            <h5>暂无符合条件的发货单记录</h5>
+            <p class="text-muted">请调整查询条件或 <a href="{{ url_for('delivery.create_delivery') }}">创建新的发货单</a></p>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+setTimeout(() => {
+  document.querySelectorAll('.alert-dismissible').forEach(alert => {
+    new bootstrap.Alert(alert).close();
+  });
+}, 5000);
+
+document.querySelectorAll('tbody tr').forEach(row => {
+  row.addEventListener('click', e => {
+    if (e.target.closest('a, button, form')) return;
+    const link = row.querySelector('a[href*="delivery_detail"]');
+    if (link) window.location.href = link.href;
+  });
+});
+</script>
+{% endblock %}
+

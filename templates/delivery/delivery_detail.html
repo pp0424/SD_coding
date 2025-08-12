@@ -70,20 +70,26 @@
     </h1>
   </div>
   
+
 <div class="card-detail">
   <div class="d-flex justify-content-between align-items-center mb-2">
-    <div class="btn-toolbar">
+  <div class="btn-toolbar">
       {% if delivery.status == '已创建' %}
-        <a href="{{ url_for('delivery.edit_delivery', delivery_id=delivery.delivery_note_id) }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i> 编辑</a>
-        <a href="{{ url_for('delivery.pick_delivery', delivery_id=delivery.delivery_note_id) }}" class="btn btn-warning btn-sm"><i class="bi bi-box-seam"></i> 拣货</a>
-        <a href="{{ url_for('delivery.cancel_delivery', delivery_id=delivery.delivery_note_id) }}" class="btn btn-outline-danger btn-sm"><i class="bi bi-x-circle"></i> 取消</a>
+        <a href="{{ url_for('delivery.edit_delivery', delivery_id=delivery.delivery_note_id) }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i>编辑发货单</a>
+        <a href="{{ url_for('delivery.picking_task_detail', task_id=delivery.picking_task_id) }}" class="btn btn-warning btn-sm"><i class="bi bi-box-seam"></i> 拣货任务详情</a>
+        <a href="{{ url_for('delivery.cancel_delivery', delivery_id=delivery.delivery_note_id) }}" class="btn btn-outline-danger btn-sm"><i class="bi bi-x-circle"></i>取消发货单</a>
+
       {% elif delivery.status == '已拣货' %}
-        <a href="{{ url_for('delivery.post_delivery', delivery_id=delivery.delivery_note_id) }}" class="btn btn-success btn-sm"><i class="bi bi-check2-circle"></i> 过账</a>
+        <form action="{{ url_for('delivery.shipment', delivery_id=delivery.delivery_note_id) }}" method="POST" style="display: inline;">
+          <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-box-arrow-up"></i> 准备发货</button>
+        </form>
         <a href="{{ url_for('delivery.cancel_delivery', delivery_id=delivery.delivery_note_id) }}" class="btn btn-outline-danger btn-sm"><i class="bi bi-x-circle"></i> 取消</a>
-      {% elif delivery.status == '待发货' %}
-        <a href="{{ url_for('delivery.ship_delivery', delivery_id=delivery.delivery_note_id) }}" class="btn btn-info btn-sm"><i class="bi bi-truck"></i> 发货</a>
+
+      {% elif delivery.status == '已发货' %}
+        <form action="{{ url_for('delivery.post_delivery', delivery_id=delivery.delivery_note_id) }}" method="POST" style="display: inline;">
+          <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-check2-circle"></i> 过账</button>
+        </form>
       {% endif %}
-      <a href="{{ url_for('delivery.delivery_list') }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-arrow-return-left"></i> 返回列表</a>
     </div>
   </div>
 
@@ -92,12 +98,18 @@
     <span><i class="bi bi-geo-alt"></i> 仓库：{{ delivery.warehouse_code }}</span> |
     <span><i class="bi bi-calendar"></i> 发货日期：{{ delivery.delivery_date.strftime('%Y-%m-%d') }}</span> |
     <span>状态：
-      {% if delivery.status == '已过账' %}
-        <span class="badge bg-success">已过账</span>
+      {% if delivery.status == '已过账' or delivery.status == '已完成' %}
+        <span class="badge bg-success">{{ delivery.status }}</span>
       {% elif delivery.status == '已创建' %}
         <span class="badge bg-primary">已创建</span>
+      {% elif delivery.status == '待拣货' %}
+        <span class="badge bg-info">待拣货</span>
       {% elif delivery.status == '已拣货' %}
         <span class="badge bg-warning">已拣货</span>
+      {% elif delivery.status == '待发货' %}
+        <span class="badge bg-info">待发货</span>
+      {% elif delivery.status == '已发货' %}
+        <span class="badge bg-primary">已发货</span>
       {% elif delivery.status == '已取消' %}
         <span class="badge bg-secondary">已取消</span>
       {% else %}
@@ -135,6 +147,17 @@
           <td class="text-end">{{ "%.2f"|format(l.actual_delivery_quantity or 0) }}</td>
           <td>{{ material.base_unit if material else l.unit }}</td>
         </tr>
+        {% if material %}
+        <tr>
+          <td colspan="7" style="padding: 0.3rem 1rem; background-color: #f8f9fa;">
+            <div class="d-flex justify-content-between">
+              <small>可用库存: {{ "%.2f"|format(material.available_stock or 0) }}</small>
+              <small>实际库存: {{ "%.2f"|format(material.physical_stock or 0) }}</small>
+              <small>待出库量: {{ "%.2f"|format(material.pending_outbound or 0) }}</small>
+            </div>
+          </td>
+        </tr>
+        {% endif %}
         {% endfor %}
       </tbody>
     </table>

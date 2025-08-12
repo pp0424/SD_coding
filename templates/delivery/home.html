@@ -6,12 +6,10 @@
   body {
       margin: 0;
       font-family: "Microsoft YaHei", sans-serif;
-      background-image: url('/static/delivery_background.png');
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
     }
-
 
   h3.page-title {
     font-weight: 700;
@@ -76,6 +74,59 @@
   hr {
     border-top: 1px solid #dee2e6;
   }
+
+  /* Workflow container */
+    .workflow-steps {
+    display: flex;
+    flex-wrap: nowrap;          /* 不换行 */
+    justify-content: flex-start; /* 从左到右排布 */
+    align-items: center;        /* 垂直居中 */
+    gap: 12px;                  /* 间距 */
+    overflow-x: auto;           /* 超出时横向滚动 */
+    padding: 8px;               /* 内边距避免贴边 */
+    scrollbar-width: thin;      /* Firefox滚动条细一些 */
+    margin-bottom:30px;
+  }
+
+  /* 隐藏滚动条（可选） */
+  .workflow-steps::-webkit-scrollbar {
+    height: 6px;
+  }
+  .workflow-steps::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.2);
+    border-radius: 3px;
+  }
+
+  .workflow-steps .step-card {
+    flex: 0 0 auto; /* 固定宽度，不被压缩 */
+    min-width: 150px;
+    max-width: 200px;
+    padding: 15px 10px;
+    border-radius: 12px;
+    text-align: center;
+    transition: all 0.3s ease;
+    background: linear-gradient(135deg, #f580d0, #77a1f5);
+    color: white;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+  }
+
+  .step-arrow {
+    flex: 0 0 auto;
+    font-size: 1.5rem;
+    color: #6c757d;
+  }
+
+
+  /* Status badges */
+  .badge-status-created { background-color: #6c757d; color: white; }
+  .badge-status-pending-picking { background-color: #ffc107; color: #000; }
+  .badge-status-picked { background-color: #0dcaf0; color: #000; }
+  .badge-status-pending-shipment { background-color: #fd7e14; color: white; }
+  .badge-status-shipped { background-color: #198754; color: white; }
+  .badge-status-posted { background-color: #6610f2; color: white; }
+  .badge-status-cancelled { background-color: #dc3545; color: white; }
+
+
 </style>
 {% endblock %}
 
@@ -84,40 +135,72 @@
     <h1 class="form-title">
       🚚 发货管理首页
     </h1>
-  </div>
+</div>
+
+
+<div class="workflow-steps animate-fade">
+
+
+
+  <div class="step-card" style="background: linear-gradient(135deg, #358df9dd, #ee39ff);">发货流程</div>
+  <div class="step-arrow">👉</div>
+
+  <a href="{{ url_for('delivery.create_delivery') }}">
+    <div class="step-card" >创建发货</div>
+  </a>
+  <div class="step-arrow">👉</div>
+
+  <a href="{{ url_for('delivery.picking_task_list') }}">
+    <div class="step-card">拣货</div>
+  </a>
+  <div class="step-arrow">👉</div>
+
+  <a href="{{ url_for('delivery.inventory_movement') }}">
+    <div class="step-card">库存查询</div>
+  </a>
+  <div class="step-arrow">👉</div>
+
+  <a href="{{ url_for('delivery.shipment_list') }}">
+    <div class="step-card">发货</div>
+  </a>
+  <div class="step-arrow">👉</div>
+
+  <a href="{{ url_for('delivery.inventory_movement') }}">
+    <div class="step-card">库存查询</div>
+  </a>
+  <div class="step-arrow">→</div>
+
+  <a href="{{ url_for('delivery.shipment_list') }}">
+    <div class="step-card">执行过账</div>
+  </a>
+  <div class="step-arrow">👉</div>
+
+  <a href="{{ url_for('delivery.inventory_movement') }}">
+    <div class="step-card">库存查询</div>
+  </a>
+</div>
+
 
 <div class="row g-9">
-  <!-- 系统概览卡片 -->
-  <div class="col-md-4">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h5 class="card-title">📆 今日概览（{{ today.strftime('%Y-%m-%d') }}）</h5>
-        <p class="card-text">
-          <strong>待过账发货单：</strong> {{ pending_postings }}<br>
-          <strong>最新过账：</strong> {{ recent_changes|length }} 条<br>
-        </p>
-        <a href="{{ url_for('delivery.delivery_list') }}" class="btn btn-sm btn-primary">查看发货列表</a>
-      </div>
-    </div>
-  </div>
-
   <!-- 快捷操作 -->
-  <div class="col-md-4">
+  <div class="col-md-6">
     <div class="card shadow-sm">
       <div class="card-body">
         <h5 class="card-title">⚡ 快捷操作</h5>
         <ul class="list-group list-group-flush">
+          <li class="list-group-item"><a href="{{ url_for('delivery.delivery_list') }}">🔍 发货单管理</a></li>
           <li class="list-group-item"><a href="{{ url_for('delivery.create_delivery') }}">📝 创建发货单</a></li>
-          <li class="list-group-item"><a href="{{ url_for('delivery.delivery_list') }}">🔍 发货单查询</a></li>
+          <li class="list-group-item"><a href="{{ url_for('delivery.picking_task_list') }}">📦 拣货管理</a></li>
+          <li class="list-group-item"><a href="{{ url_for('delivery.shipment_list') }}">📤 发货管理</a></li>
+          <li class="list-group-item"><a href="{{ url_for('delivery.shipment_list') }}">📜 执行过账</a></li>
           <li class="list-group-item"><a href="{{ url_for('delivery.inventory_movement') }}">📊 库存变动查询</a></li>
-          <li class="list-group-item"><a href="{{ url_for('delivery.posted_stock_changes') }}">📜 过账库存变动追溯</a></li>
         </ul>
       </div>
     </div>
   </div>
 
   <!-- 最近动态 -->
-  <div class="col-md-4">
+  <div class="col-md-6">
     <div class="card shadow-sm">
       <div class="card-body">
         <h5 class="card-title">🕒 最新发货单</h5>
@@ -126,7 +209,8 @@
           <li class="list-group-item">
             <a href="{{ url_for('delivery.delivery_detail', delivery_id=d.delivery_note_id) }}">
               📄 {{ d.delivery_note_id }}
-            </a> - <span class="badge bg-light text-dark">{{ d.status }}</span>
+            </a> - 
+            <span class="badge badge-status-{{ d.status|replace(' ', '-')|lower }}">{{ d.status }}</span>
             <small class="text-muted">[{{ d.delivery_date.strftime('%Y-%m-%d') }}]</small>
           </li>
           {% else %}

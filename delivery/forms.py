@@ -6,11 +6,14 @@ from wtforms.fields import FieldList, FormField
 
 class DeliveryItemForm(FlaskForm):
     sales_order_item_no = HiddenField()
-    material_id = StringField('物料编号', validators=[DataRequired()])
-    material_desc = StringField('物料描述', render_kw={'readonly': True})
-    order_quantity = DecimalField('订单数量', render_kw={'readonly': True})
-    unshipped_quantity = DecimalField('未发货数量', render_kw={'readonly': True})
-    planned_delivery_quantity = DecimalField('计划发货数量', validators=[DataRequired(), NumberRange(min=0)])
+    material_id = StringField("物料编号", validators=[DataRequired()])
+    material_desc = StringField("物料描述", validators=[Optional()])
+    storage_location = StringField("存储位置", validators=[Optional()])
+    order_quantity = DecimalField("订单数量", validators=[Optional()])
+    unshipped_quantity = DecimalField("未发数量", validators=[Optional()])
+    planned_delivery_quantity = DecimalField("本次拣货数量", validators=[Optional()])
+    base_unit = StringField("基本单位", validators=[Optional()])
+    unit = StringField("单位", validators=[Optional()])
 
 class CreateDeliveryForm(FlaskForm):
     sales_order_id = StringField('销售订单编号', validators=[DataRequired()])
@@ -38,6 +41,19 @@ class SearchDeliveryForm(FlaskForm):
     end_date = DateField('结束日期', validators=[Optional()])
     submit = SubmitField('查询')
 
+class SearchPickingTaskForm(FlaskForm):
+    delivery_id = StringField('发货单号', validators=[Optional()])
+    sales_order_id = StringField('销售订单号', validators=[Optional()])
+    status = SelectField('状态', choices=[
+        ('', '-- 全部状态 --'),
+        ('待拣货', '待拣货'),
+        ('已完成', '已完成'),
+        ('已取消', '已取消')
+    ], validators=[Optional()])
+    start_date = DateField('开始日期', format='%Y-%m-%d', validators=[Optional()])
+    end_date = DateField('结束日期', format='%Y-%m-%d', validators=[Optional()])
+    submit = SubmitField('查询')
+
 class DeliveryItemPostForm(FlaskForm):
     material_id = StringField('物料编号', render_kw={'readonly': True})
     planned_quantity = DecimalField('计划数量', render_kw={'readonly': True})
@@ -48,6 +64,12 @@ class PostDeliveryForm(FlaskForm):
     items = FieldList(FormField(DeliveryItemPostForm), min_entries=0)
     remarks = TextAreaField('过账备注', validators=[Optional()])
     submit = SubmitField('确认过账')
+
+
+class CancelPickingForm(FlaskForm):
+    cancel_reason = TextAreaField('取消原因', validators=[DataRequired()])
+    submit = SubmitField('确认取消')
+
 
 class CancelDeliveryForm(FlaskForm):
     cancel_reason = TextAreaField('取消原因', validators=[DataRequired()], render_kw={'rows': 3, 'placeholder': '请输入取消原因'})
@@ -73,3 +95,8 @@ class SearchInventoryMovementForm(FlaskForm):
         ('OUT', '出库')
     ], validators=[Optional()])
     submit = SubmitField('查询')
+
+class ShipmentConfirmForm(FlaskForm):
+    confirm = SubmitField('确认发货')
+
+
