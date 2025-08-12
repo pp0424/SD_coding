@@ -37,6 +37,7 @@
 </head>
 <body>
   <nav style="position: fixed; top: 0; left: 0; right: 0; height: 56px; background: #1b5899; color: white; display: flex; align-items: center; justify-content: space-around; z-index: 9999; font-family: 'Segoe UI', sans-serif; font-size: 15px;">
+  <a href="/dashboard" style="color: white; text-decoration: none;">系统首页</a>
   <a href="/order/create-inquiry" style="color: white; text-decoration: none;">📝 创建询价</a>
   <a href="/order/edit-inquiry" style="color: white; text-decoration: none;">✏️ 修改询价</a>
   <a href="/order/query-inquiry" style="color: white; text-decoration: none;">🔍 查询询价</a>
@@ -50,42 +51,64 @@
 <div class="container py-5">
   <div class="main-card mx-auto" style="max-width: 1000px;">
     <h2 class="text-center mb-4">创建报价单</h2>
-    <form method="POST">
-      <!-- 主信息 -->
-      <div class="row g-3">
-        <div class="col-md-6">
-          <label>报价单号</label>
-          <input type="text" class="form-control" name="quotation_id" required>
+    <div class="copy-section">
+      <h6>📋 从询价单复制行项信息</h6>
+      <div class="row align-items-end">
+        <div class="col-md-8">
+          <label class="form-label">输入询价单号</label>
+          <div class="inquiry-input-group">
+            <input type="text" class="form-control" id="copyInquiryId" placeholder="请输入要复制的询价单号">
+            <div class="loading-spinner" id="loadingSpinner"></div>
+          </div>
         </div>
-        <div class="col-md-6">
-          <label>客户编号</label>
-          <input type="text" class="form-control" name="customer_id">
-        </div>
-        <div class="col-md-6">
-          <label>关联询价单号</label>
-          <input type="text" class="form-control" name="inquiry_id">
-        </div>
-        <div class="col-md-6">
-          <label>报价日期</label>
-          <input type="date" class="form-control" name="quotation_date">
-        </div>
-        <div class="col-md-6">
-          <label>有效期至</label>
-          <input type="date" class="form-control" name="valid_until_date">
-        </div>
-        <div class="col-md-6">
-          <label>销售人员编号</label>
-          <input type="text" class="form-control" name="salesperson_id">
-        </div>
-        <div class="col-md-6">
-          <label>总金额</label>
-          <input type="number" class="form-control" name="total_amount" step="0.01">
-        </div>
-        <div class="col-md-6">
-          <label>备注</label>
-          <input type="text" class="form-control" name="remarks">
+        <div class="col-md-4">
+          <button type="button" class="btn btn-copy w-100" onclick="copyFromInquiry()">
+            🔄 复制询价信息
+          </button>
         </div>
       </div>
+      <div id="copyResult" class="mt-2" style="display: none;">
+        <small class="text-muted">复制结果将在这里显示</small>
+      </div>
+    </div>
+    <form method="POST">
+
+     <!-- 主信息 -->
+<div class="row g-3">
+  <div class="col-md-6">
+    <label>报价单号</label>
+    <input type="text" class="form-control" name="quotation_id" required id="quotation_id">
+  </div>
+  <div class="col-md-6">
+    <label>客户编号</label>
+    <input type="text" class="form-control" name="customer_id" id="customer_id">
+  </div>
+  <div class="col-md-6">
+    <label>关联询价单号</label>
+    <input type="text" class="form-control" name="inquiry_id" id="inquiry_id">
+  </div>
+  <div class="col-md-6">
+    <label>报价日期</label>
+    <input type="date" class="form-control" name="quotation_date" id="quotation_date">
+  </div>
+  <div class="col-md-6">
+    <label>有效期至</label>
+    <input type="date" class="form-control" name="valid_until_date" id="valid_until_date">
+  </div>
+  <div class="col-md-6">
+    <label>销售人员编号</label>
+    <input type="text" class="form-control" name="salesperson_id" id="salesperson_id">
+  </div>
+  <div class="col-md-6">
+    <label>总金额</label>
+    <input type="number" class="form-control" name="total_amount" id="total_amount" step="0.01">
+  </div>
+  <div class="col-md-6">
+    <label>备注</label>
+    <input type="text" class="form-control" name="remarks" id="remarks">
+  </div>
+</div>
+
 
       <!-- 明细信息表格 -->
       <h5 class="mt-5 mb-3">报价明细</h5>
@@ -117,7 +140,7 @@
       <div class="mt-4 d-flex gap-3">
         <input type="hidden" name="status" value="草稿" id="statusField">
         <button type="submit" class="btn btn-highlight" onclick="document.getElementById('statusField').value='草稿'">保存草稿</button>
-        <button type="submit" class="btn btn-success" onclick="document.getElementById('statusField').value='已评审'">提交审核</button>
+        <button type="submit" class="btn btn-success" onclick="document.getElementById('statusField').value='已发送'">提交审核</button>
       </div>
     </form>
     {% with messages = get_flashed_messages() %}
@@ -146,6 +169,104 @@
       row.remove();
     }
   }
+   // 新增功能：从询价单复制信息
+  async function copyFromInquiry() {
+    const inquiryId = document.getElementById('copyInquiryId').value.trim();
+    const resultDiv = document.getElementById('copyResult');
+    const spinner = document.getElementById('loadingSpinner');
+    
+    if (!inquiryId) {
+      showResult('请输入询价单号', 'warning');
+      return;
+    }
+
+    // 显示加载状态
+    spinner.style.display = 'block';
+    resultDiv.style.display = 'none';
+
+    try {
+      const response = await fetch(`/order/api/inquiry/${inquiryId}`);
+      const result = await response.json();
+      
+      spinner.style.display = 'none';
+      
+      if (!result.success) {
+        showResult(result.message || '获取询价单信息失败', 'danger');
+        return;
+      }
+
+      const inquiry = result.data;
+      
+     
+// 填充主表信息
+document.getElementById('customer_id').value = inquiry.customer_id || '';
+document.getElementById('inquiry_id').value = inquiryId;
+document.getElementById('salesperson_id').value = inquiry.salesperson_id || '';
+document.getElementById('remarks').value = inquiry.remarks || '';
+document.getElementById('total_amount').value = inquiry.expected_total_amount || 0;
+
+
+      // 清空现有行项目（保留第一行作为模板）
+      const tbody = document.getElementById('itemTable').querySelector('tbody');
+      while (tbody.children.length > 1) {
+        tbody.removeChild(tbody.lastChild);
+      }
+
+      // 填充行项目信息
+      if (inquiry.items && inquiry.items.length > 0) {
+        inquiry.items.forEach((item, index) => {
+          let row;
+          if (index === 0) {
+            // 使用第一行
+            row = tbody.children[0];
+          } else {
+            // 创建新行
+            row = tbody.children[0].cloneNode(true);
+            tbody.appendChild(row);
+          }
+
+          // 填充数据
+          row.querySelector('input[name="item_no"]').value = item.item_no;
+          row.querySelector('input[name="material_id"]').value = item.material_id;
+          row.querySelector('input[name="quotation_quantity"]').value = item.inquiry_quantity;
+          row.querySelector('input[name="unit_price"]').value = item.expected_unit_price || '';
+          row.querySelector('input[name="discount_rate"]').value = 0;
+          row.querySelector('input[name="item_amount"]').value = '';
+          row.querySelector('input[name="unit"]').value = item.unit || '';
+          row.querySelector('input[name="inquiry_item_id"]').value = item.item_no;
+        });
+
+        showResult(`✅ 成功复制 ${inquiry.items.length} 个行项目`, 'success');
+      } else {
+        showResult('⚠️ 该询价单没有行项目信息', 'warning');
+      }
+
+    } catch (error) {
+      spinner.style.display = 'none';
+      showResult('❌ 网络错误，请稍后重试', 'danger');
+      console.error('复制询价信息失败:', error);
+    }
+  }
+
+  function showResult(message, type) {
+    const resultDiv = document.getElementById('copyResult');
+    resultDiv.style.display = 'block';
+    resultDiv.className = `mt-2 alert alert-${type}`;
+    resultDiv.innerHTML = message;
+    
+    // 3秒后自动隐藏
+    setTimeout(() => {
+      resultDiv.style.display = 'none';
+    }, 3000);
+  }
+
+  // 回车键快速复制
+  document.getElementById('copyInquiryId').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      copyFromInquiry();
+    }
+  });
 </script>
 
 </body>

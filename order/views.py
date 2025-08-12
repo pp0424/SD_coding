@@ -316,6 +316,34 @@ def query_inquiry():
 
     return render_template('order/query_inquiry.html', form=form, results=results)
 
+@order_bp.route('/api/inquiry/<inquiry_id>')
+def get_inquiry_data(inquiry_id):
+    """获取指定询价单的详细信息，用于复制到报价单"""
+    inquiry = Inquiry.query.options(joinedload(Inquiry.items)).filter_by(inquiry_id=inquiry_id).first()
+    if not inquiry:
+        return jsonify({'success': False, 'message': '询价单不存在'}), 404
+
+    return jsonify({
+        'success': True,
+        'data': {
+            'inquiry_id': inquiry.inquiry_id,
+            'customer_id': inquiry.customer_id,
+            'salesperson_id': inquiry.salesperson_id,
+            'remarks': inquiry.remarks,
+            'expected_total_amount': float(inquiry.expected_total_amount) if inquiry.expected_total_amount else 0,
+            'items': [
+                {
+                    'item_no': item.item_no,
+                    'material_id': item.material_id,
+                    'inquiry_quantity': float(item.inquiry_quantity),
+                    'unit': item.unit,
+                    'expected_unit_price': float(item.expected_unit_price) if item.expected_unit_price else None,
+                    'item_remarks': item.item_remarks
+                } for item in inquiry.items
+            ]
+        }
+    })
+
 @order_bp.route('/create-quote', methods=['GET', 'POST'])
 def create_quotation():
     if request.method == 'POST':
@@ -325,7 +353,7 @@ def create_quotation():
         inquiry_id = request.form.get('inquiry_id')
         quotation_date = request.form.get('quotation_date')
         valid_until_date = request.form.get('valid_until_date')
-        status = request.form.get('status')  # '草稿' or '已评审'
+        status = request.form.get('status')  # '草稿' or '已发送'
         total_amount = request.form.get('total_amount') or 0
         salesperson_id = request.form.get('salesperson_id')
         remarks = request.form.get('remarks')
@@ -377,7 +405,7 @@ def create_quotation():
 
         flash(f"报价单 {quotation_id} 保存成功（状态：{status}）", 'success')
 
-        if status == '已评审':
+        if status == '已发送':
             return redirect(url_for('order.create_quotation'))
 
     return render_template('order/create_quotation.html')
@@ -564,9 +592,9 @@ def approve_quotation():
     quote_id = request.form.get('quotation_id')
     quotation = Quotation.query.filter_by(quotation_id=quote_id).first()
     if quotation:
-        quotation.status = '已确认'
+        quotation.status = '已发送'
         db.session.commit()
-        flash('报价单状态已变更为“已确认”')
+        flash('报价单状态已变更为“已发送”')
     return redirect(url_for('order.edit_quote_prompt'))
 
 @order_bp.route('/query-quote', methods=['GET', 'POST'])

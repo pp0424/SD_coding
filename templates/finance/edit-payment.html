@@ -214,40 +214,32 @@
     </div>
 
     <script>
-        // 导航按钮功能
-        document.getElementById('backButton').addEventListener('click', function() {
-            alert('确认返回上一页吗？');
-            history.back();
-        });
-        
-        document.getElementById('homeButton').addEventListener('click', function() {
-            alert('确认返回财务主页吗？');
-            window.location.href = '1.html';
-        });
-        
-        // 查询功能
-        document.getElementById('goButton').addEventListener('click', function() {
-            const invoiceNumber = document.getElementById('invoiceInput').value;
-            if (invoiceNumber.trim() === '') {
-                alert('请输入收款单号');
-                return;
+       document.getElementById('goButton').addEventListener('click', function() {
+    const paymentNumber = document.getElementById('invoiceInput').value.trim();
+    if (!paymentNumber) {
+        alert('请输入收款单号');
+        return;
+    }
+    
+    // 显示查询提示
+    if (confirm('确认查询收款记录？')) {
+        // 检查收款记录是否存在
+        fetch(`/finance/api/check-payment/${encodeURIComponent(paymentNumber)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                window.location.href = data.redirect_url;
+            } else {
+                alert(data.message);
             }
-            
-            // 添加查询逻辑
-            alert(`正在查询收款单号: ${invoiceNumber}`);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('查询过程中发生错误');
         });
-        
-        // 允许按Enter键提交
-        document.getElementById('invoiceInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                document.getElementById('goButton').click();
-            }
-        });
-        
-        // 页面加载后自动聚焦到输入框
-        window.onload = function() {
-            document.getElementById('invoiceInput').focus();
-        };
+    }
+});
     </script>
 </body>
 </html>

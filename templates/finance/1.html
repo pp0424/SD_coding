@@ -260,21 +260,32 @@
         <p> 2025 ERP财务管理系统</p >
     </footer>
 
-    <script>
-        function navigate(module) {
-            const moduleNames = {
-                'create-invoice': '创建发票',
-                'edit-invoice': '修改发票',
-                'search-invoice': '查询发票',
-                'create-payment': '创建收款记录',
-                'edit-payment': '修改收款记录',
-                'search-payment': '查询收款记录',
-                'document-flow': '查单据流'
-            };
-            
-            alert(`正在进入: ${moduleNames[module]} 模块...`);
-            window.location.href = `${module}.html`;
-        }
-    </script>
+<script>
+    function navigate(module) {
+        const moduleNames = {
+            'create-invoice': '创建发票',
+            'edit-invoice': '修改发票',
+            'search-invoice': '查询发票',
+            'create-payment': '创建收款记录',
+            'edit-payment': '修改收款记录',
+            'search-payment': '查询收款记录',
+            'document-flow': '查单据流'
+        };
+
+        const flaskRoutes = {
+            'create-invoice': '/finance/create-invoice',
+            'edit-invoice': '/finance/edit-invoice',
+            'search-invoice': '/finance/search-invoice',
+            'create-payment': '/finance/create-payment',
+            'edit-payment': '/finance/edit-payment',
+            'search-payment': '/finance/search-payment',
+            'document-flow': '/finance/document-flow'
+        };
+
+        alert(`正在进入: ${moduleNames[module]} 模块...`);
+        window.location.href = flaskRoutes[module];
+    }
+</script>
+
 </body>
 </html>

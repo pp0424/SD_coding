@@ -8,7 +8,13 @@ from finance.views import bp as finance_bp
 from auth.views import auth_bp
 from auth.models import User
 from flask_login import LoginManager
+from finance.models import CustomerInvoice, InvoiceItem, CustomerPayment
+
 from flask_moment import Moment
+
+from finance.models import CustomerInvoice, InvoiceItem, CustomerPayment
+
+from finance.models import CustomerInvoice, InvoiceItem, CustomerPayment
 
 
 app = Flask(__name__)
@@ -18,6 +24,12 @@ app.config['SECRET_KEY'] = 'dev'
 db = db_init(app)
 
 moment = Moment(app)
+
+
+
+
+
+
 
 # 初始化 Flask-Login
 login_manager = LoginManager()
@@ -52,7 +64,7 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(customer_bp)
 app.register_blueprint(order_bp, url_prefix='/order')
 app.register_blueprint(delivery_bp, url_prefix='/delivery')
-app.register_blueprint(finance_bp)
+app.register_blueprint(finance_bp,url_prefix='/finance')
 
 
 if __name__ == '__main__':

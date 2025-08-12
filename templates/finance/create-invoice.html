@@ -278,30 +278,56 @@
     </div>
 
     <script>
-        // 搜索按钮点击事件
-        document.getElementById('search-btn').addEventListener('click', function() {
-            const orderNumber = document.getElementById('order-number').value;
-            const deliveryNumbers = document.getElementById('delivery-numbers').value;
+        // 1. create-invoice.html 的JavaScript更新
+document.getElementById('search-btn').addEventListener('click', function() {
+    const orderNumber = document.getElementById('order-number').value.trim();
+    const deliveryNumbers = document.getElementById('delivery-numbers').value.trim();
+    
+    if (!orderNumber || !deliveryNumbers) {
+        alert('请输入订单号和发货单号！');
+        return;
+    }
+    
+    // 发送AJAX请求
+    fetch('/finance/api/search-order-delivery', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            order_number: orderNumber,
+            delivery_numbers: deliveryNumbers
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // 清空现有结果
+            const tbody = document.querySelector('table tbody');
+            tbody.innerHTML = '';
             
-            if (!orderNumber && !deliveryNumbers) {
-                alert('请输入订单号或发货单号！');
-                return;
-            }
-            
-            // 在实际应用中，这里会发送AJAX请求获取数据
-            // 这里模拟搜索过程
-            alert(`搜索订单号: ${orderNumber || '无'}\n发货单号: ${deliveryNumbers || '无'}\n\n正在搜索中...`);
-        });
-        
-        // 详情按钮点击事件
-        document.querySelectorAll('.detail-btn').forEach(button => {
-            button.addEventListener('click', function() {
-                const row = this.closest('tr');
-                const orderNumber = row.cells[0].textContent;
-                alert(`正在跳转到订单 ${orderNumber} 的详情页面...`);
-                window.location.href = `invoice content.html?order=${encodeURIComponent(orderNumber)}`;
+            // 添加搜索结果
+            data.results.forEach(result => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${result.order_id}</td>
+                    <td>${result.delivery_id}</td>
+                    <td><button class="detail-btn" onclick="viewDetails('${result.order_id}', '${result.delivery_id}')">查看详情</button></td>
+                `;
             });
-        });
+        } else {
+            alert('搜索失败: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('搜索过程中发生错误');
+    });
+});
+
+function viewDetails(orderId, deliveryId) {
+    window.location.href = `/finance/invoice-content?order_id=${encodeURIComponent(orderId)}&delivery_id=${encodeURIComponent(deliveryId)}`;
+}
     </script>
 </body>
 </html>

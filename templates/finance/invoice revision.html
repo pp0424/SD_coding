@@ -365,66 +365,55 @@
     </div>
     
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const saveBtn = document.getElementById('save-btn');
+        // 替换原有的保存按钮事件处理
+document.getElementById('save-btn').addEventListener('click', function() {
+    const invoiceId = getInvoiceIdFromUrl(); // 需要从URL或页面获取发票ID
+    const amount = document.getElementById('invoice-amount').value;
+    const invoiceDate = document.getElementById('invoice-date').value;
+    const dueDate = document.getElementById('due-date').value;
+    
+    if (!amount || !invoiceDate || !dueDate) {
+        alert('请填写所有必填字段');
+        return;
+    }
+    
+    // 发送更新请求
+    fetch(`/finance/update-invoice/${invoiceId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            total_amount: parseFloat(amount.replace(/,/g, '')),
+            invoice_date: invoiceDate,
+            payment_deadline: dueDate
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // 显示通知
             const notification = document.getElementById('notification');
-            
-            // 保存按钮点击事件
-            saveBtn.addEventListener('click', function() {
-                // 添加点击效果
-                saveBtn.style.transform = "scale(0.95)";
-                
-                // 显示通知
-                notification.classList.add('show');
-                
-                // 3秒后隐藏通知
-                setTimeout(function() {
-                    notification.classList.remove('show');
-                    saveBtn.style.transform = "";
-                }, 3000);
-                
-                // 获取表单数据
-                const amount = document.getElementById('invoice-amount').value;
-                const invoiceDate = document.getElementById('invoice-date').value;
-                const dueDate = document.getElementById('due-date').value;
-                
-                // 这里可以添加实际保存逻辑
-                console.log('保存发票信息...');
-                console.log('金额:', amount);
-                console.log('开票日期:', invoiceDate);
-                console.log('付款期限:', dueDate);
-            });
-            
-            // 设置今天的日期作为默认值
-            const today = new Date();
-            const formattedDate = today.toISOString().split('T')[0];
-            
-            // 如果日期字段为空，设置默认值
-            const invoiceDateInput = document.getElementById('invoice-date');
-            if (!invoiceDateInput.value) {
-                invoiceDateInput.value = formattedDate;
-            }
-            
-            // 设置付款期限为30天后
-            const dueDateInput = document.getElementById('due-date');
-            if (!dueDateInput.value) {
-                const nextMonth = new Date();
-                nextMonth.setDate(today.getDate() + 30);
-                dueDateInput.value = nextMonth.toISOString().split('T')[0];
-            }
-            
-            // 格式化发票金额输入
-            const amountInput = document.getElementById('invoice-amount');
-            amountInput.addEventListener('blur', function() {
-                const value = parseFloat(amountInput.value.replace(/,/g, ''));
-                if (!isNaN(value)) {
-                    amountInput.value = value.toLocaleString('zh-CN', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                    });
-                }
-            });
-        });
+            notification.classList.add('show');
+            setTimeout(() => {
+                notification.classList.remove('show');
+                window.location.href = '/finance/';
+            }, 3000);
+        } else {
+            alert('更新失败：' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('更新过程中发生错误');
+    });
+});
+
+function getInvoiceIdFromUrl() {
+    // 从URL路径中提取发票ID
+    const pathParts = window.location.pathname.split('/');
+    return pathParts[pathParts.length - 1];
+}
     </script>
 </body>
 </html>
