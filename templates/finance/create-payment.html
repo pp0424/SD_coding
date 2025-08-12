@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -177,72 +176,105 @@
     </style>
 </head>
 <body>
-    <!-- 左上角导航按钮 -->
-    <div class="nav-buttons">
-        <button class="nav-button" id="backButton">
-            <i class="fas fa-arrow-left"></i>
-            返回上一页
-        </button>
-        <button class="nav-button" id="homeButton">
-            <i class="fas fa-home"></i>
-            财务主页
-        </button>
-    </div>
-    
-    <!-- 主要内容区 -->
-    <div class="container">
-        <div class="header">
-            <h1>创建收款记录</h1>
-            <div class="subtitle">输入发票号以查询收款信息</div>
-        </div>
-        
-        <div class="input-container">
-            <input type="text" 
-                   class="invoice-input" 
-                   placeholder="输入发票号"
-                   id="invoiceInput">
-            <button class="go-button" id="goButton">GO</button>
-        </div>
-        
-        <div class="instructions">
-            <p>请准确输入发票号码进行查询</p >
-            <p>发票号通常包含字母和数字的组合</p >
-        </div>
-        
-        <div class="footer">
-            ERP财务管理系统
-        </div>
-    </div>
 
-    <script>
-        // 导航按钮功能
-        document.getElementById('goButton').addEventListener('click', function() {
-    const invoiceNumber = document.getElementById('invoiceInput').value.trim();
-    if (!invoiceNumber) {
-        alert('请输入发票号');
-        return;
-    }
-    
-    // 显示查询提示
-    if (confirm('确认查询发票信息？')) {
-        // 检查发票是否存在
-        fetch(`/finance/api/check-invoice-for-payment/${encodeURIComponent(invoiceNumber)}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                window.location.href = data.redirect_url;
-            } else {
-                alert(data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('查询过程中发生错误');
-        });
-    }
+ <!-- 左上角导航按钮 -->
+
+ <div class="nav-buttons">
+
+<button class="nav-button" id="backButton">
+
+ <i class="fas fa-arrow-left"></i>
+
+返回上一页
+
+</button>
+
+<button class="nav-button" id="homeButton">
+ <i class="fas fa-home"></i>
+系统主页
+</button>
+
+ </div>
+
+
+
+<!-- 主要内容区 -->
+
+ <div class="container">
+
+ <div class="header">
+
+<h1>创建收款记录</h1>
+<div class="subtitle">输入发票号以查询收款信息</div>
+
+</div>
+
+
+
+ <div class="input-container">
+
+ <input
+
+type="text"
+
+class="invoice-input"
+
+placeholder="输入发票号"
+ id="invoiceInput"
+/>
+ <button class="go-button" id="goButton">GO</button>
+</div>
+
+ <div class="instructions">
+ <p>请准确输入发票号码进行查询</p>
+ <p>发票号通常包含字母和数字的组合</p>
+
+</div>
+
+
+ <div class="footer">ERP财务管理系统</div>
+
+</div>
+
+
+
+<script>
+
+// 导航按钮功能（假设你有相应页面）
+
+document.getElementById('backButton').addEventListener('click', () => {
+
+ window.history.back();
+
 });
 
-    </script>
+ document.getElementById('homeButton').addEventListener('click', () => {
+
+window.location.href = '/dashboard';
+
+});
+
+
+
+// 点击 GO 按钮跳转到指定页面，带查询参数
+
+document.getElementById('goButton').addEventListener('click', function () {
+
+const invoiceNumber = document.getElementById('invoiceInput').value.trim();
+
+if (!invoiceNumber) {
+
+ alert('请输入发票号');
+
+return;
+
+ }
+
+// 直接跳转到新页面，传递发票号
+
+ window.location.href = `/payment content/${encodeURIComponent(invoiceNumber)}`;
+});
+
+</script>
 </body>
 </html>

@@ -455,7 +455,7 @@
     <div class="container">
         <header>
             <h1>收款记录查询系统</h1>
-                    </header>
+        </header>
         
         <div class="search-panel">
             <div class="panel-title">
@@ -463,42 +463,50 @@
                 <h2>收款记录查询</h2>
             </div>
             
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="receiptNo"><i class="fas fa-receipt"></i> 收款单号</label>
-                    <input type="text" id="receiptNo" class="form-control" placeholder="请输入收款单号">
-                </div>
-                <div class="form-group">
-                    <label for="startDate"><i class="far fa-calendar-alt"></i> 收款日期范围</label>
-                    <div class="date-range">
-                        <input type="date" id="startDate" class="form-control">
-                        <span>至</span>
-                        <input type="date" id="endDate" class="form-control">
+            <!-- 把这里改成form -->
+            <form method="POST" action="{{ url_for('finance.search_payment') }}">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="payment_id"><i class="fas fa-receipt"></i> 收款单号</label>
+                        <!-- 添加name="payment_id" -->
+                        <input type="text" id="payment_id" name="payment_id" class="form-control" placeholder="请输入收款单号" value="{{ request.form.get('payment_id', '') }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="startDate"><i class="far fa-calendar-alt"></i> 收款日期范围</label>
+                        <div class="date-range">
+                            <!-- 日期范围这里先保留，没接后端，可以加name方便以后扩展 -->
+                            <input type="date" id="startDate" name="start_date" class="form-control" value="{{ request.form.get('start_date', '') }}">
+                            <span>至</span>
+                            <input type="date" id="endDate" name="end_date" class="form-control" value="{{ request.form.get('end_date', '') }}">
+                        </div>
                     </div>
                 </div>
-            </div>
-            
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="clientId"><i class="fas fa-user-tie"></i> 客户编号</label>
-                    <input type="text" id="clientId" class="form-control" placeholder="请输入客户编号">
-                </div>
-                <div class="form-group">
-                    <label for="invoiceNo"><i class="fas fa-file-invoice"></i> 发票编号</label>
-                    <div class="invoice-group">
-                        <input type="text" id="invoiceNo" class="form-control" placeholder="请输入发票编号">
-                        <button class="btn btn-primary btn-search" id="searchBtn">
-                            <i class="fas fa-search"></i> 查询
-                        </button>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="customer_id"><i class="fas fa-user-tie"></i> 客户编号</label>
+                        <!-- name改成customer_id -->
+                        <input type="text" id="customer_id" name="customer_id" class="form-control" placeholder="请输入客户编号" value="{{ request.form.get('customer_id', '') }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="invoice_id"><i class="fas fa-file-invoice"></i> 发票编号</label>
+                        <div class="invoice-group">
+                            <!-- name改成invoice_id -->
+                            <input type="text" id="invoice_id" name="invoice_id" class="form-control" placeholder="请输入发票编号" value="{{ request.form.get('invoice_id', '') }}">
+                            <!-- 按钮改为type="submit" -->
+                            <button type="submit" class="btn btn-primary btn-search" id="searchBtn">
+                                <i class="fas fa-search"></i> 查询
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </form>
         </div>
         
         <div class="results-container">
             <div class="results-header">
                 <h2><i class="fas fa-list"></i> 收款记录列表</h2>
-                <div class="results-count">共 <span id="resultCount">5</span> 条记录</div>
+                <div class="results-count">共 <span id="resultCount">{{ results|length }}</span> 条记录</div>
             </div>
             
             <table class="results-table" id="resultsTable">
@@ -513,63 +521,42 @@
                     </tr>
                 </thead>
                 <tbody id="resultsBody">
-                    <tr>
-                        <td>12345</td>
-                        <td class="amount">¥1</td>
-                        <td>2025-07-28</td>
-                        <td><span class="payment-method bank-transfer">111</span></td>
-                        <td>111</td>
-                        <td>
-                            <button class="action-btn toggle-detail" data-id="1">
-                                <i class="fas fa-chevron-right"></i>
-                            </button>
-                        </td>
-                    </tr>
-                    <tr class="detail-row" data-id="1">
-                        <td colspan="6">
-                            <div class="detail-content">
-                                <div class="detail-grid">
-                                    <div class="detail-card">
-                                        <h4><i class="fas fa-building"></i> 客户信息</h4>
-                                        <p>XXXXXX</p>
-                                    </div>
-                                    <div class="detail-card">
-                                        <h4><i class="fas fa-file-invoice"></i> 发票编号</h4>
-                                        <p>111</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                    
-                    <tr>
-                        <td>12321</td>
-                        <td class="amount">¥1</td>
-                        <td>2025-07-27</td>
-                        <td><span class="payment-method cash">111</span></td>
-                        <td>111</td>
-                        <td>
-                            <button class="action-btn toggle-detail" data-id="2">
-                                <i class="fas fa-chevron-right"></i>
-                            </button>
-                        </td>
-                    </tr>
-                    <tr class="detail-row" data-id="2">
-                        <td colspan="6">
-                            <div class="detail-content">
-                                <div class="detail-grid">
-                                    <div class="detail-card">
-                                        <h4><i class="fas fa-building"></i> 客户信息</h4>
-                                        <p>XXXXX </p>
-                                    </div>
-                                    <div class="detail-card">
-                                        <h4><i class="fas fa-file-invoice"></i> 发票编号</h4>
-                                        <p>111111</p>
+                    {% if results %}
+                        {% for r in results %}
+                        <tr>
+                            <td>{{ r.payment_id }}</td>
+                            <td class="amount">¥{{ '%.2f'|format(r.payment_amount) }}</td>
+                            <td>{{ r.payment_date.strftime('%Y-%m-%d') if r.payment_date else '' }}</td>
+                            <td><span class="payment-method">{{ r.payment_method }}</span></td>
+                            <td>{{ r.remarks }}</td>
+                            <td>
+                                <button class="action-btn toggle-detail" data-id="{{ loop.index }}">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="detail-row" data-id="{{ loop.index }}">
+                            <td colspan="6">
+                                <div class="detail-content">
+                                    <div class="detail-grid">
+                                        <div class="detail-card">
+                                            <h4><i class="fas fa-building"></i> 客户编号</h4>
+                                            <p>{{ r.customer_id }}</p>
+                                        </div>
+                                        <div class="detail-card">
+                                            <h4><i class="fas fa-file-invoice"></i> 发票编号</h4>
+                                            <p>{{ r.invoice_id }}</p>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </td>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="6" style="text-align:center;">暂无符合条件的收款记录</td>
                     </tr>
+                    {% endif %}
                 </tbody>
             </table>
         </div>
@@ -579,46 +566,46 @@
         </div>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const searchBtn = document.getElementById('searchBtn');
-            
-            // 设置默认日期范围（最近7天）
-            const today = new Date();
-            const sevenDaysAgo = new Date();
-            sevenDaysAgo.setDate(today.getDate() - 7);
-            
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchBtn = document.getElementById('searchBtn');
+        
+        // 设置默认日期范围（最近7天）
+        const today = new Date();
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(today.getDate() - 7);
+        
+        // 如果用户没有填日期，给默认值
+        if(!document.getElementById('startDate').value)
             document.getElementById('startDate').valueAsDate = sevenDaysAgo;
+        if(!document.getElementById('endDate').value)
             document.getElementById('endDate').valueAsDate = today;
-            
-            // 添加详情展开事件
-            document.querySelectorAll('.toggle-detail').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const id = this.dataset.id;
-                    const detailRow = document.querySelector(`.detail-row[data-id="${id}"]`);
-                    const icon = this.querySelector('i');
-                    
-                    if (detailRow.classList.contains('active')) {
-                        detailRow.classList.remove('active');
-                        icon.classList.remove('fa-chevron-down');
-                        icon.classList.add('fa-chevron-right');
-                    } else {
-                        detailRow.classList.add('active');
-                        icon.classList.remove('fa-chevron-right');
-                        icon.classList.add('fa-chevron-down');
-                    }
-                });
-            });
-            
-            // 搜索按钮点击效果
-            searchBtn.addEventListener('click', function() {
-                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 查询中...';
-                setTimeout(() => {
-                    this.innerHTML = '<i class="fas fa-search"></i> 查询';
-                    alert('查询完成！页面已显示最新结果');
-                }, 1500);
+        
+        // 添加详情展开事件
+        document.querySelectorAll('.toggle-detail').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = this.dataset.id;
+                const detailRow = document.querySelector(`.detail-row[data-id="${id}"]`);
+                const icon = this.querySelector('i');
+                
+                if (detailRow.classList.contains('active')) {
+                    detailRow.classList.remove('active');
+                    icon.classList.remove('fa-chevron-down');
+                    icon.classList.add('fa-chevron-right');
+                } else {
+                    detailRow.classList.add('active');
+                    icon.classList.remove('fa-chevron-right');
+                    icon.classList.add('fa-chevron-down');
+                }
             });
         });
-    </script>
+        
+        // 查询按钮点击动画，提交后浏览器会刷新页面，所以这里效果不明显
+        searchBtn.addEventListener('click', function(e) {
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 查询中...';
+        });
+    });
+</script>
 </body>
+
 </html>

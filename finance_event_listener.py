@@ -1,19 +1,11 @@
 import os
 import csv
 from sqlalchemy import event
-from order.models import (
-    Inquiry, InquiryItem,
-    Quotation, QuotationItem,
-    SalesOrder, OrderItem,
-    Material
-)
+from finance.models import CustomerInvoice, InvoiceItem, CustomerPayment  # 替换为你真实的导入路径
 
 def export_table_to_csv(model_class, csv_filename):
-    """
-    导出指定模型类对应表的数据到 CSV 文件
-    """
-    from database import db
-    folder_path = "Instance"  # ✅ 存到已有的 Instance 文件夹
+    from database import db  # 替换成你项目中 db session 的导入
+    folder_path = "Instance"
     os.makedirs(folder_path, exist_ok=True)
     file_path = os.path.join(folder_path, csv_filename)
 
@@ -26,19 +18,16 @@ def export_table_to_csv(model_class, csv_filename):
         for row in records:
             writer.writerow([getattr(row, col) for col in columns])
 
+def make_listener(model_class, csv_name):
+    def listener(mapper, connection, target):
+        export_table_to_csv(model_class, csv_name)
+    return listener
 
-def o_attach_csv_export_listeners():
-    """
-    绑定所有模型类的插入、更新、删除事件
-    """
+def f_attach_csv_export_listeners():
     model_csv_map = {
-        Inquiry: "Inquiry.csv",
-        InquiryItem: "InquiryItem.csv",
-        Quotation: "Quotation.csv",
-        QuotationItem: "QuotationItem.csv",
-        SalesOrder: "SalesOrder.csv",
-        OrderItem: "OrderItem.csv",
-        Material: "Material.csv"
+        CustomerInvoice: "customer_invoice.csv",
+        InvoiceItem: "invoice_item.csv",
+        CustomerPayment: "customer_payment.csv"
     }
 
     for model_class, csv_name in model_csv_map.items():
@@ -46,5 +35,8 @@ def o_attach_csv_export_listeners():
             event.listen(
                 model_class,
                 action,
-                lambda mapper, connection, target, m=model_class, f=csv_name: export_table_to_csv(m, f)
+                make_listener(model_class, csv_name)
             )
+
+# 在你的程序初始化或者 app 启动时调用
+# attach_csv_export_listeners()

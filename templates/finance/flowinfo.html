@@ -1,479 +1,522 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>文件流信息</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        body {
-            background: linear-gradient(135deg, #f5f7fa 0%, #e4edf9 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0, 82, 204, 0.15);
-            overflow: hidden;
-        }
-        
-        header {
-            background: linear-gradient(90deg, #0052cc 0%, #0066ff 100%);
-            color: white;
-            padding: 25px 30px;
-            text-align: center;
-            position: relative;
-        }
-        
-        header h1 {
-            font-size: 2.5rem;
-            font-weight: 600;
-            letter-spacing: 1px;
-            margin-bottom: 5px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-        
-        .subtitle {
-            font-size: 1.1rem;
-            opacity: 0.9;
-        }
-        
-        .client-info {
-            background: #e6f0ff;
-            padding: 20px 30px;
-            border-bottom: 1px solid #d0e0ff;
-        }
-        
-        .info-row {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        
-        .info-row:last-child {
-            margin-bottom: 0;
-        }
-        
-        .label {
-            width: 120px;
-            font-weight: 600;
-            color: #0052cc;
-            font-size: 1.1rem;
-        }
-        
-        .value {
-            flex: 1;
-            font-size: 1.1rem;
-            color: #333;
-        }
-        
-        .material-controls {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        
-        .pagination {
-            display: flex;
-            gap: 10px;
-        }
-        
-        .pagination-btn {
-            background: #0052cc;
-            color: white;
-            border: none;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            transition: all 0.3s ease;
-            box-shadow: 0 3px 8px rgba(0, 82, 204, 0.3);
-        }
-        
-        .pagination-btn:hover {
-            background: #003d99;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 12px rgba(0, 82, 204, 0.4);
-        }
-        
-        .pagination-btn:disabled {
-            background: #a0b9e0;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-        
-        .file-flow {
-            padding: 30px;
-        }
-        
-        .section-title {
-            color: #0052cc;
-            font-size: 1.8rem;
-            margin-bottom: 25px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #e6f0ff;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .section-title i {
-            background: #e6f0ff;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            color: #0052cc;
-        }
-        
-        .table-container {
-            overflow-x: auto;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0, 82, 204, 0.1);
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            min-width: 800px;
-        }
-        
-        thead th {
-            background: linear-gradient(90deg, #0052cc 0%, #0066ff 100%);
-            color: white;
-            padding: 18px 15px;
-            text-align: left;
-            font-weight: 600;
-            font-size: 1.1rem;
-        }
-        
-        thead th:first-child {
-            border-top-left-radius: 10px;
-        }
-        
-        thead th:last-child {
-            border-top-right-radius: 10px;
-        }
-        
-        tbody tr {
-            transition: background 0.2s;
-        }
-        
-        tbody tr:nth-child(even) {
-            background-color: #f8fbff;
-        }
-        
-        tbody tr:nth-child(odd) {
-            background-color: white;
-        }
-        
-        tbody tr:hover {
-            background-color: #e6f0ff;
-        }
-        
-        td {
-            padding: 16px 15px;
-            color: #333;
-            border-bottom: 1px solid #e0eeff;
-        }
-        
-        .document-id {
-            font-weight: 600;
-            color: #0052cc;
-        }
-        
-        .status {
-            display: inline-block;
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            font-weight: 600;
-        }
-        
-        .status.complete {
-            background: #e6ffe6;
-            color: #009900;
-        }
-        
-        .status.not-complete {
-            background: #ffe6e6;
-            color: #cc0000;
-        }
-        
-        .status.in-progress {
-            background: #fff9e6;
-            color: #e6ac00;
-        }
-        
-        .footer {
-            text-align: center;
-            padding: 25px;
-            background: #f0f7ff;
-            color: #668cbf;
-            font-size: 0.95rem;
-            border-top: 1px solid #d0e0ff;
-        }
-        
-        @media (max-width: 768px) {
-            .info-row {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 8px;
-            }
-            
-            .label {
-                width: 100%;
-            }
-            
-            header h1 {
-                font-size: 2rem;
-            }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>文件流信息 - 单据详情</title>
+  <link
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    rel="stylesheet"
+  />
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: #f7f9fc;
+      color: #333;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 900px;
+      margin: 30px auto;
+      background: #fff;
+      box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+      border-radius: 8px;
+      padding: 25px 30px;
+    }
+    header h1 {
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: #2c3e50;
+      border-bottom: 2px solid #2980b9;
+      padding-bottom: 8px;
+    }
+    h2.section-title {
+      margin-top: 35px;
+      color: #2980b9;
+      font-size: 1.6rem;
+      border-left: 5px solid #2980b9;
+      padding-left: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    h2.section-title i {
+      color: #2980b9;
+    }
+    section {
+      margin-top: 20px;
+    }
+    p {
+      margin: 6px 0;
+      line-height: 1.5;
+    }
+    ul {
+      list-style: none;
+      padding-left: 0;
+      margin: 8px 0 16px 0;
+    }
+    ul li {
+      background: #eef6fc;
+      padding: 8px 12px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+      font-size: 0.95rem;
+      border-left: 4px solid #2980b9;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px 10px;
+      text-align: left;
+      font-size: 0.95rem;
+    }
+    th {
+      background: #2980b9;
+      color: white;
+    }
+    .footer {
+      margin-top: 50px;
+      padding-top: 20px;
+      border-top: 1px solid #ddd;
+      text-align: center;
+      font-size: 0.9rem;
+      color: #666;
+    }
+    .status {
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 15px;
+      font-size: 0.85rem;
+      color: white;
+      display: inline-block;
+      text-transform: capitalize;
+    }
+    .complete {
+      background-color: #27ae60;
+    }
+    .in-progress {
+      background-color: #f39c12;
+    }
+    .not-complete {
+      background-color: #c0392b;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>文件流信息</h1>
-        </header>
-        
-        <div class="client-info">
-            <div class="info-row">
-                <div class="label">客户编号：</div>
-                <div class="value">12345</div>
-            </div>
-            <div class="info-row">
-                <div class="label">物料编号：</div>
-                <div class="value material-controls">
-                    <span>aaa123</span>
-                    <div class="pagination">
-                        <button class="pagination-btn" id="prev-btn" disabled>
-                            <i class="fas fa-chevron-left"></i>
-                        </button>
-                        <button class="pagination-btn" id="next-btn">
-                            <i class="fas fa-chevron-right"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="file-flow">
-            <h2 class="section-title">
-                <i class="fas fa-file-contract"></i>
-                文件流信息
-            </h2>
-            
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>单据类型</th>
-                            <th>单据编号</th>
-                            <th>数量</th>
-                            <th>单位</th>
-                            <th>总价</th>
-                            <th>日期</th>
-                            <th>状态</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>询价单</td>
-                            <td class="document-id">具体信息</td>
-                            <td>具体信息</td>
-                            <td>件</td>
-                            <td>具体信息</td>
-                            <td>具体信息</td>
-                            <td><span class="status complete">complete</span></td>
-                        </tr>
-                        <tr>
-                            <td>报价单</td>
-                            <td class="document-id">具体信息</td>
-                            <td>具体信息</td>
-                            <td>件</td>
-                            <td>具体信息</td>
-                            <td>具体信息</td>
-                            <td><span class="status complete">complete</span></td>
-                        </tr>
-                        <tr>
-                            <td>订单</td>
-                            <td class="document-id">具体信息</td>
-                            <td>具体信息</td>
-                            <td>件</td>
-                            <td>具体信息</td>
-                            <td>具体信息</td>
-                            <td><span class="status complete">complete</span></td>
-                        </tr>
-                        <tr>
-                            <td>发货单</td>
-                            <td class="document-id">具体信息</td>
-                            <td>具体信息</td>
-                            <td>件</td>
-                            <td>具体信息</td>
-                            <td>具体信息</td>
-                            <td><span class="status complete">complete</span></td>
-                        </tr>
-                        <tr>
-                            <td>发货单</td>
-                            <td class="document-id">具体信息</td>
-                            <td>具体信息</td>
-                            <td>件</td>
-                            <td>具体信息</td>
-                            <td>具体信息</td>
-                            <td><span class="status in-progress">in progress</span></td>
-                        </tr>
-                        <tr>
-                            <td>发票</td>
-                            <td class="document-id">具体信息</td>
-                            <td>具体信息</td>
-                            <td>件</td>
-                            <td>具体信息</td>
-                            <td>具体信息</td>
-                            <td><span class="status complete">complete</span></td>
-                        </tr>
-                        <tr>
-                            <td>收款记录</td>
-                            <td class="document-id">具体信息</td>
-                            <td>具体信息</td>
-                            <td>件</td>
-                            <td>具体信息</td>
-                            <td>具体信息</td>
-                            <td><span class="status complete">complete</span></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        
-        <div class="footer">
-            © 2025 ERP财务管理系统
-        </div>
-    </div>
+  <div class="container">
+    <header>
+      <h1>文件流信息 - 单据详情</h1>
+    </header>
+
+    {% if invoice %}
+    <section>
+      <h2 class="section-title">
+        <i class="fas fa-file-invoice-dollar"></i>
+        发票详情 (Invoice)
+      </h2>
+      <p><strong>发票编号：</strong> {{ invoice.invoice_id }}</p>
+      <p><strong>客户编号：</strong> {{ invoice.customer_id }}</p>
+      <p><strong>发票日期：</strong> {{ invoice.invoice_date }}</p>
+      <p><strong>关联销售订单：</strong> 
+        {% if sales_order %}
+          {{ sales_order.sales_order_id }}
+        {% else %}
+          无
+        {% endif %}
+      </p>
+
+      <h3>发票项目</h3>
+      {% if invoice_items %}
+      <table>
+        <thead>
+          <tr>
+            <th>物料编号</th>
+            <th>描述</th>
+            <th>数量</th>
+            <th>单位</th>
+            <th>单价</th>
+            <th>总价</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in invoice_items %}
+          <tr>
+            <td>{{ item.material_id }}</td>
+            <td>{{ item.description or '--' }}</td>
+            <td>{{ item.invoiced_quantity }}</td>
+            <td>{{ item.unit }}</td>
+            <td>{{ "%.2f"|format(item.unit_price) }}</td>
+            <td>{{ "%.2f"|format(item.invoiced_quantity * item.unit_price) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p>无发票项目数据</p>
+      {% endif %}
+
+      <h3>付款信息</h3>
+      {% if payments %}
+      <table>
+        <thead>
+          <tr>
+            <th>付款编号</th>
+            <th>金额</th>
+            <th>付款日期</th>
+            <th>支付方式</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for payment in payments %}
+          <tr>
+            <td>{{ payment.payment_id }}</td>
+            <td>{{ "%.2f"|format(payment.payment_amount) }}</td>
+            <td>{{ payment.payment_date }}</td>
+            <td>{{ payment.payment_method or '--' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p>无付款信息</p>
+      {% endif %}
+
+      <h3>发货信息</h3>
+      {% if delivery_info %}
+      {% for delivery in delivery_info %}
+      <div style="margin-bottom: 15px;">
+        <strong>发货单编号：</strong> {{ delivery.note.delivery_note_id }} <br />
+        <strong>发货日期：</strong> {{ delivery.note.delivery_date }} <br />
+        <strong>状态：</strong> {{ delivery.note.status or '未知' }}
+        <table style="margin-top: 8px;">
+          <thead>
+            <tr>
+              <th>物料编号</th>
+              <th>描述</th>
+              <th>数量</th>
+              <th>单位</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for d_item in delivery.items %}
+            <tr>
+              <td>{{ d_item.material_id }}</td>
+              <td>{{ d_item.description or '--' }}</td>
+              <td>{{ d_item.quantity }}</td>
+              <td>{{ d_item.unit or '--' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endfor %}
+      {% else %}
+      <p>更多发货信息请到发货模块查看</p>
+      {% endif %}
+    </section>
+
+    {% elif sales_order %}
+    <section>
+      <h2 class="section-title">
+        <i class="fas fa-file-alt"></i>
+        销售订单详情 (Sales Order)
+      </h2>
+      <p><strong>订单编号：</strong> {{ sales_order.sales_order_id }}</p>
+      <p><strong>客户编号：</strong> {{ sales_order.customer_id }}</p>
+      <p><strong>订单日期：</strong> {{ sales_order.order_date }}</p>
+      <p><strong>订单状态：</strong> {{ sales_order.status or '未知' }}</p>
+
+      <h3>订单明细</h3>
+      {% if sales_order.items %}
+      <table>
+        <thead>
+          <tr>
+            <th>物料编号</th>
+            <th>描述</th>
+            <th>数量</th>
+            <th>单位</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in sales_order.items %}
+          <tr>
+            <td>{{ item.material_id }}</td>
+            <td>{{ item.description or '--' }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>{{ item.unit }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p>无订单明细数据</p>
+      {% endif %}
+
+      <h3>关联发票</h3>
+      {% if invoices %}
+      <ul>
+        {% for inv in invoices %}
+        <li>发票编号: {{ inv.invoice_id }} | 日期: {{ inv.invoice_date }} | 状态: {{ inv.status or '未知' }}</li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p>无相关发票</p>
+      {% endif %}
+
+      <h3>发货单</h3>
+      {% if delivery_notes %}
+      <ul>
+        {% for dn in delivery_notes %}
+        <li>发货单编号: {{ dn.delivery_note_id }} | 日期: {{ dn.delivery_date }} | 状态: {{ dn.status or '未知' }}</li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p>无发货单</p>
+      {% endif %}
+    </section>
+
+    {% elif delivery %}
+    <section>
+      <h2 class="section-title">
+        <i class="fas fa-truck"></i>
+        发货单详情 (Delivery Note)
+      </h2>
+      <p><strong>发货单编号：</strong> {{ delivery.delivery_note_id }}</p>
+      <p><strong>客户编号：</strong> {{ delivery.customer_id }}</p>
+      <p><strong>发货日期：</strong> {{ delivery.delivery_date }}</p>
+      <p><strong>发货状态：</strong> {{ delivery.status or '未知' }}</p>
+
+      <h3>发货明细</h3>
+      {% if items %}
+      <table>
+        <thead>
+          <tr>
+            <th>物料编号</th>
+            <th>描述</th>
+            <th>数量</th>
+            <th>单位</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+          <tr>
+            <td>{{ item.material_id }}</td>
+            <td>{{ item.description or '--' }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>{{ item.unit or '--' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p>更多发货明细请到发货模块查询</p>
+      {% endif %}
+
+      <h3>相关发票</h3>
+      {% if related_invoices %}
+      <ul>
+        {% for inv in related_invoices %}
+        <li>发票编号: {{ inv.invoice_id }} | 日期: {{ inv.invoice_date }} | 状态: {{ inv.status or '未知' }}</li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p>无相关发票</p>
+      {% endif %}
+    </section>
+
+    {% elif inquiry %}
+    <section>
+      <h2 class="section-title">
+        <i class="fas fa-question-circle"></i>
+        询价单详情 (Inquiry)
+      </h2>
+      <p><strong>询价单编号：</strong> {{ inquiry.inquiry_id }}</p>
+      <p><strong>客户编号：</strong> {{ inquiry.customer_id }}</p>
+      <p><strong>询价日期：</strong> {{ inquiry.inquiry_date }}</p>
+      <p><strong>状态：</strong> {{ inquiry.status or '未知' }}</p>
+
+      {% if inquiry.details %}
+      <h3>询价明细</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>物料编号</th>
+            <th>描述</th>
+            <th>数量</th>
+            <th>单位</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for detail in inquiry.details %}
+          <tr>
+            <td>{{ detail.material_id }}</td>
+            <td>{{ detail.description or '--' }}</td>
+            <td>{{ detail.quantity }}</td>
+            <td>{{ detail.unit or '--' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p>更多询价明细请到订单模块查询</p>
+      {% endif %}
+    </section>
+
+    {% elif quotation %}
+    <section>
+      <h2 class="section-title">
+        <i class="fas fa-file-signature"></i>
+        报价单详情 (Quotation)
+      </h2>
+      <p><strong>报价单编号：</strong> {{ quotation.quotation_id }}</p>
+      <p><strong>客户编号：</strong> {{ quotation.customer_id }}</p>
+      <p><strong>报价日期：</strong> {{ quotation.quotation_date }}</p>
+      <p><strong>状态：</strong> {{ quotation.status or '未知' }}</p>
+
+      {% if quotation.details %}
+      <h3>报价明细</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>物料编号</th>
+            <th>描述</th>
+            <th>数量</th>
+            <th>单位</th>
+            <th>单价</th>
+            <th>总价</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for detail in quotation.details %}
+          <tr>
+            <td>{{ detail.material_id }}</td>
+            <td>{{ detail.description or '--' }}</td>
+            <td>{{ detail.quantity }}</td>
+            <td>{{ detail.unit or '--' }}</td>
+            <td>{{ "%.2f"|format(detail.unit_price) }}</td>
+            <td>{{ "%.2f"|format(detail.line_total) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p>更多报价明细请到订单模块查询</p>
+      {% endif %}
+    </section>
+
+    {% else %}
+    <section>
+      <p style="color:#c0392b; font-weight:600; font-size:1.1rem;">
+        未找到该单据或单据类型不受支持
+      </p>
+    </section>
+    {% endif %}
+
+    <div class="footer">© 2025 ERP财务管理系统</div>
+  </div>
+
 
     <script>
-        // 模拟物料数据
-        const materials = [
-            {
-                id: "MTL-2023-0856",
-                documents: [
-                    { type: "询价单", id: "具体信息", qty: 1, unit: "件", price: "具体信息", date: "具体信息", status: "complete" },
-                    { type: "报价单", id: "具体信息", qty: 1, unit: "件", price: "具体信息", date: "具体信息", status: "complete" },
-                    { type: "订单", id: "具体信息", qty: 1, unit: "件", price: "具体信息", date: "具体信息", status: "complete" },
-                    { type: "发货单", id: "具体信息", qty: 1, unit: "件", price: "具体信息", date: "具体信息", status: "complete" },
-                    { type: "发货单", id: "具体信息", qty: 1, unit: "件", price: "具体信息", date: "具体信息", status: "in-progress" },
-                    { type: "发票", id: "具体信息", qty: 1, unit: "件", price: "具体信息", date: "具体信息", status: "complete" },
-                    { type: "收款记录", id: "具体信息", qty: 1, unit: "件", price: "具体信息", date: "具体信息", status: "complete" },
-                ]
-            },
-            {
-                id: "MTL-2023-0912",
-                documents: [
-                    { type: "询价单", id: "具体信息", qty: 1, unit: "件", price: "具体信息", date: "具体信息", status: "complete" },
-                    { type: "报价单", id: "具体信息", qty: 1, unit: "件", price: "具体信息", date: "具体信息", status: "complete" },
-                    { type: "订单", id: "具体信息", qty: 1, unit: "件", price: "具体信息", date: "具体信息", status: "complete" },
-                    { type: "发货单", id: "具体信息", qty: 1, unit: "件", price: "具体信息", date: "具体信息", status: "in-progress" },
-                    { type: "发票", id: "具体信息", qty: 1, unit: "件", price: "具体信息", date: "具体信息", status: "complete" },
-                    { type: "收款记录", id: "具体信息", qty: 1, unit: "件", price: "具体信息", date: "具体信息", status: "in-progress" }
-                ]
-            },
-        ];
-
-        // DOM元素
-        const materialIdElement = document.querySelector('.value.material-controls span');
+        // 从后端传入的数据
+        
+        
+        const materialIdElement = document.getElementById('material-id');
         const prevBtn = document.getElementById('prev-btn');
         const nextBtn = document.getElementById('next-btn');
-        const tableBody = document.querySelector('tbody');
-        
-        // 当前物料索引
+        const tableBody = document.getElementById('table-body');
+        const noDataElement = document.getElementById('no-data');
+
         let currentIndex = 0;
-        
-        // 更新表格内容
+
         function updateTable() {
-            // 清空表格
             tableBody.innerHTML = '';
-            
-            // 获取当前物料数据
+            if (!materials || materials.length === 0) {
+                materialIdElement.textContent = '--';
+                prevBtn.disabled = true;
+                nextBtn.disabled = true;
+                noDataElement.style.display = 'block';
+                return;
+            }
+
+            noDataElement.style.display = 'none';
+
             const currentMaterial = materials[currentIndex];
-            
-            // 更新物料编号显示
-            materialIdElement.textContent = currentMaterial.id;
-            
-            // 更新按钮状态
+            materialIdElement.textContent = currentMaterial.id || '--';
+
+            // 按钮状态
             prevBtn.disabled = currentIndex === 0;
             nextBtn.disabled = currentIndex === materials.length - 1;
-            
-            // 填充表格数据
+
+            if (!currentMaterial.documents || currentMaterial.documents.length === 0) {
+                // 无单据
+                const tr = document.createElement('tr');
+                const td = document.createElement('td');
+                td.colSpan = 7;
+                td.textContent = '该物料暂无单据信息';
+                td.style.color = '#888';
+                tr.appendChild(td);
+                tableBody.appendChild(tr);
+                return;
+            }
+
             currentMaterial.documents.forEach(doc => {
                 const row = document.createElement('tr');
-                
-                // 根据状态确定CSS类
+
                 let statusClass = '';
                 let statusText = '';
-                
-                if (doc.status === 'complete') {
-                    statusClass = 'complete';
-                    statusText = 'complete';
-                } else if (doc.status === 'not-complete') {
-                    statusClass = 'not-complete';
-                    statusText = 'not complete';
-                } else if (doc.status === 'in-progress') {
-                    statusClass = 'in-progress';
-                    statusText = 'in progress';
+
+                switch (doc.status) {
+                    case 'complete':
+                        statusClass = 'complete';
+                        statusText = 'complete';
+                        break;
+                    case 'in-progress':
+                        statusClass = 'in-progress';
+                        statusText = 'in progress';
+                        break;
+                    case 'not-complete':
+                        statusClass = 'not-complete';
+                        statusText = 'not complete';
+                        break;
+                    default:
+                        statusClass = '';
+                        statusText = doc.status || '';
                 }
-                
+
                 row.innerHTML = `
-                    <td>${doc.type}</td>
-                    <td class="document-id">${doc.id}</td>
-                    <td>${doc.qty}</td>
-                    <td>${doc.unit}</td>
-                    <td>${doc.price}</td>
-                    <td>${doc.date}</td>
+                    <td>${doc.type || '--'}</td>
+                    <td class="document-id">${doc.id || '--'}</td>
+                    <td>${doc.qty != null ? doc.qty : '--'}</td>
+                    <td>${doc.unit || '--'}</td>
+                    <td>${doc.price || '--'}</td>
+                    <td>${doc.date || '--'}</td>
                     <td><span class="status ${statusClass}">${statusText}</span></td>
                 `;
-                
                 tableBody.appendChild(row);
             });
         }
-        
-        // 上一页按钮事件
+
         prevBtn.addEventListener('click', () => {
             if (currentIndex > 0) {
                 currentIndex--;
                 updateTable();
             }
         });
-        
-        // 下一页按钮事件
+
         nextBtn.addEventListener('click', () => {
             if (currentIndex < materials.length - 1) {
                 currentIndex++;
                 updateTable();
             }
         });
-        
-        // 初始化表格
+
         updateTable();
     </script>
 </body>
+
 </html>
