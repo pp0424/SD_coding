@@ -224,3 +224,5 @@ ALTER TABLE PickingTask_new RENAME TO PickingTask;
 COMMIT;
 
 
+select * from PickingTask;
+select * from DeliveryNote;

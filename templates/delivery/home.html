@@ -168,10 +168,10 @@
   <a href="{{ url_for('delivery.inventory_movement') }}">
     <div class="step-card">库存查询</div>
   </a>
-  <div class="step-arrow">→</div>
+  <div class="step-arrow">👉</div>
 
-  <a href="{{ url_for('delivery.shipment_list') }}">
-    <div class="step-card">执行过账</div>
+  <a href="{{ url_for('delivery.post_list') }}">
+    <div class="step-card">过账</div>
   </a>
   <div class="step-arrow">👉</div>
 
@@ -190,9 +190,9 @@
         <ul class="list-group list-group-flush">
           <li class="list-group-item"><a href="{{ url_for('delivery.delivery_list') }}">🔍 发货单管理</a></li>
           <li class="list-group-item"><a href="{{ url_for('delivery.create_delivery') }}">📝 创建发货单</a></li>
-          <li class="list-group-item"><a href="{{ url_for('delivery.picking_task_list') }}">📦 拣货管理</a></li>
-          <li class="list-group-item"><a href="{{ url_for('delivery.shipment_list') }}">📤 发货管理</a></li>
-          <li class="list-group-item"><a href="{{ url_for('delivery.shipment_list') }}">📜 执行过账</a></li>
+          <li class="list-group-item"><a href="{{ url_for('delivery.picking_task_list') }}">📦 拣货</a></li>
+          <li class="list-group-item"><a href="{{ url_for('delivery.shipment_list') }}">📤 发货</a></li>
+          <li class="list-group-item"><a href="{{ url_for('delivery.post_list') }}">📜 过账</a></li>
           <li class="list-group-item"><a href="{{ url_for('delivery.inventory_movement') }}">📊 库存变动查询</a></li>
         </ul>
       </div>

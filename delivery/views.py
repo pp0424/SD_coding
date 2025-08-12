@@ -4,7 +4,7 @@ from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
 from sqlalchemy import exists, func, or_, text
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, load_only
 import traceback
 from decimal import ROUND_HALF_UP, Decimal
 from customer.models import Customer
@@ -1321,16 +1321,66 @@ def to_decimal(v):
         return Decimal('0')
     return Decimal(str(v)).quantize(Q4, rounding=ROUND_HALF_UP)
 
-@delivery_bp.route('/shipment-list', methods=['GET'])
+@delivery_bp.route('/shipment-list', methods=['GET', 'POST'])
 @login_required
 def shipment_list():
     """
     发货单列表 + 查询
     模板使用 {{ form.csrf_token }}，因此这里统一变量名为 form
+    返回 (DeliveryNote, PickingTask) 元组，模板中解包使用
     """
+    from datetime import datetime, time
+
     form = forms.SearchDeliveryForm()
-    # 如果需要查询过滤，可以在这里加 form.validate_on_submit()
-    deliveries = DeliveryNote.query.filter_by(status='已拣货').all()
+
+    # 基础查询：发货单 + 拣货任务（仅展示“已拣货”的发货单，且拣货任务“已完成”）
+    deliveries_q = (
+        db.session.query(DeliveryNote, PickingTask)
+        .join(PickingTask, DeliveryNote.picking_task_id == PickingTask.task_id)
+        .filter(
+            DeliveryNote.status == '已拣货',
+            PickingTask.status == '已完成'
+        )
+        .order_by(DeliveryNote.delivery_date.desc())
+    )
+
+    # 兼容 GET 参数（无提交也能筛选）
+    if form.validate_on_submit() or request.method == 'GET':
+        form.delivery_id.data = form.delivery_id.data or request.args.get('delivery_id', '')
+        form.sales_order_id.data = form.sales_order_id.data or request.args.get('sales_order_id', '')
+        form.status.data = form.status.data or request.args.get('status', '')
+
+        if request.args.get('start_date'):
+            try:
+                form.start_date.data = datetime.strptime(request.args.get('start_date'), '%Y-%m-%d').date()
+            except Exception:
+                pass
+        if request.args.get('end_date'):
+            try:
+                form.end_date.data = datetime.strptime(request.args.get('end_date'), '%Y-%m-%d').date()
+            except Exception:
+                pass
+
+        # 按表单条件追加过滤
+        if form.delivery_id.data:
+            deliveries_q = deliveries_q.filter(DeliveryNote.delivery_note_id.contains(form.delivery_id.data))
+        if form.sales_order_id.data:
+            deliveries_q = deliveries_q.filter(DeliveryNote.sales_order_id.contains(form.sales_order_id.data))
+        if form.start_date.data:
+            deliveries_q = deliveries_q.filter(
+                DeliveryNote.delivery_date >= datetime.combine(form.start_date.data, time.min)
+            )
+        if form.end_date.data:
+            deliveries_q = deliveries_q.filter(
+                DeliveryNote.delivery_date <= datetime.combine(form.end_date.data, time.max)
+            )
+        # 可选：允许覆盖默认状态（否则默认锁定为“已拣货”）
+        if form.status.data:
+            deliveries_q = deliveries_q.filter(DeliveryNote.status == form.status.data)
+
+    # 只在这里执行查询
+    deliveries = deliveries_q.all()
+
     return render_template(
         'delivery/shipment_list.html',
         form=form,
@@ -1428,59 +1478,157 @@ def shipment(delivery_id):
 
 
 ###-----------执行过账---------##
-@delivery_bp.route('/post_delivery/<delivery_id>', methods=['POST'])
+@delivery_bp.route('/post_delivery/<delivery_id>', methods=['GET', 'POST'])
 @login_required
 def post_delivery(delivery_id):
-    form = FlaskForm()  # 只用来校验 CSRF
-    if not form.validate_on_submit():
-        flash('CSRF 校验失败，请刷新页面重试', 'danger')
+    # 获取发货单并锁定，防止并发修改
+    delivery = (db.session.query(DeliveryNote)
+                .filter(DeliveryNote.delivery_note_id == delivery_id)
+                .options(joinedload(DeliveryNote.items))
+                .with_for_update()
+                .first())
+    if not delivery:
+        flash(f"发货单 {delivery_id} 不存在", "danger")
         return redirect(url_for('delivery.shipment_list'))
-    """过账操作：状态从已发货 -> 已过账"""
-    
-    try:
-        # 加锁发货单
-        delivery = (db.session.query(DeliveryNote)
-                    .filter(DeliveryNote.delivery_note_id == delivery_id)
-                    .with_for_update(nowait=False)
-                    .first())
-        
-        # 执行状态转换
-        delivery.status = '已过账'
-        delivery.posted_at = datetime.now()
-        delivery.posted_by = getattr(current_user, 'username', 'system')
-        
-        # 记录财务过账
+
+    form = forms.PostDeliveryForm()
+
+    # GET 请求 — 初始化表单数据
+    if request.method == 'GET':
         for item in delivery.items:
-            # 实际业务中这里会有财务凭证创建等操作
-            # 记录库存变动（财务视角）
-            stock_change = StockChangeLog(
-                material_id=item.material_id,
-                change_type='过账',
-                quantity=0,  # 数量不变，但财务状态变化
-                reference_doc=delivery.delivery_note_id,
-                warehouse_code=delivery.warehouse_code,
-                change_time=datetime.now(),
-                operator=delivery.posted_by
+            entry = form.items.append_entry()
+            entry.item_no.data = item.item_no  # ✅ 新增隐藏字段
+            entry.material_id.data = item.material_id
+            entry.planned_quantity.data = float(item.planned_delivery_quantity or 0)
+            entry.actual_quantity.data = float(item.actual_delivery_quantity or item.planned_delivery_quantity or 0)
+        form.actual_delivery_date.data = delivery.delivery_date
+        return render_template('delivery/post_delivery.html', delivery=delivery, form=form)
+
+    # POST 请求 — 表单验证
+    if not form.validate_on_submit():
+        flash("表单验证失败，请检查输入", "danger")
+        return render_template('delivery/post_delivery.html', delivery=delivery, form=form)
+
+    try:
+        # 状态校验
+        if delivery.status != '已发货':
+            flash(f"发货单当前状态为 {delivery.status}，不允许过账", "danger")
+            return redirect(url_for('delivery.delivery_detail', delivery_id=delivery_id))
+
+        # 遍历每一行发货记录
+        for i, item_form in enumerate(form.items.entries):
+            item_no = int(item_form.item_no.data)
+            planned_qty = Decimal(item_form.planned_quantity.data or 0)
+            actual_qty = Decimal(item_form.actual_quantity.data or 0)
+
+            if actual_qty < 0:
+                raise ValueError(f"第{i+1}行实际发货数量不能为负")
+            if actual_qty > planned_qty:
+                raise ValueError(f"第{i+1}行实际发货数量({actual_qty})不能大于计划数量({planned_qty})")
+
+            # 找到对应的 DeliveryItem
+            delivery_item = next((di for di in delivery.items if di.item_no == item_no), None)
+            if not delivery_item:
+                raise ValueError(f"发货明细 {item_no} 不存在")
+
+            # 找到对应的订单行
+            order_item = (db.session.query(OrderItem)
+                          .filter(OrderItem.sales_order_id == delivery.sales_order_id,
+                                  OrderItem.item_no == delivery_item.sales_order_item_no)
+                          .with_for_update()
+                          .first())
+            if not order_item:
+                raise ValueError(f"订单项 {delivery.sales_order_id}-{delivery_item.sales_order_item_no} 不存在")
+
+            # 校验订单剩余量
+            remaining_qty = Decimal(order_item.order_quantity or 0) - Decimal(order_item.shipped_quantity or 0)
+            if actual_qty > remaining_qty:
+                raise ValueError(f"第{i+1}行发货数量({actual_qty})超过订单剩余量({remaining_qty})")
+
+            # 获取物料并加锁
+            material = (db.session.query(Material)
+                        .filter(Material.material_id == delivery_item.material_id)
+                        .with_for_update()
+                        .first())
+            if not material:
+                raise ValueError(f"物料 {delivery_item.material_id} 不存在")
+
+            # 计算数量变化
+            previous_actual_qty = delivery_item.actual_delivery_quantity or Decimal('0')
+            delta_qty = actual_qty - previous_actual_qty
+
+            # 库存扣减或回滚
+            if delta_qty > 0:
+                material.ship_stock(qty=delta_qty,
+                                     operator=current_user.username,
+                                     warehouse_code=delivery.warehouse_code,
+                                     reference=delivery.delivery_note_id)
+            elif delta_qty < 0:
+                if not current_app.config.get('ALLOW_DELIVERY_ROLLBACK', True):
+                    raise ValueError("系统配置不允许减少发货数量")
+                material.return_stock(qty=abs(delta_qty),
+                                       operator=current_user.username,
+                                       warehouse_code=delivery.warehouse_code,
+                                       reference=delivery.delivery_note_id)
+
+            # 更新发货明细
+            delivery_item.actual_delivery_quantity = actual_qty
+
+            # 更新订单发货统计
+            order_item.shipped_quantity = (order_item.shipped_quantity or Decimal('0')) + delta_qty
+            order_item.unshipped_quantity = max(
+                Decimal(order_item.order_quantity or 0) - Decimal(order_item.shipped_quantity or 0),
+                Decimal('0')
             )
-            db.session.add(stock_change)
-            
+
+        # 更新发货单状态
+        delivery.status = '已过账'
+        posted_at = form.actual_delivery_date.data
+        if not isinstance(posted_at, datetime):
+            posted_at = datetime.now()
+        delivery.posted_at = posted_at
+        delivery.posted_by = current_user.username
+        if form.remarks.data:
+            delivery.remarks = (delivery.remarks or '') + f"\n[过账备注] {form.remarks.data}"
+
         db.session.commit()
-        flash('发货单已过账，财务凭证已生成', 'success')
+        flash("发货单过账成功，库存已扣减，订单已更新", "success")
         return redirect(url_for('delivery.delivery_detail', delivery_id=delivery_id))
-        
+
     except ValueError as ve:
         db.session.rollback()
-        flash(f'状态转换失败: {str(ve)}', 'danger')
-    except SQLAlchemyError as se:
+        flash(str(ve), "danger")
+    except SQLAlchemyError:
         db.session.rollback()
-        flash(f'数据库操作失败: {str(se)}', 'danger')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'过账过程中发生错误: {str(e)}', 'danger')
-    
-    return redirect(url_for('delivery.delivery_detail', delivery_id=delivery_id))
+        flash("数据库错误，请联系管理员", "danger")
 
+    return render_template('delivery/post_delivery.html', delivery=delivery, form=form)
 
+@delivery_bp.route('/post-list', methods=['GET'])
+@login_required
+def post_list():
+    """
+    过账发货列表 + 查询
+    展示状态为“已发货”的发货单
+    模板中同样使用 {{ form.csrf_token }}，统一变量名为 form
+    """
+    form = forms.SearchDeliveryForm()
+
+    if form.validate_on_submit():
+         query = DeliveryNote.query
+         if form.delivery_id.data:
+             query = query.filter(DeliveryNote.delivery_note_id.like(f"%{form.delivery_id.data}%"))
+         if form.sales_order_id.data:
+             query = query.filter(DeliveryNote.sales_order_id.like(f"%{form.sales_order_id.data}%"))
+         deliveries = query.filter_by(status='已发货').all()
+    else:
+         deliveries = DeliveryNote.query.filter_by(status='已发货').all()
+
+    return render_template(
+        'delivery/post_list.html',  # 建议单独做一个模板，避免和发货确认列表混用
+        form=form,
+        deliveries=deliveries
+    )
 
 ###-----------库存变动查询---------##
 @delivery_bp.route('/inventory_movement', methods=['GET'])
