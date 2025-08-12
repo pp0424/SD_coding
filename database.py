@@ -8,7 +8,8 @@ db = SQLAlchemy()
 
 def db_init(app):
     db.init_app(app)
-    #create_all()创建新表
+    with app.app_context():
+        db.create_all()  # 确保在上下文中创建表
     return db
 
 

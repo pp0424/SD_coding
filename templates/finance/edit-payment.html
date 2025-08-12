@@ -185,7 +185,7 @@
         </button>
         <button class="nav-button" id="homeButton">
             <i class="fas fa-home"></i>
-            财务主页
+            系统主页
         </button>
     </div>
     
@@ -200,7 +200,7 @@
             <input type="text" 
                    class="invoice-input" 
                    placeholder="输入收款单号"
-                   id="invoiceInput">
+                   id="paymentInput">
             <button class="go-button" id="goButton">GO</button>
         </div>
         
@@ -214,8 +214,17 @@
     </div>
 
     <script>
+    // 导航按钮功能（假设你有相应页面）
+        document.getElementById('backButton').addEventListener('click', () => {
+            window.history.back();
+        });
+        document.getElementById('homeButton').addEventListener('click', () => {
+            window.location.href = '/dashboard';
+        });
+
+
        document.getElementById('goButton').addEventListener('click', function() {
-    const paymentNumber = document.getElementById('invoiceInput').value.trim();
+    const paymentNumber = document.getElementById('paymentInput').value.trim();
     if (!paymentNumber) {
         alert('请输入收款单号');
         return;

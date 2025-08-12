@@ -351,50 +351,47 @@
                     <i class="fas fa-arrow-left"></i> 返回上一页
                 </button>
                 <button class="nav-btn" onclick="goToFinancePage()">
-                    <i class="fas fa-calculator"></i> 财务主页
+                    <i class="fas fa-calculator"></i> 系统主页
                 </button>
             </div>
             <h1 class="page-title">单据查询系统</h1>
-            <div></div> <!-- 空元素用于占位保持布局 -->
+            <div></div>
         </div>
-        
+
         <div class="search-section">
             <h2 class="section-title">查询条件</h2>
             <div class="search-form">
                 <div class="form-group">
-                    <span class="form-label">查询对象</span>
-                    <select class="form-select" id="search-object">
-                        <option value="">请选择客户</option>
-                        <option value="C10001">C10001</option>
-                        <option value="C10002">C10002</option>
-                        <option value="C10004">C10004</option>
-                        <option value="C10005">C10005</option>
-                    </select>
+                    <label class="form-label" for="search-object">客户编号</label>
+                    <input type="text" class="form-input" id="search-object" placeholder="输入客户编号，如 CUST-CN00001" />
                 </div>
-                
+
                 <div class="form-group">
-                    <span class="form-label">编号</span>
-                    <input type="text" class="form-input" id="document-id" placeholder="请输入单据编号" value="INV">
+                    <label class="form-label" for="document-id">单据编号</label>
+                    <input type="text" class="form-input" id="document-id" placeholder="请输入单据编号" />
                 </div>
-                
-                <button class="search-btn" onclick="searchDocuments()">
-                    <i class="fas fa-search"></i> 查询单据
-                </button>
+
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <button class="search-btn" id="search-btn" onclick="searchDocuments()">
+                        <i class="fas fa-search"></i> 查询单据
+                    </button>
+                    <button class="nav-btn" onclick="clearFilters()">清除</button>
+                </div>
             </div>
         </div>
-        
+
         <div class="results-section">
             <div class="results-header">
                 <h2 class="results-title">单据查询结果</h2>
                 <div class="results-count" id="results-count">共 0 条记录</div>
             </div>
-            
+
             <div class="results-container">
-                <table class="results-table">
+                <table class="results-table" id="results-table">
                     <thead>
                         <tr>
                             <th>单据编号</th>
-                            <th>客户名称</th>
+                            <th>客户编号</th>
                             <th>单据类型</th>
                             <th>金额</th>
                             <th>创建日期</th>
@@ -406,139 +403,154 @@
                         <!-- 查询结果将在这里显示 -->
                     </tbody>
                 </table>
-                <div class="no-results" id="no-results">
-                    <i class="fas fa-file-alt"></i>
-                    <h3>暂无单据数据</h3>
-                    <p>请设置查询条件并点击"查询单据"按钮</p>
+
+                <div class="no-results" id="no-results" style="display:flex">
+                    <i class="fas fa-file-alt" style="font-size:28px;margin-bottom:8px;"></i>
+                    <h3 style="margin:6px 0;">暂无单据数据</h3>
                 </div>
             </div>
         </div>
     </div>
-    
+
     <footer>
         <p>© 2025 ERP财务管理系统</p>
     </footer>
 
     <script>
-        // 模拟数据
-        const documents = [
-            { id: "INV202307001", customer: "C10001", type: "销售发票", amount: "¥28,560.00", date: "2023-07-15", status: "completed" },
-            { id: "REC202307045", customer: "C10002", type: "收款记录", amount: "¥15,000.00", date: "2023-07-18", status: "completed" },
-            { id: "INV202307102", customer: "C10003", type: "销售发票", amount: "¥42,380.00", date: "2023-07-20", status: "pending" },
-            { id: "REC202307156", customer: "C10001", type: "收款记录", amount: "¥28,560.00", date: "2023-07-22", status: "completed" },
-            { id: "INV202307201", customer: "C10004", type: "采购发票", amount: "¥36,720.00", date: "2023-07-25", status: "pending" },
-            { id: "REC202307230", customer: "C10005", type: "收款记录", amount: "¥22,500.00", date: "2023-07-26", status: "rejected" },
-            { id: "INV202307251", customer: "C10002", type: "销售发票", amount: "¥19,870.00", date: "2023-07-27", status: "completed" }
-        ];
-        
-        // 页面导航函数
+        // 全局函数，确保可通过 inline onclick 访问
         function goBack() {
-            alert("返回上一页");
             window.history.back();
         }
-        
+
         function goToFinancePage() {
-            window.location.href = "1.html";
-            alert("跳转到财务主页 (1.html)");
+            window.location.href = '/dashboard';
         }
-        
-        // 查看详细信息
+
+        function clearFilters() {
+            document.getElementById('search-object').value = '';
+            document.getElementById('document-id').value = '';
+            document.getElementById('results-body').innerHTML = '';
+            document.getElementById('no-results').style.display = 'flex';
+            document.getElementById('results-count').textContent = '共 0 条记录';
+        }
+
         function viewDetails(documentId) {
-            // 实际应用中：window.location.href = `flowinfo.html?id=${documentId}`;
-            alert(`跳转到单据 ${documentId} 的详细信息页面 (3flowinfo.html?id=${documentId})`);
+            // 跳转到后端通用 flowinfo 页面，后端会根据编号判定单据类型并渲染对应详情
+            if (!documentId) return;
+            window.location.href = `/finance/flowinfo/${encodeURIComponent(documentId)}`;
         }
-        
-        // 查询单据函数
-        function searchDocuments() {
-            const searchId = document.getElementById('document-id').value.trim();
+
+        async function searchDocuments() {
+            const customerId = document.getElementById('search-object').value.trim();
+            const documentId = document.getElementById('document-id').value.trim();
             const resultsBody = document.getElementById('results-body');
             const noResults = document.getElementById('no-results');
             const resultsCount = document.getElementById('results-count');
-            
-            // 清空当前结果
+            const searchBtn = document.getElementById('search-btn');
+
+            // 清空上次结果
             resultsBody.innerHTML = '';
-            
-            // 如果没有输入查询条件
-            if (!searchId) {
+            resultsCount.textContent = '共 0 条记录';
+            noResults.style.display = 'none';
+
+            if (!customerId && !documentId) {
                 noResults.style.display = 'flex';
                 resultsCount.textContent = '共 0 条记录';
                 return;
             }
-            
-            // 模拟查询 - 实际应用中应连接后端API
-            const filteredDocs = documents.filter(doc => 
-                doc.id.includes(searchId) || 
-                doc.customer.includes(searchId)
-            );
-            
-            // 显示结果数量
-            resultsCount.textContent = `共 ${filteredDocs.length} 条记录`;
-            
-            // 如果没有结果
-            if (filteredDocs.length === 0) {
-                noResults.style.display = 'flex';
-                return;
-            }
-            
-            // 隐藏"无结果"消息
-            noResults.style.display = 'none';
-            
-            // 显示结果
-            filteredDocs.forEach(doc => {
-                const row = document.createElement('tr');
-                
-                // 根据状态获取对应的CSS类和显示文本
-                let statusClass = '';
-                let statusText = '';
-                
-                switch(doc.status) {
-                    case 'completed':
+
+            // 按需禁用按钮以避免重复请求
+            searchBtn.disabled = true;
+            searchBtn.textContent = '查询中...';
+
+            try {
+                const res = await fetch('/finance/api/document-flow', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                        // 若启用了 CSRF，请在这里加上 X-CSRFToken: '...' 的头
+                    },
+                    body: JSON.stringify({ customer_id: customerId, document_id: documentId })
+                });
+
+                if (!res.ok) {
+                    throw new Error('网络响应错误: ' + res.status);
+                }
+
+                const data = await res.json();
+
+                if (!data.success || !Array.isArray(data.documents) || data.count === 0) {
+                    noResults.style.display = 'flex';
+                    resultsCount.textContent = '共 0 条记录';
+                    return;
+                }
+
+                // 更新数量显示
+                resultsCount.textContent = `共 ${data.count} 条记录`;
+                noResults.style.display = 'none';
+
+                data.documents.forEach(doc => {
+                    // 防御式：确保字段存在
+                    const id = doc.id || '';
+                    const customer = doc.customer || '';
+                    const type = doc.type || '';
+                    const amount = typeof doc.amount === 'number' ? doc.amount : Number(doc.amount || 0);
+                    const date = doc.date || '';
+                    const status = (doc.status || '').toLowerCase();
+
+                    let statusClass = 'status pending';
+                    let statusText = doc.status || '未知';
+                    if (status === 'completed' || status === '已完成') {
                         statusClass = 'status completed';
                         statusText = '已完成';
-                        break;
-                    case 'pending':
+                    } else if (status === 'pending' || status === '待处理') {
                         statusClass = 'status pending';
                         statusText = '待处理';
-                        break;
-                    case 'rejected':
+                    } else if (status === 'rejected' || status === '已拒绝') {
                         statusClass = 'status rejected';
                         statusText = '已拒绝';
-                        break;
-                }
-                
-                row.innerHTML = `
-                    <td>${doc.id}</td>
-                    <td>${doc.customer}</td>
-                    <td>${doc.type}</td>
-                    <td><strong>${doc.amount}</strong></td>
-                    <td>${doc.date}</td>
-                    <td><span class="${statusClass}">${statusText}</span></td>
-                    <td class="actions-cell">
-                        <button class="detail-btn" onclick="viewDetails('${doc.id}')">
-                            &gt;
-                        </button>
-                    </td>
-                `;
-                
-                resultsBody.appendChild(row);
-            });
+                    }
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${id}</td>
+                        <td>${customer}</td>
+                        <td>${type}</td>
+                        <td><strong>¥${(isNaN(amount) ? 0.00 : amount).toFixed(2)}</strong></td>
+                        <td>${date}</td>
+                        <td><span class="${statusClass}">${statusText}</span></td>
+                        <td class="actions-cell">
+                            <button class="detail-btn" onclick="viewDetails('${id}')">&gt;</button>
+                        </td>
+                    `;
+                    resultsBody.appendChild(tr);
+                });
+
+            } catch (err) {
+                console.error('查询异常：', err);
+                noResults.style.display = 'flex';
+                resultsCount.textContent = '共 0 条记录';
+            } finally {
+                searchBtn.disabled = false;
+                searchBtn.innerHTML = '<i class="fas fa-search"></i> 查询单据';
+            }
         }
-        
-        // 初始化页面
+
+        // 回车触发查询（为两个输入框都绑定）
         document.addEventListener('DOMContentLoaded', function() {
-            // 设置默认显示无结果
             document.getElementById('no-results').style.display = 'flex';
             document.getElementById('results-count').textContent = '共 0 条记录';
-            
-            // 为输入框添加回车键搜索功能
-            document.getElementById('document-id').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    searchDocuments();
+
+            ['search-object', 'document-id'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('keypress', function(e) {
+                        if (e.key === 'Enter') {
+                            searchDocuments();
+                        }
+                    });
                 }
             });
-            
-            // 默认执行一次查询
-            setTimeout(searchDocuments, 500);
         });
     </script>
 </body>

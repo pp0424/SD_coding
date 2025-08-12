@@ -8,13 +8,12 @@ from finance.views import bp as finance_bp
 from auth.views import auth_bp
 from auth.models import User
 from flask_login import LoginManager
-from finance.models import CustomerInvoice, InvoiceItem, CustomerPayment
+
 
 from flask_moment import Moment
 
 from finance.models import CustomerInvoice, InvoiceItem, CustomerPayment
 
-from finance.models import CustomerInvoice, InvoiceItem, CustomerPayment
 
 
 app = Flask(__name__)
@@ -42,10 +41,12 @@ def load_user(user_id):
     return User.query.get(user_id)
 
 ##数据表与db实时同步
-from order_event_listener import attach_csv_export_listeners
+from order_event_listener import o_attach_csv_export_listeners
+from finance_event_listener import f_attach_csv_export_listeners
 
 with app.app_context():
-    attach_csv_export_listeners()
+    o_attach_csv_export_listeners()
+    f_attach_csv_export_listeners()
 
 
 #07261928发货模块

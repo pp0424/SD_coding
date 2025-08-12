@@ -185,7 +185,7 @@
         </button>
         <button class="nav-button" id="homeButton">
             <i class="fas fa-home"></i>
-            财务主页
+            系统主页
         </button>
     </div>
     
@@ -214,6 +214,16 @@
     </div>
 
     <script>
+
+    // 导航按钮功能（假设你有相应页面）
+        document.getElementById('backButton').addEventListener('click', () => {
+            window.history.back();
+        });
+        document.getElementById('homeButton').addEventListener('click', () => {
+            window.location.href = '/dashboard';
+        });
+
+    
         document.getElementById('goButton').addEventListener('click', function() {
     const invoiceNumber = document.getElementById('invoiceInput').value.trim();
     if (!invoiceNumber) {
