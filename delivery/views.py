@@ -9,8 +9,8 @@ import traceback
 from decimal import ROUND_HALF_UP, Decimal
 from customer.models import Customer
 from . import forms
-from .models import DeliveryNote, DeliveryItem, StockChangeLog, PickingTask, PickingTaskItem
-from order.models import QTY_QUANT, SalesOrder,SalesOrder, OrderItem, Material
+from .models import QTY_QUANT,DeliveryNote, DeliveryItem, StockChangeLog, PickingTask, PickingTaskItem,Inventory
+from order.models import SalesOrder,SalesOrder, OrderItem, Material
 from datetime import date, datetime, time, timedelta
 from math import ceil
 from database import db
@@ -223,7 +223,7 @@ def collect_and_validate_items(form: forms.CreateDeliveryForm, order_items: list
 
 def atp_check_by_material(valid_items: list[dict]):
     """
-    简化 ATP：按物料聚合需求，基于 Material.available_stock 校验（全局，不分仓）。
+    简化 ATP：按物料聚合需求，基于 Inventory.available_stock 校验（全局，不分仓）。
     只做校验与行锁，不做占用扣减（避免与过账扣减重复）。
     """
     # 汇总需求
@@ -235,8 +235,8 @@ def atp_check_by_material(valid_items: list[dict]):
     if not mat_ids:
         return
 
-    mats = (db.session.query(Material)
-            .filter(Material.material_id.in_(mat_ids))
+    mats = (db.session.query(Inventory)
+            .filter(Inventory.material_id.in_(mat_ids))
             .with_for_update(nowait=False)  # 行锁，降低并发误分配概率
             .all())
     mats_by_id = {m.material_id: m for m in mats}
@@ -304,7 +304,7 @@ def create_delivery():
                 flash('没有有效的发货行', 'warning')
                 return render_template('delivery/create_delivery.html', form=form, order_items=form.items.entries)
 
-            # 3) ATP 校验（基于 Material.available_stock）
+            # 3) ATP 校验（基于 Inventory.available_stock）
             atp_check_by_material(valid_items)
 
             # 创建拣货任务
@@ -402,7 +402,7 @@ def create_delivery():
                 remain = compute_unshipped_dynamic(oi)
                 if remain <= 0:
                     continue
-                mat = Material.query.filter_by(material_id=oi.material_id).first()
+                mat = Inventory.query.filter_by(material_id=oi.material_id).first()
                 form.items.append_entry({
                     'sales_order_item_no': oi.item_no,
                     'material_id': oi.material_id,
@@ -495,7 +495,7 @@ def cancel_delivery(delivery_id):
             # 恢复库存（根据当前状态）
             if delivery.status in ['待拣货', '已拣货', '待发货']:
                 for item in delivery.items:
-                    material = Material.query.filter_by(material_id=item.material_id).first()
+                    material = Inventory.query.filter_by(material_id=item.material_id).first()
                     if material:
                         # 确保数值类型正确
                         available_stock = to_decimal(material.available_stock)
@@ -1030,7 +1030,7 @@ def cancel_picking_task(task_id):
     """
     取消拣货任务（支持两种状态）：
       - 若任务状态 == '待拣货'：仅将任务置为 '已取消'（不修改库存）
-      - 若任务状态 == '已完成'：释放已占用库存（调用 Material.release_stock），并回退已拣数量与发货行已拣量
+      - 若任务状态 == '已完成'：释放已占用库存（调用 Inventory.release_stock），并回退已拣数量与发货行已拣量
     前提：相关发货单不能为 '已发货'（若已发货需走退货/回库流程）。
     支持普通表单提交与 AJAX(JSON) 提交，返回与现有风格一致（flash / jsonify / redirect）。
     """
@@ -1175,16 +1175,16 @@ def cancel_picking_task(task_id):
                     release_by_material[mat_id] = release_by_material.get(mat_id, Decimal('0')) + picked
                     pti_release[(pti.task_id, pti.item_no)] = picked
 
-                # Normalize material release quantities and call Material.release_stock
+                # Normalize material release quantities and call Inventory.release_stock
                 for mat_id, rel_qty in release_by_material.items():
                     rel_qty = Decimal(rel_qty).quantize(QTY_QUANT)
                     if rel_qty <= 0:
                         continue
-                    mat = db.session.query(Material).filter_by(material_id=mat_id).one_or_none()
+                    mat = db.session.query(Inventory).filter_by(material_id=mat_id).one_or_none()
                     if not mat:
                         raise ValueError(f'物料 {mat_id} 在库存表中不存在（release）')
                     try:
-                        # Material.release_stock 应该会 with_for_update() 并检查 allocated >= rel_qty
+                        # Inventory.release_stock 应该会 with_for_update() 并检查 allocated >= rel_qty
                         mat.release_stock(rel_qty, operator=operator,
                                           warehouse_code=(delivery_locked.warehouse_code if delivery_locked else None),
                                           reference=(delivery_locked.delivery_note_id if delivery_locked else None))
@@ -1432,7 +1432,7 @@ def shipment(delivery_id):
             if ship_qty <= 0:
                 continue
 
-            material = (db.session.query(Material)
+            material = (db.session.query(Inventory)
                         .filter_by(material_id=item.material_id)
                         .with_for_update()
                         .one_or_none())
@@ -1546,8 +1546,8 @@ def post_delivery(delivery_id):
                 raise ValueError(f"第{i+1}行发货数量({actual_qty})超过订单剩余量({remaining_qty})")
 
             # 获取物料并加锁
-            material = (db.session.query(Material)
-                        .filter(Material.material_id == delivery_item.material_id)
+            material = (db.session.query(Inventory)
+                        .filter(Inventory.material_id == delivery_item.material_id)
                         .with_for_update()
                         .first())
             if not material:
@@ -1702,8 +1702,8 @@ def validate_stock_availability(delivery_items: list, warehouse_code: str) -> li
         return errors
     
     # 批量查询物料库存（加锁防止并发问题）
-    materials = (db.session.query(Material)
-                .filter(Material.material_id.in_(list(material_demands.keys())))
+    materials = (db.session.query(Inventory)
+                .filter(Inventory.material_id.in_(list(material_demands.keys())))
                 .with_for_update(nowait=False)
                 .all())
     
@@ -1755,8 +1755,8 @@ def api_sales_order_items(sales_order_id):
                 # 确保 material 总是已定义
                 material = None
                 if getattr(oi, 'material_id', None):
-                    # Flask‑SQLAlchemy 3.x 推荐 session.get；老版本用 Material.query.get 也可
-                    material = db.session.get(Material, oi.material_id)
+                    # Flask‑SQLAlchemy 3.x 推荐 session.get；老版本用 Inventory.query.get 也可
+                    material = db.session.get(Inventory, oi.material_id)
 
                 base_unit = (material.base_unit if material else (oi.unit or ''))
                 storage_location = (material.storage_location if material else '未知')

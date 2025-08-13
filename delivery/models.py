@@ -1,9 +1,12 @@
 # delivery/models.py
 
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
+from datetime import datetime, timezone
 from flask_login import current_user
+from sqlalchemy import text
 from database import db
 from datetime import datetime
+
 
 class PickingTask(db.Model):
     __tablename__ = 'PickingTask'
@@ -109,3 +112,190 @@ class StockChangeLog(db.Model):
     warehouse_code = db.Column(db.String(255))
 
     material = db.relationship('Material', backref='stock_changes')
+
+
+from decimal import Decimal, ROUND_HALF_UP
+from datetime import datetime
+
+QTY_QUANT = Decimal('0.0001')
+
+def _normalize_qty(q):
+    q = Decimal(q or 0)
+    # 避免出现超过 4 位小数
+    q = q.quantize(QTY_QUANT, rounding=ROUND_HALF_UP)
+    return q
+
+def _resolve_operator(operator):
+    # 安全地从 current_user 取用户名
+    try:
+        from flask_login import current_user
+        if operator:
+            return operator
+        if getattr(current_user, "is_authenticated", False):
+            return getattr(current_user, "username", "unknown")
+    except Exception:
+        pass
+    return "system"
+
+QTY_QUANT = Decimal('0.0001')  # 与 Numeric(18, 4) 对齐
+
+def _to_decimal(x):
+        if x is None:
+            return Decimal('0')
+        if isinstance(x, Decimal):
+            return x
+        try:
+            # 避免 float 精度问题，允许传 str/int
+            return Decimal(str(x))
+        except (InvalidOperation, ValueError, TypeError):
+            raise ValueError(f"数量格式非法: {x!r}")
+
+def _q(x):
+    return _to_decimal(x).quantize(QTY_QUANT, rounding=ROUND_HALF_UP)
+
+class Inventory(db.Model):
+    __tablename__ = 'Inventory'
+    material_id = db.Column(db.String(255), primary_key=True, comment='物料编号')
+    description = db.Column(db.String(255), nullable=False, comment='物料描述')
+    base_unit = db.Column(db.String(255), nullable=False, comment='基本计量单位')
+    storage_location = db.Column(db.String(255), nullable=False, comment='存储位置')
+    available_stock = db.Column(db.Numeric(18, 4), nullable=False, server_default=text('0'), comment='可用库存数量')
+    physical_stock  = db.Column(db.Numeric(18, 4), nullable=False, server_default=text('0'), comment='账面总库存')
+    allocated_stock = db.Column(db.Numeric(18, 4), nullable=False, server_default=text('0'), comment='已分配库存')
+    pending_outbound= db.Column(db.Numeric(18, 4), nullable=False, server_default=text('0'), comment='待出库量')
+
+
+    def allocate_stock(self, qty, operator=None, warehouse_code=None, reference=None):
+        qty = _q(qty)
+        if qty <= 0:
+            return None
+
+        locked = (db.session.query(Inventory)
+                  .filter_by(material_id=self.material_id)
+                  .with_for_update()
+                  .one_or_none())
+        if locked is None:
+            raise ValueError(f"物料 {self.material_id} 不存在（allocate）")
+
+        before_available = _to_decimal(locked.available_stock)
+        before_allocated = _to_decimal(locked.allocated_stock)
+        before_physical  = _to_decimal(locked.physical_stock)
+        before_pending   = _to_decimal(locked.pending_outbound)
+
+        if before_available < qty:
+            raise ValueError(f"{locked.material_id} 可用不足：可用 {before_available} < 需 {qty}")
+
+        locked.available_stock = _q(before_available - qty)
+        locked.allocated_stock = _q(before_allocated + qty)
+
+        log = StockChangeLog(
+            material_id=locked.material_id,
+            change_time=datetime.now(timezone.utc),
+            change_type='拣货占用',
+            quantity_change=qty,
+            before_available=before_available,
+            after_available=_to_decimal(locked.available_stock),
+            before_allocated=before_allocated,
+            after_allocated=_to_decimal(locked.allocated_stock),
+            before_physical=before_physical,
+            after_physical=before_physical,
+            before_pending_outbound=before_pending,
+            after_pending_outbound=before_pending,
+            reference_doc=(reference or ''),
+            operator=_resolve_operator(operator),
+            warehouse_code=(warehouse_code or locked.storage_location)
+        )
+        db.session.add(log)
+        return locked
+
+    def release_stock(self, qty, operator=None, warehouse_code=None, reference=None):
+        qty = _q(qty)
+        if qty <= 0:
+            return None
+
+        locked = (db.session.query(Inventory)
+                  .filter_by(material_id=self.material_id)
+                  .with_for_update()
+                  .one_or_none())
+        if locked is None:
+            raise ValueError(f"物料 {self.material_id} 不存在（release）")
+
+        before_allocated = _to_decimal(locked.allocated_stock)
+        before_available = _to_decimal(locked.available_stock)
+        before_physical  = _to_decimal(locked.physical_stock)
+        before_pending   = _to_decimal(locked.pending_outbound)
+
+        if before_allocated < qty:
+            raise ValueError(f"{locked.material_id} 已分配不足：已分配 {before_allocated} < 释放 {qty}")
+
+        locked.allocated_stock = _q(before_allocated - qty)
+        locked.available_stock = _q(before_available + qty)
+
+        log = StockChangeLog(
+            material_id=locked.material_id,
+            change_time=datetime.now(timezone.utc),
+            change_type='释放分配',
+            quantity_change=-qty,
+            before_available=before_available,
+            after_available=_to_decimal(locked.available_stock),
+            before_allocated=before_allocated,
+            after_allocated=_to_decimal(locked.allocated_stock),
+            before_physical=before_physical,
+            after_physical=before_physical,
+            before_pending_outbound=before_pending,
+            after_pending_outbound=before_pending,
+            reference_doc=(reference or ''),
+            operator=_resolve_operator(operator),
+            warehouse_code=(warehouse_code or locked.storage_location)
+        )
+        db.session.add(log)
+        return locked
+
+    def ship_stock(self, qty, operator=None, warehouse_code=None, reference=None):
+        qty = _q(qty)
+        if qty <= 0:
+            return None
+
+        locked = (db.session.query(Inventory)
+                  .filter_by(material_id=self.material_id)
+                  .with_for_update()
+                  .one_or_none())
+        if locked is None:
+            raise ValueError(f"物料 {self.material_id} 不存在（ship）")
+
+        before_allocated = _to_decimal(locked.allocated_stock)
+        before_physical  = _to_decimal(locked.physical_stock)
+        before_available = _to_decimal(locked.available_stock)
+        before_pending   = _to_decimal(locked.pending_outbound)
+
+        if before_allocated < qty:
+            raise ValueError(f"{locked.material_id} 已分配不足：{before_allocated} < {qty}")
+        if before_physical < qty:
+            raise ValueError(f"{locked.material_id} 账面不足：{before_physical} < {qty}")
+        if before_pending < qty:
+            raise ValueError(f"{locked.material_id} 待出库不足：{before_pending} < {qty}")
+
+        locked.allocated_stock  = _q(before_allocated - qty)
+        locked.physical_stock   = _q(before_physical  - qty)
+        locked.pending_outbound = _q(before_pending   - qty)
+        locked.available_stock = _q(locked.physical_stock - locked.allocated_stock - locked.pending_outbound)
+
+        log = StockChangeLog(
+            material_id=locked.material_id,
+            change_time=datetime.now(timezone.utc),
+            change_type='发货',
+            quantity_change=-qty,
+            before_available=before_available,
+            after_available=_to_decimal(locked.available_stock),
+            before_allocated=before_allocated,
+            after_allocated=_to_decimal(locked.allocated_stock),
+            before_physical=before_physical,
+            after_physical=_to_decimal(locked.physical_stock),
+            before_pending_outbound=before_pending,
+            after_pending_outbound=_to_decimal(locked.pending_outbound),
+            reference_doc=(reference or ''),
+            operator=_resolve_operator(operator),
+            warehouse_code=(warehouse_code or locked.storage_location)
+        )
+        db.session.add(log)
+        return locked
