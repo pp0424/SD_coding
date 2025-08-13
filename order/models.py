@@ -256,6 +256,8 @@ class Material(db.Model):
         db.session.add(log)
         return locked
 
+    
+
 # models.py
 
 class SalesOrder(db.Model):
