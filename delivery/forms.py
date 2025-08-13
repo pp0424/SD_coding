@@ -57,16 +57,17 @@ class SearchPickingTaskForm(FlaskForm):
     submit = SubmitField('查询')
 
 class DeliveryItemPostForm(FlaskForm):
-    material_id = StringField('物料编号', render_kw={'readonly': True})
-    planned_quantity = DecimalField('计划数量', render_kw={'readonly': True})
-    actual_quantity = DecimalField('实际发货数量', validators=[DataRequired(), NumberRange(min=0)])
+    item_no = HiddenField()                # 行号（Hidden）
+    material_id = HiddenField()            # 物料号（Hidden）
+    planned_quantity = DecimalField('计划数量', places=4, validators=[Optional()])
+    actual_quantity = DecimalField('实际发货数量', places=4, validators=[Optional()])
+    unit = StringField('单位', validators=[Optional()])
+
 
 class PostDeliveryForm(FlaskForm):
-    actual_delivery_date = DateField('实际发货日期', validators=[DataRequired()])
     items = FieldList(FormField(DeliveryItemPostForm), min_entries=0)
     remarks = TextAreaField('过账备注', validators=[Optional()])
     submit = SubmitField('确认过账')
-
 
 class CancelPickingForm(FlaskForm):
     cancel_reason = TextAreaField('取消原因', validators=[DataRequired()])

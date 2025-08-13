@@ -1,76 +1,101 @@
-{# templates/delivery/post_delivery.html #}
 {% extends 'delivery/base.html' %}
+
 {% block title %}发货单过账 - {{ delivery.delivery_note_id }}{% endblock %}
 
 {% block head_extra %}
 <style>
   .table-fixed { table-layout: fixed; word-wrap: break-word; }
-  .text-right { text-align: right; }
-  .text-end { text-align: right; }
+  .text-right, .text-end { text-align: right; }
+  .modal-content { border-radius: 12px; }
+  .modal-title { font-weight: 600; }
+
+  .modal { z-index: 2055 !important; }
+  .modal-backdrop { z-index: 2050 !important; }
 </style>
 {% endblock %}
 
 {% block content %}
+<div class="form-title-container">
+  <h1 class="form-title">📜 执行过账：{{ delivery.delivery_note_id }}</h1>
+</div>
+
 <div class="container py-3">
-  <h3>发货单过账：{{ delivery.delivery_note_id }}</h3>
   <p>销售订单：{{ delivery.sales_order_id }} &nbsp; 仓库：{{ delivery.warehouse_code }}</p>
 
-  {# 把 items 长度放到 data-items-count，避免在 JS 中直接写 Jinja 表达式 #}
   <form method="post" id="post-delivery-form" data-items-count="{{ form.items|length }}">
     {{ form.hidden_tag() }}
 
-    <div class="mb-3 row">
-      <label class="col-sm-2 col-form-label">实际发货日期</label>
-      <div class="col-sm-4">
-        {# 如果表单有 data，WTForms 会处理；这里给个默认值备用 #}
-        {{ form.actual_delivery_date(class="form-control", value=form.actual_delivery_date.data or (delivery.delivery_date.strftime('%Y-%m-%d') if delivery.delivery_date else '')) }}
+    {% if form.errors %}
+      <div class="alert alert-danger">
+        <strong>表单验证错误：</strong>
+        <ul class="mb-0">
+        {% for field, errs in form.errors.items() %}
+          {% for err in errs %}
+            <li>{{ err }}</li>
+          {% endfor %}
+        {% endfor %}
+        </ul>
       </div>
-    </div>
+    {% endif %}
 
     <table class="table table-bordered table-fixed">
       <thead class="table-light">
         <tr>
           <th style="width: 6%">行号</th>
-          <th style="width: 28%">物料编号 / 描述</th>
-          <th style="width: 18%" class="text-right">计划数量</th>
-          <th style="width: 18%" class="text-right">实际发货数量</th>
-          <th style="width: 16%">单位</th>
-          <th style="width: 14%">备注（可选）</th>
+          <th style="width: 6%">物料编号</th>
+          <th style="width: 10%" >单物料描述</th>
+          <th style="width: 8%" >计划数量</th>
+          <th style="width: 8%" >实际发货数量</th>
+          <th style="width: 18%">备注（可选）</th>
         </tr>
       </thead>
       <tbody>
-        {# 逐行渲染 form.items —— 后端 GET 时会 append_entry 填好初值 #}
         {% for subform in form.items %}
+          {% set di = delivery.items[loop.index0] %}
           <tr>
             <td class="align-middle">{{ loop.index }}</td>
 
-            <td>
-              {{ subform.material_id(class="form-control-plaintext", readonly=true) }}
-              {% set di = delivery.items[loop.index0] %}
-              <div class="small text-muted">{{ di.material.description if di.material else '' }}</div>
+            <!-- 物料编号列：显示 material_id，保留隐藏表单字段提交 -->
+            <td class="align-middle">
+              {{ subform.material_id(type="hidden") }}
+              {{ di.material_id }}
             </td>
 
+            <!-- 描述列 -->
+            <td>
+              {{ subform.item_no(type="hidden") }}
+
+              <div class="align-middle">{{ di.material.description if di.material else '' }}</div>
+            </td>
+
+            <!-- 计划数量 -->
             <td class="text-right align-middle">
               {{ subform.planned_quantity(class="form-control-plaintext", readonly=true) }}
             </td>
 
+            <!-- 实际发货数量 -->
             <td class="text-right">
               {{ subform.actual_quantity(class="form-control form-control-sm text-end", min="0", step="0.0001") }}
             </td>
 
-            <td class="align-middle">
-              {{ subform.unit(class="form-control-plaintext", readonly=true) }}
-            </td>
-
+            <!-- 备注 -->
             <td>
-              <input type="text" name="items-{{ loop.index0 }}-line_remark" class="form-control form-control-sm" placeholder="例如：短缺/多发说明">
+              <input type="text" 
+                    name="items-{{ loop.index0 }}-line_remark" 
+                    class="form-control form-control-sm" 
+                    placeholder="例如：短缺/多发说明"
+                    value="{{ di.line_remark | default('') }}">
             </td>
           </tr>
 
-          {# 隐藏字段：把 sales_order_item_no 放到 post 表单里，后端 POST 时读取 #}
-          <input type="hidden" name="items-{{ loop.index0 }}-sales_order_item_no" value="{{ delivery.items[loop.index0].sales_order_item_no }}">
+          <input type="hidden" name="items-{{ loop.index0 }}-sales_order_item_no" value="{{ di.sales_order_item_no }}">
+        {% else %}
+          <tr>
+            <td colspan="6" class="text-center text-muted">暂无发货明细</td>
+          </tr>
         {% endfor %}
       </tbody>
+
     </table>
 
     <div class="mb-3">
@@ -79,59 +104,150 @@
     </div>
 
     <div class="d-flex gap-2">
-      <a href="{{ url_for('delivery.delivery_detail', delivery_id=delivery.delivery_note_id) }}" class="btn btn-secondary">取消</a>
+      <a href="{{ url_for('delivery.post_list', delivery_id=delivery.delivery_note_id) }}" class="btn btn-secondary">取消</a>
       <button id="submit-btn" type="submit" class="btn btn-primary">确认过账</button>
     </div>
   </form>
 </div>
 
+<!-- 模态框（初始可以在 content 里；显示前会被 JS 挪到 body 直下） -->
+<div class="modal fade" id="confirmPostModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow-lg rounded-3">
+      <div class="modal-header border-0">
+        <h5 class="modal-title d-flex align-items-center">
+          <span class="fs-3 me-2">🚚</span>
+          <span>确认发货过账</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+      </div>
+
+      <div class="modal-body">
+        <p class="mb-2">你将对发货单 <strong id="post-modal-so">{{ delivery.delivery_note_id }}</strong> 执行 <em>过账</em> 操作。</p>
+        <ul class="small text-muted mb-2">
+          <li>该操作会 <strong>扣减库存</strong> 并 <strong>更新销售订单的已发货数量</strong>。</li>
+          <li>如果实际发货数量与计划不符，请确保已在“过账备注”里填写差异说明。</li>
+        </ul>
+        <div id="confirm-warning" class="alert alert-warning small mb-0 d-none"></div>
+      </div>
+
+      <div class="modal-footer border-0">
+        <button data-modal-cancel type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+        <button data-modal-confirm type="button" class="btn btn-primary">
+          <span class="modal-confirm-text">确认并过账</span>
+          <span class="spinner-border spinner-border-sm modal-spinner d-none ms-2" role="status" aria-hidden="true"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
-(function(){
+(function () {
   const form = document.getElementById('post-delivery-form');
   const submitBtn = document.getElementById('submit-btn');
   const rows = parseInt(form.dataset.itemsCount || '0', 10);
 
-  form.addEventListener('submit', function(e){
-    // 防止重复提交
-    submitBtn.disabled = true;
-
-    // 验证：如果任意行实际 != 计划，则 require remarks（前端快速校验；服务器端仍会二次校验）
+  function quickValidateAndDetectDiff() {
     let diff = false;
     for (let i = 0; i < rows; i++) {
       const plannedEl = document.querySelector(`[name="items-${i}-planned_quantity"]`);
       const actualEl  = document.querySelector(`[name="items-${i}-actual_quantity"]`);
       if (!plannedEl || !actualEl) continue;
+
       const planned = parseFloat(plannedEl.value || '0');
       const actual  = parseFloat(actualEl.value || '0');
-      if (Number.isNaN(planned) || Number.isNaN(actual)) {
-        alert(`第 ${i+1} 行数量格式不正确，请检查`);
+
+      if (actual < 0) return { ok: false, message: `第 ${i+1} 行实际发货数量不能为负` };
+      if (actual > planned + 1e-9) return { ok: false, message: `第 ${i+1} 行实际发货数量 (${actual}) 不能大于计划数量 (${planned})` };
+      if (Math.abs(planned - actual) > 1e-9) diff = true;
+    }
+
+    const remarksEl = document.getElementById('post-remarks');
+    if (diff && (!remarksEl.value || remarksEl.value.trim().length === 0)) {
+      return { ok: false, message: '检测到实际发货数量与计划数量不一致，请在“过账备注”中说明差异原因（必填）。' };
+    }
+    return { ok: true, diff: diff };
+  }
+
+  // 打开前把模态框移到 body，避开任何父级的层叠上下文/transform
+  function showConfirmModal(prepareFn) {
+    const modalEl = document.getElementById('confirmPostModal');
+    if (!modalEl) return false;
+
+    // 如有需要，先执行准备逻辑（写入警告文本等）
+    if (typeof prepareFn === 'function') {
+      try { prepareFn(modalEl); } catch (err) {}
+    }
+
+    // 如果模态框不在 body 直下，移动过去
+    if (modalEl.parentNode !== document.body) {
+      document.body.appendChild(modalEl);
+    }
+
+    // 只绑定一次确认按钮事件
+    const confirmBtn = modalEl.querySelector('[data-modal-confirm]');
+    const spinner = modalEl.querySelector('.modal-spinner');
+    const confirmTextEl = modalEl.querySelector('.modal-confirm-text');
+    if (!modalEl.dataset.bound) {
+      if (confirmBtn) {
+        confirmBtn.addEventListener('click', function () {
+          confirmBtn.disabled = true;
+          if (spinner) spinner.classList.remove('d-none');
+          if (confirmTextEl) confirmTextEl.textContent = '正在过账...';
+          setTimeout(() => form.requestSubmit(), 80);
+        });
+      }
+      modalEl.addEventListener('hidden.bs.modal', function () {
+        if (confirmBtn) confirmBtn.disabled = false;
+        if (spinner) spinner.classList.add('d-none');
+        if (confirmTextEl) confirmTextEl.textContent = '确认并过账';
+      });
+      modalEl.dataset.bound = '1';
+    }
+
+    // 初始化或复用实例并显示
+    if (window.bootstrap && typeof bootstrap.Modal === 'function') {
+      const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl, { keyboard: true, backdrop: true });
+      bsModal.show();
+      return true;
+    } else {
+      // 未加载 Bootstrap JS 的兜底
+      if (window.confirm('确认要对该发货单执行过账操作？')) form.submit();
+      return true;
+    }
+  }
+
+  if (form && !form.dataset.boundConfirm) {
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      submitBtn.disabled = true;
+
+      const check = quickValidateAndDetectDiff();
+      if (!check.ok) {
+        alert(check.message);
         submitBtn.disabled = false;
-        e.preventDefault();
         return false;
       }
-      if (Math.abs(planned - actual) > 1e-9) {
-        diff = true;
-        break;
-      }
-    }
 
-    const remarks = document.getElementById('post-remarks');
-    if (diff && (!remarks.value || remarks.value.trim().length === 0)) {
-      alert('检测到实际发货数量与计划数量不一致，请在“过账备注”中说明差异原因（必填）。');
-      submitBtn.disabled = false;
-      e.preventDefault();
+      showConfirmModal(function (modalEl) {
+        const warnEl = modalEl.querySelector('#confirm-warning');
+        if (warnEl) {
+          if (check.diff) {
+            warnEl.textContent = '检测到实际发货数量与计划数量不一致，请确认并在备注中说明原因。';
+            warnEl.classList.remove('d-none');
+          } else {
+            warnEl.textContent = '';
+            warnEl.classList.add('d-none');
+          }
+        }
+      });
+
       return false;
-    }
+    });
 
-    // 最终确认
-    if (!confirm('确认要对该发货单执行过账操作？该操作会扣减库存并更新销售订单已发货数量。')) {
-      submitBtn.disabled = false;
-      e.preventDefault();
-      return false;
-    }
-
-    // 允许提交
-  });
+    form.dataset.boundConfirm = '1';
+  }
 })();
 </script>
 {% endblock %}

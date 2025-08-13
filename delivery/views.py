@@ -1499,13 +1499,10 @@ def post_delivery(delivery_id):
             entry.material_id.data = item.material_id
             entry.planned_quantity.data = float(item.planned_delivery_quantity or 0)
             entry.actual_quantity.data = float(item.actual_delivery_quantity or item.planned_delivery_quantity or 0)
-        form.actual_delivery_date.data = delivery.delivery_date
         return render_template('delivery/post_delivery.html', delivery=delivery, form=form)
 
     # POST 分支
-    form = forms.PostDeliveryForm()
-
-    # 事务内加锁发货单和明细
+    form = forms.PostDeliveryForm(request.form)
     delivery = (db.session.query(DeliveryNote)
                 .options(joinedload(DeliveryNote.items))
                 .filter(DeliveryNote.delivery_note_id == delivery_id)
@@ -1530,18 +1527,21 @@ def post_delivery(delivery_id):
             planned_qty = _q(item_form.planned_quantity.data or 0)
             actual_qty = _q(item_form.actual_quantity.data or 0)
 
+            # 获取 line_remark（前端独立输入字段）
+            line_remark = request.form.get(f"items-{i}-line_remark", "").strip()
+
             if actual_qty < 0:
                 raise ValueError(f"第{i+1}行实际发货数量不能为负")
             if actual_qty > planned_qty:
                 raise ValueError(f"第{i+1}行实际发货数量({actual_qty})不能大于计划数量({planned_qty})")
 
-            form_rows.append((i, item_no, planned_qty, actual_qty))
+            form_rows.append((i, item_no, planned_qty, actual_qty, line_remark))
 
         # 映射发货明细
         di_map = {di.item_no: di for di in delivery.items}
 
         # 批量锁定订单行
-        so_item_nos = [di_map[item_no].sales_order_item_no for _, item_no, _, _ in form_rows]
+        so_item_nos = [di_map[item_no].sales_order_item_no for _, item_no, _, _, _ in form_rows]
         order_items = (db.session.query(OrderItem)
                        .filter(and_(
                            OrderItem.sales_order_id == delivery.sales_order_id,
@@ -1555,7 +1555,7 @@ def post_delivery(delivery_id):
             raise ValueError(f"订单项不存在：{delivery.sales_order_id} - {missing}")
 
         # 批量锁定库存
-        material_ids = [di_map[item_no].material_id for _, item_no, _, _ in form_rows]
+        material_ids = [di_map[item_no].material_id for _, item_no, _, _, _ in form_rows]
         inventories = (db.session.query(Inventory)
                        .filter(Inventory.material_id.in_(material_ids))
                        .with_for_update()
@@ -1566,7 +1566,7 @@ def post_delivery(delivery_id):
             raise ValueError(f"物料不存在：{missing}")
 
         # === 核心处理 ===
-        for i, item_no, planned_qty, actual_qty in form_rows:
+        for i, item_no, planned_qty, actual_qty, line_remark in form_rows:
             delivery_item = di_map[item_no]
             order_item = oi_map[delivery_item.sales_order_item_no]
             material = inv_map[delivery_item.material_id]
@@ -1599,6 +1599,7 @@ def post_delivery(delivery_id):
 
             # 更新发货明细
             delivery_item.actual_delivery_quantity = _q(actual_qty)
+            delivery_item.line_remark = line_remark  # 临时属性，可在模板里回显或用于日志
             # 更新订单行
             order_item.shipped_quantity = _q(shipped_qty + delta_qty)
             order_item.unshipped_quantity = max(_q(order_qty - order_item.shipped_quantity), Decimal('0'))
@@ -1630,16 +1631,11 @@ def post_delivery(delivery_id):
     return render_template('delivery/post_delivery.html', delivery=delivery, form=form)
 
 
-# ===============================
 # 过账列表（支持 GET 搜索）
-# ===============================
-@delivery_bp.route('/post-list', methods=['GET'])
+@delivery_bp.route('/post-list', methods=['GET','POST'])
 @login_required
 def post_list():
-    """
-    显示所有状态为“已发货”的发货单，支持按发货单号/销售订单号查询
-    """
-    form = forms.SearchDeliveryForm(request.args)
+    form = forms.SearchDeliveryForm(request.args, meta={'csrf': False})
     query = DeliveryNote.query.filter_by(status='已发货')
 
     if form.validate():
@@ -1647,15 +1643,19 @@ def post_list():
             query = query.filter(DeliveryNote.delivery_note_id.like(f"%{form.delivery_id.data}%"))
         if form.sales_order_id.data:
             query = query.filter(DeliveryNote.sales_order_id.like(f"%{form.sales_order_id.data}%"))
+        if form.start_date.data:
+            query = query.filter(DeliveryNote.delivery_date >= form.start_date.data)
+        if form.end_date.data:
+            query = query.filter(DeliveryNote.delivery_date <= form.end_date.data)
 
     deliveries = (query
                   .options(joinedload(DeliveryNote.items))
                   .order_by(DeliveryNote.delivery_date.desc())
                   .all())
-
     return render_template('delivery/post_list.html', form=form, deliveries=deliveries)
 
 # ========== 执行过账 ==========
+
 
 
 # ========== 库存变动查询 ==========

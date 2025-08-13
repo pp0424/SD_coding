@@ -1,13 +1,24 @@
 {% extends 'delivery/base.html' %}
 {% block title %}取消发货单{% endblock %}
 
+{% block head_extra %}
+<style>
+  /* 确保模态框永远在最上层 */
+  #confirmCancelModal {
+    z-index: 9999 !important;
+  }
+  .modal-backdrop {
+    z-index: 9998 !important;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
   <div class="card border-0 shadow-sm">
-    <div class="card-header text-white text-center" style="background: linear-gradient(135deg, #dc3545, #ff6b6b); border-radius: 0.5rem 0.5rem 0 0;">
-      <h4 class="mb-0 text-center">
-        🗑️ 取消发货单
-      </h4>
+    <div class="card-header text-white text-center"
+         style="background: linear-gradient(135deg, #dc3545, #ff6b6b); border-radius: 0.5rem 0.5rem 0 0;">
+      <h4 class="mb-0 text-center">🗑️ 取消发货单</h4>
     </div>
     <div class="card-body">
       <div class="alert alert-warning">
@@ -35,11 +46,11 @@
         </ul>
       </div>
       
-      <form method="post">
+      <form id="cancel-delivery-form" method="post" novalidate>
         {{ form.csrf_token }}
         <div class="mb-3">
           {{ form.cancel_reason.label(class="form-label fw-bold") }}
-          {{ form.cancel_reason(class="form-control", rows=4, placeholder="请输入取消原因") }}
+          {{ form.cancel_reason(class="form-control", rows=4, placeholder="请输入取消原因（必填，至少 5 个字）", required=true, minlength="5") }}
           <small class="form-text text-muted">请详细说明取消原因，以便后续追踪</small>
         </div>
         
@@ -48,10 +59,113 @@
              class="btn btn-secondary me-md-2">
             <i class="bi bi-arrow-left me-1"></i> 返回详情
           </a>
-          {{ form.submit(class="btn btn-danger") }}
+          <button type="button" id="btn-cancel-delivery" class="btn btn-danger">
+            <i class="bi bi-trash me-1"></i> 取消发货单
+          </button>
         </div>
+
+        <noscript>
+          <div class="alert alert-info mt-3">浏览器未启用 JavaScript，可直接提交表单进行取消。</div>
+          <button type="submit" class="btn btn-danger">提交取消</button>
+        </noscript>
       </form>
     </div>
   </div>
 </div>
+
+<!-- 确认取消模态框 -->
+<div class="modal fade" id="confirmCancelModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">确认取消发货单</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+      </div>
+      <div class="modal-body">
+        <p>你即将取消 <strong>发货单 {{ delivery.delivery_note_id }}</strong>，此操作不可撤销，请确认已填写取消原因。</p>
+        <div class="alert alert-secondary small">
+          <strong>当前状态：</strong> {{ delivery.status }}<br>
+          <div id="cancel_reason_preview" class="small-muted mt-1"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="confirm-cancel-btn" class="btn btn-danger">确认取消</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const modalEl = document.getElementById('confirmCancelModal');
+
+  // 确保模态框挂在 body 下
+  if (modalEl && modalEl.parentElement !== document.body) {
+    document.body.appendChild(modalEl);
+  }
+
+  if (!(window.bootstrap && window.bootstrap.Modal)) {
+    console.error('Bootstrap JS 未加载，模态框功能不可用');
+    return;
+  }
+
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  const btnCancel = document.getElementById('btn-cancel-delivery');
+  const confirmBtn = document.getElementById('confirm-cancel-btn');
+  const reasonField = document.querySelector('textarea[name="cancel_reason"]');
+  const csrfInput = document.querySelector('input[name="csrf_token"]');
+
+  btnCancel && btnCancel.addEventListener('click', () => {
+    const reason = reasonField ? reasonField.value.trim() : '';
+    if (reason.length < 5) {
+      alert('请填写更明确的取消原因（至少 5 个字）');
+      reasonField && reasonField.focus();
+      return;
+    }
+    document.getElementById('cancel_reason_preview').textContent = reason;
+    modal.show();
+  });
+
+  confirmBtn && confirmBtn.addEventListener('click', async function () {
+    this.disabled = true;
+    this.textContent = '处理中...';
+    try {
+      const url = "{{ url_for('delivery.cancel_delivery', delivery_id=delivery.delivery_note_id) }}";
+      const formData = new FormData();
+      formData.append('cancel_reason', reasonField ? reasonField.value : '');
+      formData.append('csrf_token', csrfInput ? csrfInput.value : '');
+
+      const res = await fetch(url, {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin',
+        headers: { 'Accept': 'application/json' }
+      });
+
+      let data = {};
+      try { data = await res.json(); } catch (e) {}
+
+      if (res.ok && data.success) {
+        modal.hide();
+        if (data.redirect) {
+          window.location.href = data.redirect;
+        } else {
+          window.location.reload();
+        }
+      } else {
+        alert((data && data.message) || `取消失败（${res.status} ${res.statusText}）`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('网络或服务器错误，取消失败');
+    } finally {
+      this.disabled = false;
+      this.textContent = '确认取消';
+    }
+  });
+});
+</script>
 {% endblock %}

@@ -86,9 +86,9 @@
         <a href="{{ url_for('delivery.cancel_delivery', delivery_id=delivery.delivery_note_id) }}" class="btn btn-outline-danger btn-sm"><i class="bi bi-x-circle"></i> 取消</a>
 
       {% elif delivery.status == '已发货' %}
-        <form action="{{ url_for('delivery.post_delivery', delivery_id=delivery.delivery_note_id) }}" method="POST" style="display: inline;">
-          <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-check2-circle"></i> 过账</button>
-        </form>
+      <a href="{{ url_for('delivery.post_delivery', delivery_id=delivery.delivery_note_id) }}" class="btn btn-success btn-sm">
+        <i class="bi bi-check2-circle"></i> 过账
+      </a>
       {% endif %}
     </div>
   </div>

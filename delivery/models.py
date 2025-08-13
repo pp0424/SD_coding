@@ -95,7 +95,7 @@ class StockChangeLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     material_id = db.Column(db.String(255), db.ForeignKey('Inventory.material_id'), nullable=False)
     change_time = db.Column(db.DateTime, default=datetime.now)
-    change_type = db.Column(db.String(50), nullable=False)  # '发货', '拣货' 或 '其他'
+    change_type = db.Column(db.String(50), nullable=False)  
     quantity_change = db.Column(db.Numeric(18, 4), nullable=False)
 
     before_available = db.Column(db.Numeric(18, 4))
