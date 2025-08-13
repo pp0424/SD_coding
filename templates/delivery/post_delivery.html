@@ -8,7 +8,6 @@
   .text-right, .text-end { text-align: right; }
   .modal-content { border-radius: 12px; }
   .modal-title { font-weight: 600; }
-
   .modal { z-index: 2055 !important; }
   .modal-backdrop { z-index: 2050 !important; }
 </style>
@@ -41,12 +40,12 @@
     <table class="table table-bordered table-fixed">
       <thead class="table-light">
         <tr>
-          <th style="width: 6%">行号</th>
-          <th style="width: 6%">物料编号</th>
-          <th style="width: 10%" >单物料描述</th>
-          <th style="width: 8%" >计划数量</th>
-          <th style="width: 8%" >实际发货数量</th>
-          <th style="width: 18%">备注（可选）</th>
+          <th style="width:6%">行号</th>
+          <th style="width:6%">物料编号</th>
+          <th style="width:10%">单物料描述</th>
+          <th style="width:8%">计划数量</th>
+          <th style="width:8%">实际发货数量</th>
+          <th style="width:18%">备注（可选）</th>
         </tr>
       </thead>
       <tbody>
@@ -54,40 +53,26 @@
           {% set di = delivery.items[loop.index0] %}
           <tr>
             <td class="align-middle">{{ loop.index }}</td>
-
-            <!-- 物料编号列：显示 material_id，保留隐藏表单字段提交 -->
             <td class="align-middle">
               {{ subform.material_id(type="hidden") }}
               {{ di.material_id }}
             </td>
-
-            <!-- 描述列 -->
             <td>
               {{ subform.item_no(type="hidden") }}
-
               <div class="align-middle">{{ di.material.description if di.material else '' }}</div>
             </td>
-
-            <!-- 计划数量 -->
-            <td class="text-right align-middle">
-              {{ subform.planned_quantity(class="form-control-plaintext", readonly=true) }}
-            </td>
-
-            <!-- 实际发货数量 -->
+            <td class="text-right align-middle">{{ subform.planned_quantity(class="form-control-plaintext", readonly=true) }}</td>
             <td class="text-right">
               {{ subform.actual_quantity(class="form-control form-control-sm text-end", min="0", step="0.0001") }}
             </td>
-
-            <!-- 备注 -->
             <td>
-              <input type="text" 
-                    name="items-{{ loop.index0 }}-line_remark" 
-                    class="form-control form-control-sm" 
-                    placeholder="例如：短缺/多发说明"
-                    value="{{ di.line_remark | default('') }}">
+              <input type="text"
+                     name="items-{{ loop.index0 }}-line_remark"
+                     class="form-control form-control-sm"
+                     placeholder="例如：短缺/多发说明"
+                     value="{{ di.line_remark | default('') }}">
             </td>
           </tr>
-
           <input type="hidden" name="items-{{ loop.index0 }}-sales_order_item_no" value="{{ di.sales_order_item_no }}">
         {% else %}
           <tr>
@@ -95,7 +80,6 @@
           </tr>
         {% endfor %}
       </tbody>
-
     </table>
 
     <div class="mb-3">
@@ -103,14 +87,14 @@
       {{ form.remarks(class="form-control", rows=3, id="post-remarks") }}
     </div>
 
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 justify-content-end">
       <a href="{{ url_for('delivery.post_list', delivery_id=delivery.delivery_note_id) }}" class="btn btn-secondary">取消</a>
-      <button id="submit-btn" type="submit" class="btn btn-primary">确认过账</button>
+      <button type="button" id="open-confirm-post" class="btn btn-primary">确认过账</button>
     </div>
   </form>
 </div>
 
-<!-- 模态框（初始可以在 content 里；显示前会被 JS 挪到 body 直下） -->
+<!-- 二次确认模态框 -->
 <div class="modal fade" id="confirmPostModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content shadow-lg rounded-3">
@@ -121,19 +105,19 @@
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
       </div>
-
       <div class="modal-body">
-        <p class="mb-2">你将对发货单 <strong id="post-modal-so">{{ delivery.delivery_note_id }}</strong> 执行 <em>过账</em> 操作。</p>
+        <p>你将对发货单 <strong id="post-modal-so">{{ delivery.delivery_note_id }}</strong> 执行 <em>过账</em> 操作。</p>
         <ul class="small text-muted mb-2">
-          <li>该操作会 <strong>扣减库存</strong> 并 <strong>更新销售订单的已发货数量</strong>。</li>
-          <li>如果实际发货数量与计划不符，请确保已在“过账备注”里填写差异说明。</li>
+          <li>此操作将 <strong>扣减库存</strong> 并 <strong>更新销售订单的已发货数量</strong>。</li>
+          {% if form.items|length > 0 %}
+          <li>本次将处理 <strong>{{ form.items|length }}</strong> 行明细。</li>
+          {% endif %}
         </ul>
         <div id="confirm-warning" class="alert alert-warning small mb-0 d-none"></div>
       </div>
-
       <div class="modal-footer border-0">
-        <button data-modal-cancel type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
-        <button data-modal-confirm type="button" class="btn btn-primary">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" id="confirm-post-btn" class="btn btn-primary">
           <span class="modal-confirm-text">确认并过账</span>
           <span class="spinner-border spinner-border-sm modal-spinner d-none ms-2" role="status" aria-hidden="true"></span>
         </button>
@@ -142,112 +126,83 @@
   </div>
 </div>
 
+{% endblock %}
+
+{% block scripts_extra %}
 <script>
-(function () {
+document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('post-delivery-form');
-  const submitBtn = document.getElementById('submit-btn');
+  const openBtn = document.getElementById('open-confirm-post');
+  const modalEl = document.getElementById('confirmPostModal');
+  const confirmBtn = document.getElementById('confirm-post-btn');
+  const spinner = confirmBtn.querySelector('.modal-spinner');
+  const confirmText = confirmBtn.querySelector('.modal-confirm-text');
+  const warnEl = modalEl.querySelector('#confirm-warning');
   const rows = parseInt(form.dataset.itemsCount || '0', 10);
 
-  function quickValidateAndDetectDiff() {
+  if (!form || !modalEl || !openBtn || !confirmBtn) return;
+
+  // 将模态框移到 body 下
+  if (modalEl.parentNode !== document.body) document.body.appendChild(modalEl);
+  const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl, { keyboard: true, backdrop: true });
+
+  // 校验函数
+  function validate() {
     let diff = false;
     for (let i = 0; i < rows; i++) {
-      const plannedEl = document.querySelector(`[name="items-${i}-planned_quantity"]`);
-      const actualEl  = document.querySelector(`[name="items-${i}-actual_quantity"]`);
+      const plannedEl = form.querySelector(`[name="items-${i}-planned_quantity"]`);
+      const actualEl = form.querySelector(`[name="items-${i}-actual_quantity"]`);
       if (!plannedEl || !actualEl) continue;
-
-      const planned = parseFloat(plannedEl.value || '0');
-      const actual  = parseFloat(actualEl.value || '0');
-
+      const planned = parseFloat(plannedEl.value || 0);
+      const actual = parseFloat(actualEl.value || 0);
       if (actual < 0) return { ok: false, message: `第 ${i+1} 行实际发货数量不能为负` };
-      if (actual > planned + 1e-9) return { ok: false, message: `第 ${i+1} 行实际发货数量 (${actual}) 不能大于计划数量 (${planned})` };
+      if (actual > planned + 1e-9) return { ok: false, message: `第 ${i+1} 行实际发货数量不能大于计划数量` };
       if (Math.abs(planned - actual) > 1e-9) diff = true;
     }
-
     const remarksEl = document.getElementById('post-remarks');
-    if (diff && (!remarksEl.value || remarksEl.value.trim().length === 0)) {
-      return { ok: false, message: '检测到实际发货数量与计划数量不一致，请在“过账备注”中说明差异原因（必填）。' };
-    }
-    return { ok: true, diff: diff };
+    if (diff && (!remarksEl.value.trim())) return { ok: false, message: '差异数量请在备注中说明' };
+    return { ok: true, diff };
   }
 
-  // 打开前把模态框移到 body，避开任何父级的层叠上下文/transform
-  function showConfirmModal(prepareFn) {
-    const modalEl = document.getElementById('confirmPostModal');
-    if (!modalEl) return false;
+  // 打开模态框
+  openBtn.addEventListener('click', () => {
+    const check = validate();
+    if (!check.ok) { alert(check.message); return; }
 
-    // 如有需要，先执行准备逻辑（写入警告文本等）
-    if (typeof prepareFn === 'function') {
-      try { prepareFn(modalEl); } catch (err) {}
-    }
-
-    // 如果模态框不在 body 直下，移动过去
-    if (modalEl.parentNode !== document.body) {
-      document.body.appendChild(modalEl);
-    }
-
-    // 只绑定一次确认按钮事件
-    const confirmBtn = modalEl.querySelector('[data-modal-confirm]');
-    const spinner = modalEl.querySelector('.modal-spinner');
-    const confirmTextEl = modalEl.querySelector('.modal-confirm-text');
-    if (!modalEl.dataset.bound) {
-      if (confirmBtn) {
-        confirmBtn.addEventListener('click', function () {
-          confirmBtn.disabled = true;
-          if (spinner) spinner.classList.remove('d-none');
-          if (confirmTextEl) confirmTextEl.textContent = '正在过账...';
-          setTimeout(() => form.requestSubmit(), 80);
-        });
-      }
-      modalEl.addEventListener('hidden.bs.modal', function () {
-        if (confirmBtn) confirmBtn.disabled = false;
-        if (spinner) spinner.classList.add('d-none');
-        if (confirmTextEl) confirmTextEl.textContent = '确认并过账';
-      });
-      modalEl.dataset.bound = '1';
-    }
-
-    // 初始化或复用实例并显示
-    if (window.bootstrap && typeof bootstrap.Modal === 'function') {
-      const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl, { keyboard: true, backdrop: true });
-      bsModal.show();
-      return true;
+    if (check.diff) {
+      warnEl.textContent = '检测到实际发货数量与计划数量不一致，请确认并在备注中说明原因。';
+      warnEl.classList.remove('d-none');
     } else {
-      // 未加载 Bootstrap JS 的兜底
-      if (window.confirm('确认要对该发货单执行过账操作？')) form.submit();
-      return true;
+      warnEl.classList.add('d-none');
     }
-  }
+    bsModal.show();
+  });
 
-  if (form && !form.dataset.boundConfirm) {
-    form.addEventListener('submit', function (e) {
+  // 确认按钮逻辑（带 loading & 防重复点击）
+  confirmBtn.addEventListener('click', () => {
+    confirmBtn.disabled = true;
+    spinner.classList.remove('d-none');
+    confirmText.textContent = '正在过账...';
+
+    // 用 form.submit 提交（保留 CSRF 支持）
+    form.dataset.allowSubmit = 'true';
+    form.submit();
+  });
+
+  // modal 隐藏时恢复按钮状态
+  modalEl.addEventListener('hidden.bs.modal', () => {
+    confirmBtn.disabled = false;
+    spinner.classList.add('d-none');
+    confirmText.textContent = '确认并过账';
+  });
+
+  // 阻止回车直接提交，统一流程
+  form.addEventListener('submit', e => {
+    if (!form.dataset.allowSubmit) {
       e.preventDefault();
-      submitBtn.disabled = true;
-
-      const check = quickValidateAndDetectDiff();
-      if (!check.ok) {
-        alert(check.message);
-        submitBtn.disabled = false;
-        return false;
-      }
-
-      showConfirmModal(function (modalEl) {
-        const warnEl = modalEl.querySelector('#confirm-warning');
-        if (warnEl) {
-          if (check.diff) {
-            warnEl.textContent = '检测到实际发货数量与计划数量不一致，请确认并在备注中说明原因。';
-            warnEl.classList.remove('d-none');
-          } else {
-            warnEl.textContent = '';
-            warnEl.classList.add('d-none');
-          }
-        }
-      });
-
-      return false;
-    });
-
-    form.dataset.boundConfirm = '1';
-  }
-})();
+      openBtn.click();
+    }
+  });
+});
 </script>
 {% endblock %}

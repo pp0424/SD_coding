@@ -306,6 +306,7 @@ def create_delivery():
         try:
             so_id = (form.sales_order_id.data or '').strip()
             wh_code = (form.warehouse_code.data or '').strip()
+            ord_date = form.order_date.data
             exp_date = form.expected_delivery_date.data
 
             if not so_id:
@@ -313,10 +314,13 @@ def create_delivery():
                 return render_template('delivery/create_delivery.html', form=form, order_items=form.items.entries)
             if not wh_code:
                 flash('请填写发货仓库代码', 'warning')
+            if ord_date>exp_date:
+                flash('预计发货日期不能早于订单日期', 'warning')
+
+            if ord_date>exp_date:
+                flash('预计发货日期不能晚于交货日期', 'warning')
                 return render_template('delivery/create_delivery.html', form=form, order_items=form.items.entries)
-            if not exp_date or exp_date < date.today():
-                flash('预计发货日期不能早于今天', 'warning')
-                return render_template('delivery/create_delivery.html', form=form, order_items=form.items.entries)
+            
 
             # 1) 加锁读取订单与行，并进行订单头校验
             sales_order, so_items = lock_sales_order_and_items(so_id)
@@ -1606,7 +1610,7 @@ def post_delivery(delivery_id):
 
         # 更新单头状态和信息
         delivery.status = '已过账'
-        posted_at = form.actual_delivery_date.data
+        posted_at = datetime.now()
         if not isinstance(posted_at, datetime):
             posted_at = datetime.now()
         delivery.posted_at = posted_at
@@ -1831,7 +1835,7 @@ def api_sales_order_items(sales_order_id):
             'items': items,
             'order_status': so.status,
             'warehouse_code': warehouse_code,
-            'order_date': so.order_date.isoformat() if so.order_date else '',
+            'order_date': so.order_date.strftime('%Y-%m-%d') if so.order_date else '',
             'required_delivery_date': so.required_delivery_date.isoformat() if so.required_delivery_date else ''
         }), 200
 

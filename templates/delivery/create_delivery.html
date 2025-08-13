@@ -170,6 +170,7 @@
     const raw = (soInput.value || '').trim();
     if (!raw) {
       clearRows();
+      orderDateInput.value = '';
       warehouseInput.value = '';
       requiredDeliveryInput.value = '';
       return;
@@ -182,6 +183,7 @@
         if (!data.found) {
           itemsBody.innerHTML = `<tr><td colspan="8" class="text-center text-warning">未找到销售订单：${escapeHtml(raw)}</td></tr>`;
           hiddenContainer.innerHTML = '';
+          orderDateInput.value = '';
           warehouseInput.value = '';
           requiredDeliveryInput.value = '';
           return;

@@ -254,3 +254,4 @@ UPDATE DeliveryNote SET warehouse_code='WH001、WH002、WH003' WHERE delivery_no
 SELECT * FROM DeliveryNote WHERE delivery_note_id='DN20250813-001';
 
 SELECT * from SalesOrder;
+PRAGMA TABLE_INFO(SalesOrder);

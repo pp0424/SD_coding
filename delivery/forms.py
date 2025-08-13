@@ -1,5 +1,5 @@
 # delivery/forms.py
-from flask_wtf import FlaskForm
+from flask_wtf import FlaskForm, Form
 from wtforms import HiddenField, StringField, DateField, SelectField, DecimalField, IntegerField, TextAreaField, SubmitField
 from wtforms.validators import DataRequired, Optional, NumberRange
 from wtforms.fields import FieldList, FormField
@@ -17,8 +17,8 @@ class DeliveryItemForm(FlaskForm):
 
 class CreateDeliveryForm(FlaskForm):
     sales_order_id = StringField('销售订单编号', validators=[DataRequired()])
-    required_delivery_date=StringField("交货日期")
-    order_date = StringField("订单日期")
+    required_delivery_date=DateField("交货日期", validators=[DataRequired()],format='%Y-%m-%d')
+    order_date = DateField("订单日期", validators=[DataRequired()],format='%Y-%m-%d')
     expected_delivery_date = DateField('预计发货日期', validators=[DataRequired()])
     warehouse_code = StringField('发货仓库代码', validators=[DataRequired()])
     items = FieldList(FormField(DeliveryItemForm), min_entries=0)
@@ -29,7 +29,7 @@ class DeliveryItemEditForm(FlaskForm):
     planned_delivery_quantity = DecimalField('计划发货数量', validators=[DataRequired(), NumberRange(min=0)])
 
 class EditDeliveryForm(FlaskForm):
-    expected_delivery_date = DateField('预计发货日期', validators=[DataRequired()])
+    expected_delivery_date = DateField('预计发货日期', validators=[DataRequired()],format='%Y-%m-%d')
     warehouse_code = StringField('发货仓库代码', validators=[DataRequired()])
     remarks = TextAreaField('备注', validators=[Optional()])
     items = FieldList(FormField(DeliveryItemEditForm), min_entries=0)
@@ -39,8 +39,8 @@ class SearchDeliveryForm(FlaskForm):
     delivery_id = StringField('发货单编号', validators=[Optional()])
     sales_order_id = StringField('销售订单编号', validators=[Optional()])
     status = SelectField('状态', choices=[('', '全部'), ('已创建', '已创建'), ('已拣货', '已拣货'), ('已过账', '已过账'), ('已取消','已取消')], validators=[Optional()], default='')
-    start_date = DateField('起始日期', validators=[Optional()])
-    end_date = DateField('结束日期', validators=[Optional()])
+    start_date = DateField('起始日期', validators=[Optional()],format='%Y-%m-%d')
+    end_date = DateField('结束日期', validators=[Optional()],format='%Y-%m-%d')
     submit = SubmitField('查询')
 
 class SearchPickingTaskForm(FlaskForm):
@@ -56,7 +56,7 @@ class SearchPickingTaskForm(FlaskForm):
     end_date = DateField('结束日期', format='%Y-%m-%d', validators=[Optional()])
     submit = SubmitField('查询')
 
-class DeliveryItemPostForm(FlaskForm):
+class DeliveryItemPostForm(Form):
     item_no = HiddenField()                # 行号（Hidden）
     material_id = HiddenField()            # 物料号（Hidden）
     planned_quantity = DecimalField('计划数量', places=4, validators=[Optional()])
@@ -88,8 +88,8 @@ class ChangeStatusForm(FlaskForm):
 
 class SearchInventoryMovementForm(FlaskForm):
     material_id = StringField('物料编号', validators=[Optional()])
-    start_date = DateField('起始日期', validators=[Optional()])
-    end_date = DateField('结束日期', validators=[Optional()])
+    start_date = DateField('起始日期', validators=[Optional()],format='%Y-%m-%d')
+    end_date = DateField('结束日期', validators=[Optional()],format='%Y-%m-%d')
     delivery_id = StringField('发货单编号', validators=[Optional()])
     warehouse_code = StringField('仓库代码', validators=[Optional()])
     movement_type = SelectField('移动类型', choices=[
