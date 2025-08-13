@@ -252,3 +252,14 @@ CREATE TABLE StockChangeLog (
     warehouse_code            VARCHAR(255),
     FOREIGN KEY (material_id) REFERENCES Material (material_id)
 );
+
+CREATE TABLE users (
+    id INTEGER NOT NULL, 
+    username VARCHAR(80) NOT NULL, 
+    password_hash VARCHAR(256) NOT NULL, 
+    PRIMARY KEY (id), 
+    UNIQUE (username)
+);
+
+INSERT INTO users (id, username, password_hash) VALUES
+(1, 'admin', '123456')
