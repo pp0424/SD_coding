@@ -102,3 +102,20 @@ class ShipmentConfirmForm(FlaskForm):
     confirm = SubmitField('确认发货')
 
 
+class SearchInventoryMovementForm(FlaskForm):
+    material_id = StringField('物料编码', validators=[Optional()])
+    start_date = DateField('开始日期', format='%Y-%m-%d', validators=[Optional()])
+    end_date = DateField('结束日期', format='%Y-%m-%d', validators=[Optional()])
+    delivery_id = StringField('参考单号', validators=[Optional()])
+    warehouse_code = StringField('仓库编码', validators=[Optional()])
+    movement_type = SelectField(
+        '变动类型',
+        choices=[
+            ('all', '全部'),
+            ('初始化', '初始化'),
+            ('发货', '发货'),
+            ('拣货占用', '拣货占用'),
+            ('释放分配', '释放分配'),
+            ('其他', '其他')
+        ],
+        default='all')

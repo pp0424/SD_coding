@@ -15,7 +15,7 @@
     font-size: 0.95rem;
     color: #334155;
     margin-bottom: 0.4rem;
-    }
+  }
 
   .form-control {
     font-size: 0.85rem;
@@ -67,43 +67,58 @@
     padding: 24px;
   }
 
+  .filters-summary {
+    color: #64748b;
+    font-size: 0.85rem;
+  }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="form-title-container">
-    <h1 class="form-title">
-      📊 库存变动查询
-    </h1>
-  </div>
+  <h1 class="form-title">📊 库存变动查询</h1>
+</div>
 
 <div class="container mt-4">
   <form method="get" class="row g-3 align-items-end mb-4">
     <div class="col-md-2">
       <label class="form-label">物料编号</label>
-      <input class="form-control" type="text" name="material_id" value="{{ request.args.get('material_id','') }}">
+      <input class="form-control" type="text" name="material_id" value="{{ (search_form.material_id.data or '') }}">
     </div>
     <div class="col-md-2">
       <label class="form-label">发货单号</label>
-      <input class="form-control" type="text" name="delivery_id" value="{{ request.args.get('delivery_id','') }}">
+      <input class="form-control" type="text" name="delivery_id" value="{{ (search_form.delivery_id.data or '') }}">
     </div>
     <div class="col-md-2">
       <label class="form-label">仓库</label>
-      <input class="form-control" type="text" name="warehouse_code" value="{{ request.args.get('warehouse_code','') }}">
+      <input class="form-control" type="text" name="warehouse_code" value="{{ (search_form.warehouse_code.data or '') }}">
     </div>
     <div class="col-md-2">
       <label class="form-label">起始日期</label>
-      <input class="form-control" type="date" name="start_date" value="{{ request.args.get('start_date','') }}">
+      <input class="form-control" type="date" name="start_date" value="{{ search_form.start_date.data if search_form.start_date.data else '' }}">
     </div>
     <div class="col-md-2">
       <label class="form-label">结束日期</label>
-      <input class="form-control" type="date" name="end_date" value="{{ request.args.get('end_date','') }}">
+      <input class="form-control" type="date" name="end_date" value="{{ search_form.end_date.data if search_form.end_date.data else '' }}">
     </div>
     <div class="col-md-2">
       <label class="form-label d-block">&nbsp;</label>
       <button class="btn btn-primary w-100"><i class="bi bi-search"></i> 查询</button>
     </div>
   </form>
+
+  <div class="d-flex justify-content-between align-items-center mb-2 filters-summary">
+    <div>
+      <span>共 {{ total_records }} 条记录</span>
+      {% if search_form.material_id.data %} | <span>物料: {{ search_form.material_id.data }}</span>{% endif %}
+      {% if search_form.warehouse_code.data %} | <span>仓库: {{ search_form.warehouse_code.data }}</span>{% endif %}
+      {% if search_form.delivery_id.data %} | <span>发货单: {{ search_form.delivery_id.data }}</span>{% endif %}
+      {% if search_form.start_date.data or search_form.end_date.data %}
+        | <span>日期: {{ search_form.start_date.data or '-' }} 至 {{ search_form.end_date.data or '-' }}</span>
+      {% endif %}
+      {% if mt and mt != 'all' %} | <span>类型: {{ mt }}</span>{% endif %}
+    </div>
+  </div>
 
   <div class="card shadow-sm mb-4">
     <div class="table-responsive">
@@ -113,26 +128,32 @@
             <th>时间</th>
             <th>物料</th>
             <th>仓库</th>
-            <th>变动前</th>
+            <th>可用(前)</th>
             <th>变动数量</th>
-            <th>变动后</th>
+            <th>可用(后)</th>
             <th>发货单</th>
             <th>类型</th>
             <th>操作人</th>
           </tr>
         </thead>
         <tbody>
-          {% for m in changes %}
+          {% for m in movements %}
           <tr>
-            <td>{{ m.change_time.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+            <td>
+              {% if m.formatted_time %}
+                {{ m.formatted_time }}
+              {% else %}
+                {{ m.change_time.strftime('%Y-%m-%d %H:%M') }}
+              {% endif %}
+            </td>
             <td>{{ m.material_id }}</td>
-            <td>{{ m.warehouse_code }}</td>
-            <td>{{ m.before_quantity }}</td>
+            <td>{{ m.material.storage_location or '-'}}</td>
+            <td>{{ m.before_available }}</td>
             <td class="{% if m.quantity_change < 0 %}text-danger{% else %}text-success{% endif %}">{{ m.quantity_change }}</td>
-            <td>{{ m.after_quantity }}</td>
+            <td>{{ m.after_available }}</td>
             <td>{{ m.reference_doc or '-' }}</td>
             <td>{{ m.change_type }}</td>
-            <td>{{ m.operator }}</td>
+            <td>{{ m.operator or '-' }}</td>
           </tr>
           {% else %}
           <tr>
@@ -148,9 +169,19 @@
 
   <nav aria-label="pager">
     <ul class="pagination justify-content-center">
-      {% for p in range(1, total_pages+1) %}
+      {% for p in range(1, total_pages + 1) %}
         <li class="page-item {% if p == page %}active{% endif %}">
-          <a class="page-link" href="?page={{ p }}&{{ request.query_string.decode('utf-8')|replace('page=' ~ page, 'page=' ~ p) }}">{{ p }}</a>
+          <a class="page-link"
+             href="{{ url_for(request.endpoint,
+                              page=p,
+                              material_id=(search_form.material_id.data or ''),
+                              delivery_id=(search_form.delivery_id.data or ''),
+                              warehouse_code=(search_form.warehouse_code.data or ''),
+                              start_date=search_form.start_date.data,
+                              end_date=search_form.end_date.data,
+                              movement_type=(search_form.movement_type.data or 'all')) }}">
+            {{ p }}
+          </a>
         </li>
       {% endfor %}
     </ul>
