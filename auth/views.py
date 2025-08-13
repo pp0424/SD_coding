@@ -24,7 +24,7 @@ def login():
         user = User.query.filter_by(username=username).first()
         
         # 校验用户存在且密码正确
-        if user and check_password_hash(user.password_hash, password):
+        if user and user.password_hash == password:
             login_user(user)
             flash('登录成功！', 'success')
             # 获取下一个页面参数，如果没有则跳转到仪表板

@@ -24,17 +24,24 @@ def write_csv(filename, fieldnames, rows):
 # 1. Material
 material_data = []
 for mid in materials:
+    physical_stock = random.randint(100, 10000)  # 总库存
+    allocated_stock = random.randint(0, physical_stock)  # 已分配 ≤ 总库存
+    pending_outbound = random.randint(0, allocated_stock)  # 待出库 ≤ 已分配
+    available_stock = physical_stock - allocated_stock    # 可用库存 = 总库存 - 已分配
+
     material_data.append({
         'material_id': mid,
         'description': fake.word() + fake.random_element(['耳机', '显示器', '鼠标', '键盘']),
         'base_unit': random.choice(units),
         'storage_location': f"WH-{fake.province()}",
-        'physical_stock': random.randint(100, 10000),
-        'available_stock': random.randint(100, 10000),
-        'allocated_stock': random.randint(100, 10000),
-        'pending_outbound':random.randint(100, 10000)
+        'physical_stock': physical_stock,
+        'available_stock': available_stock,
+        'allocated_stock': allocated_stock,
+        'pending_outbound': pending_outbound
     })
+
 write_csv('instance\Material.csv', list(material_data[0].keys()), material_data)
+
 
 # 2. Inquiry
 inquiry_data = []
