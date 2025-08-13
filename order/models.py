@@ -79,6 +79,8 @@ class Material(db.Model):
     pending_outbound= db.Column(db.Numeric(18, 4), nullable=False, server_default=text('0'), comment='待出库量')
 
 
+    
+
 # models.py
 
 class SalesOrder(db.Model):

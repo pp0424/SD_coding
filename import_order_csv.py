@@ -45,7 +45,10 @@ def import_all():
             'description': r['description'],
             'base_unit': r['base_unit'],
             'storage_location': r['storage_location'],
-            'available_stock': Decimal(r['available_stock'] or 0)
+            'physical_stock':Decimal(r['physical_stock'] or 0),
+            'available_stock': Decimal(r['available_stock'] or 0),
+            'allocated_stock': Decimal(r['allocated_stock'] or 0),
+            'pending_outbound': Decimal(r['pending_outbound'] or 0),
         })
 
         # 2. Inquiry
