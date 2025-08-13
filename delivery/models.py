@@ -34,12 +34,12 @@ class PickingTaskItem(db.Model):
     task_id = db.Column(db.String(255), db.ForeignKey('PickingTask.task_id'), primary_key=True)
     item_no = db.Column(db.Integer, primary_key=True)
     sales_order_item_no = db.Column(db.Integer, nullable=False)
-    material_id = db.Column(db.String(255), db.ForeignKey('Material.material_id'), nullable=False)
+    material_id = db.Column(db.String(255), db.ForeignKey('Inventory.material_id'), nullable=False)
     required_quantity = db.Column(db.Numeric(10, 2))
     picked_quantity = db.Column(db.Numeric(10, 2))
     unit = db.Column(db.String(50))
     storage_location = db.Column(db.String(255), nullable=True, comment='存储位置')
-    material = db.relationship('Material')
+    material = db.relationship('Inventory')
 
 class DeliveryNote(db.Model):
     __tablename__ = 'DeliveryNote'
@@ -78,12 +78,12 @@ class DeliveryItem(db.Model):
     delivery_note_id = db.Column(db.String(255), db.ForeignKey('DeliveryNote.delivery_note_id'), primary_key=True)
     item_no = db.Column(db.Integer, primary_key=True)
     sales_order_item_no = db.Column(db.Integer, nullable=False)
-    material_id = db.Column(db.String(255), db.ForeignKey('Material.material_id'), nullable=False)
+    material_id = db.Column(db.String(255), db.ForeignKey('Inventory.material_id'), nullable=False)
     planned_delivery_quantity = db.Column(db.Numeric(18, 4))
     actual_delivery_quantity = db.Column(db.Numeric(18, 4))
     unit = db.Column(db.String(50))
 
-    material = db.relationship('Material')
+    material = db.relationship('Inventory')
 
     def is_fully_delivered(self):
         return Decimal(self.actual_delivery_quantity or 0) >= Decimal(self.planned_delivery_quantity or 0)
@@ -93,7 +93,7 @@ class DeliveryItem(db.Model):
 class StockChangeLog(db.Model):
     __tablename__ = 'StockChangeLog'
     id = db.Column(db.Integer, primary_key=True)
-    material_id = db.Column(db.String(255), db.ForeignKey('Material.material_id'), nullable=False)
+    material_id = db.Column(db.String(255), db.ForeignKey('Inventory.material_id'), nullable=False)
     change_time = db.Column(db.DateTime, default=datetime.now)
     change_type = db.Column(db.String(50), nullable=False)  # '发货', '拣货' 或 '其他'
     quantity_change = db.Column(db.Numeric(18, 4), nullable=False)
@@ -111,7 +111,7 @@ class StockChangeLog(db.Model):
     operator = db.Column(db.String(255))
     warehouse_code = db.Column(db.String(255))
 
-    material = db.relationship('Material', backref='stock_changes')
+    material = db.relationship('Inventory', backref='stock_changes')
 
 
 from decimal import Decimal, ROUND_HALF_UP

@@ -9,7 +9,7 @@ import traceback
 from decimal import ROUND_HALF_UP, Decimal
 from customer.models import Customer
 from . import forms
-from .models import QTY_QUANT,DeliveryNote, DeliveryItem, StockChangeLog, PickingTask, PickingTaskItem,Inventory
+from .models import QTY_QUANT,DeliveryNote, DeliveryItem, StockChangeLog, PickingTask, PickingTaskItem,Inventory, _q
 from order.models import SalesOrder,SalesOrder, OrderItem, Material
 from datetime import date, datetime, time, timedelta
 from math import ceil
@@ -93,7 +93,6 @@ def generate_picking_task_id() -> str:
         next_num = 1
 
     return f"{base_prefix}{next_num:03d}"
-
 
 
 def lock_sales_order_and_items(sales_order_id: str) -> tuple[SalesOrder, list[OrderItem]]:
@@ -249,6 +248,42 @@ def atp_check_by_material(valid_items: list[dict]):
             lack.append(f'物料 {m.description if m else mid} (库存位置: {m.storage_location if m else "未知"}) 可用库存不足，需要 {need}{m.base_unit if m else ""}，当前 {available}{m.base_unit if m else ""}')
     if lack:
         raise ValueError('；'.join(lack))
+    
+def compute_max_allowable_qty(sales_order_id, item_no, current_dn_id):
+    """计算允许的最大发货数量"""
+    # 获取销售订单行
+    order_item = OrderItem.query.filter_by(
+        sales_order_id=sales_order_id,
+        item_no=item_no
+    ).first()
+    
+    if not order_item:
+        return Decimal('0')
+    
+    # 计算未发货数量
+    unshipped = Decimal(order_item.order_quantity) - Decimal(order_item.shipped_quantity or '0')
+    
+    # 计算其他未过账发货单中的分配量
+    allocated_qty = db.session.query(
+        func.sum(DeliveryItem.planned_delivery_quantity)
+    ).join(DeliveryNote).filter(
+        DeliveryNote.sales_order_id == sales_order_id,
+        DeliveryItem.sales_order_item_no == item_no,
+        DeliveryNote.status.in_(['已拣货']),
+        DeliveryNote.delivery_note_id != current_dn_id
+    ).scalar() or Decimal('0')
+    
+    # 最大允许数量 = 未发货数量 + 当前发货单中的原数量 - 其他未过账发货单的分配量
+    current_item = DeliveryItem.query.filter_by(
+        delivery_note_id=current_dn_id,
+        sales_order_item_no=item_no
+    ).first()
+    
+    current_qty = Decimal(current_item.planned_delivery_quantity) if current_item else Decimal('0')
+    return max(Decimal('0'), unshipped + current_qty - allocated_qty)
+
+# ========== 工具函数 ==========
+
 
 ##1、创建发货单
 @delivery_bp.route('/create_delivery', methods=['GET', 'POST'])
@@ -364,16 +399,12 @@ def create_delivery():
                     required_quantity=planned_qty,
                     picked_quantity=Decimal('0'),
                     unit=it.get('unit'),
-                    storage_location=(it.get('storage_location') or None)
+                    storage_location=Inventory.query.filter_by(material_id=it['material_id']).first().storage_location
                 )
                 db.session.add(pti)
 
 
                 line_no += 1
-
-            # 更新销售订单状态为待拣货
-            sales_order.status = '待拣货'
-            db.session.add(sales_order)
 
             # 提交事务
             db.session.commit()
@@ -414,8 +445,9 @@ def create_delivery():
                     'planned_delivery_quantity': remain
                 })
             order_items_for_view = form.items.entries
+    
 
-    return render_template('delivery/create_delivery.html', form=form, order_items=order_items_for_view)
+    return render_template('delivery/create_delivery.html', form=form,order_items=order_items_for_view)
 
 ##发货单详情
 @delivery_bp.route('/detail/<delivery_id>')
@@ -464,76 +496,124 @@ def delivery_list():
 @delivery_bp.route('/cancel/<delivery_id>', methods=['GET', 'POST'])
 @login_required
 def cancel_delivery(delivery_id):
+    from decimal import Decimal
     delivery = DeliveryNote.query.get_or_404(delivery_id)
-    
+    original_status = delivery.status
+
     # 验证状态转换
-    status_error = validate_delivery_status_transition(delivery.status, '已取消')
+    status_error = validate_delivery_status_transition(original_status, '已取消')
     if status_error:
         flash(status_error, 'danger')
         return redirect(url_for('delivery.delivery_detail', delivery_id=delivery_id))
-    
+
     form = forms.CancelDeliveryForm()
-    
+
     if request.method == 'GET':
         return render_template('delivery/cancel_delivery.html', form=form, delivery=delivery)
-    
+
     if form.validate_on_submit():
         try:
-            # 加锁发货单
+            # 加锁发货单，防止并发修改
             delivery = (db.session.query(DeliveryNote)
                         .filter(DeliveryNote.delivery_note_id == delivery_id)
                         .with_for_update(nowait=False)
                         .first())
-            
             if not delivery:
                 flash('发货单不存在', 'danger')
                 return redirect(url_for('delivery.delivery_list'))
-            
-            # 执行状态转换（取消）
-            delivery.status = '已取消'
-            
-            # 恢复库存（根据当前状态）
-            if delivery.status in ['待拣货', '已拣货', '待发货']:
+
+            # 避免重复释放同一物料库存
+            released_materials = set()
+
+            # 已创建状态
+            if original_status == '已创建':
+                if delivery.picking_task:
+                    task = delivery.picking_task
+                    task.status = '已取消'
+                    task.canceled_at = datetime.now()
+                    task.canceled_by = current_user.username
+
+                    for item in task.items:
+                        item.status = '已取消'
+                        item.canceled_at = datetime.now()
+                        item.canceled_by = current_user.username
+
+                        # 回退拣货明细库存
+                        if item.material_id not in released_materials:
+                            material = Inventory.query.filter_by(material_id=item.material_id).first()
+                            if material:
+                                qty = _q(item.picked_quantity)
+                                if qty > 0:
+                                    material.release_stock(
+                                        qty,
+                                        operator=current_user.username,
+                                        warehouse_code=delivery.warehouse_code,
+                                        reference=delivery.delivery_note_id
+                                    )
+                                    released_materials.add(item.material_id)
+
+            # 已拣货状态
+            elif original_status == '已拣货':
+                # 恢复发货明细库存
                 for item in delivery.items:
-                    material = Inventory.query.filter_by(material_id=item.material_id).first()
-                    if material:
-                        # 确保数值类型正确
-                        available_stock = to_decimal(material.available_stock)
-                        pending_outbound = to_decimal(material.pending_outbound)
-                        physical_stock = to_decimal(material.physical_stock)
-                        planned_qty = to_decimal(item.planned_delivery_quantity)
-                        
-                        # 恢复可用库存（所有状态）
-                        material.available_stock = available_stock + planned_qty
-                        
-                        # 恢复实际库存（如果已发货）
-                        if delivery.status in ['待发货', '已发货']:
-                            material.physical_stock = physical_stock + planned_qty
-                        
-                        # 减少待出库量（如果已拣货或之后的状态）
-                        if delivery.status in ['已拣货', '待发货', '已发货']:
-                            material.pending_outbound = pending_outbound - planned_qty
-                        
-                        # 记录库存变动
-                        stock_change = StockChangeLog(
-                            material_id=item.material_id,
-                            change_type='取消发货',
-                            quantity=planned_qty,
-                            reference_doc=delivery.delivery_note_id,
-                            warehouse_code=delivery.warehouse_code,
-                            change_time=datetime.now(),
-                            operator=getattr(current_user, 'username', 'system')
-                        )
-                        db.session.add(stock_change)
-            
-            # 更新取消信息
+                    if item.material_id not in released_materials:
+                        material = Inventory.query.filter_by(material_id=item.material_id).first()
+                        if material:
+                            qty = _q(item.planned_delivery_quantity)
+                            if qty > 0:
+                                material.release_stock(
+                                    qty,
+                                    operator=current_user.username,
+                                    warehouse_code=delivery.warehouse_code,
+                                    reference=delivery.delivery_note_id
+                                )
+                                released_materials.add(item.material_id)
+
+                # 取消拣货单及明细，同时回退库存
+                if delivery.picking_task:
+                    task = delivery.picking_task
+                    task.status = '已取消'
+                    task.canceled_at = datetime.now()
+                    task.canceled_by = current_user.username
+
+                    for item in task.items:
+                        item.status = '已取消'
+                        item.canceled_at = datetime.now()
+                        item.canceled_by = current_user.username
+
+                        if item.material_id not in released_materials:
+                            material = Inventory.query.filter_by(material_id=item.material_id).first()
+                            if material:
+                                qty = _q(item.picked_quantity)
+                                if qty > 0:
+                                    material.release_stock(
+                                        qty,
+                                        operator=current_user.username,
+                                        warehouse_code=delivery.warehouse_code,
+                                        reference=delivery.delivery_note_id
+                                    )
+                                    released_materials.add(item.material_id)
+
+            # 已发货状态
+            elif original_status == '已发货':
+                flash('已发货的发货单不能直接取消，请走退货流程', 'danger')
+                return redirect(url_for('delivery.delivery_detail', delivery_id=delivery_id))
+
+            # 已过账或已取消状态
+            elif original_status in ['已过账', '已取消']:
+                flash(f'{original_status} 状态的发货单不能取消', 'danger')
+                return redirect(url_for('delivery.delivery_detail', delivery_id=delivery_id))
+
+            # 更新发货单状态和取消信息
+            delivery.status = '已取消'
             delivery.cancel_reason = form.cancel_reason.data
             delivery.canceled_at = datetime.now()
             delivery.canceled_by = current_user.username
-            
+
             db.session.commit()
-            flash(f'发货单【{delivery_id}】已取消，库存已恢复', 'success')
+            flash(f'发货单【{delivery_id}】已取消', 'success')
             return redirect(url_for('delivery.delivery_detail', delivery_id=delivery_id))
+
         except ValueError as ve:
             db.session.rollback()
             flash(f'状态转换失败: {str(ve)}', 'danger')
@@ -543,111 +623,98 @@ def cancel_delivery(delivery_id):
         except Exception as e:
             db.session.rollback()
             flash(f'取消发货单时发生未知错误: {str(e)}', 'danger')
-    
+
     return render_template('delivery/cancel_delivery.html', form=form, delivery=delivery)
 
-# 修改发货单（非过账）
+# 修改发货单（仅已创建状态下）
 @delivery_bp.route('/edit/<delivery_id>', methods=['GET', 'POST'])
 @login_required
 def edit_delivery(delivery_id):
     delivery_note = DeliveryNote.query.get_or_404(delivery_id)
 
-    if delivery_note.status not in ['已创建', '已拣货']:
-        flash('当前状态不允许修改', 'danger')
+    # 1️⃣ 只允许 "已创建" 状态修改
+    if delivery_note.status != '已创建':
+        flash('只有“已创建”状态的发货单才能修改', 'danger')
         return redirect(url_for('delivery.delivery_detail', delivery_id=delivery_id))
 
     form = forms.EditDeliveryForm()
-    item_forms = [forms.DeliveryItemEditForm(obj=item) for item in delivery_note.items]
+    item_forms = [forms.DeliveryItemEditForm(obj=item, prefix=f'item_{i}') 
+                  for i, item in enumerate(delivery_note.items)]
 
+    # GET 请求时填充表单数据
     if request.method == 'GET':
         form.expected_delivery_date.data = delivery_note.delivery_date.date()
         form.warehouse_code.data = delivery_note.warehouse_code
         form.remarks.data = delivery_note.remarks
 
+    # 2️⃣ 提交时校验 & 更新
     if form.validate_on_submit():
-        # 验证并更新行项目
         errors = []
+
         for i, item in enumerate(delivery_note.items):
             item_form = forms.DeliveryItemEditForm(request.form, prefix=f'item_{i}')
             if item_form.validate():
                 new_qty = item_form.planned_delivery_quantity.data
-                
-                # 验证数量调整
+
+                # 数量验证
                 if new_qty < 0:
                     errors.append(f'行项目 {i+1}: 数量不能为负数')
                     continue
-                    
-                # 计算最大允许数量
+
                 max_qty = compute_max_allowable_qty(
                     delivery_note.sales_order_id,
                     item.sales_order_item_no,
                     delivery_note.delivery_note_id
                 )
-                
-                if new_qty > max_qty:
+
+                if Decimal(new_qty) > Decimal(max_qty):
                     errors.append(f'行项目 {i+1}: 数量 {new_qty} 超过允许的最大值 {max_qty}')
                     continue
-                    
+
                 item.planned_delivery_quantity = new_qty
             else:
-                errors.append(f'行项目 {i+1}: 无效数据')
+                errors.append(f'行项目 {i+1}: 数据无效')
 
         if errors:
-            for error in errors:
-                flash(error, 'danger')
-            return render_template('delivery/edit_delivery.html', 
-                                  form=form, 
-                                  delivery=delivery_note,
-                                  item_forms=item_forms)
+            for e in errors:
+                flash(e, 'danger')
+            return render_template(
+                'delivery/edit_delivery.html',
+                form=form,
+                delivery=delivery_note,
+                item_forms=item_forms
+            )
 
-        # 更新抬头信息
+        # 3️⃣ 更新发货单抬头
         delivery_note.delivery_date = datetime.combine(form.expected_delivery_date.data, time(hour=9))
         delivery_note.warehouse_code = form.warehouse_code.data
         delivery_note.remarks = form.remarks.data
-        
+
+        # 4️⃣ 同步到 PickingTask
+        if delivery_note.picking_task:
+            picking_task = delivery_note.picking_task
+            picking_task.warehouse_code = delivery_note.warehouse_code
+            picking_task.remarks = delivery_note.remarks
+
+            # 同步行项目
+            for d_item in delivery_note.items:
+                task_item = PickingTaskItem.query.filter_by(
+                    task_id=picking_task.task_id,
+                    sales_order_item_no=d_item.sales_order_item_no
+                ).first()
+                if task_item:
+                    task_item.required_quantity = d_item.planned_delivery_quantity
+
         db.session.commit()
-        flash('发货单已更新', 'success')
+        flash('发货单已更新并同步到拣货任务', 'success')
         return redirect(url_for('delivery.delivery_detail', delivery_id=delivery_id))
 
-    return render_template('delivery/edit_delivery.html', 
-                          form=form, 
-                          delivery=delivery_note,
-                          item_forms=item_forms)
-
-def compute_max_allowable_qty(sales_order_id, item_no, current_dn_id):
-    """计算允许的最大发货数量"""
-    # 获取销售订单行
-    order_item = OrderItem.query.filter_by(
-        sales_order_id=sales_order_id,
-        item_no=item_no
-    ).first()
-    
-    if not order_item:
-        return Decimal('0')
-    
-    # 计算未发货数量
-    unshipped = Decimal(order_item.order_quantity) - Decimal(order_item.shipped_quantity or '0')
-    
-    # 计算其他未过账发货单中的分配量
-    allocated_qty = db.session.query(
-        func.sum(DeliveryItem.planned_delivery_quantity)
-    ).join(DeliveryNote).filter(
-        DeliveryNote.sales_order_id == sales_order_id,
-        DeliveryItem.sales_order_item_no == item_no,
-        DeliveryNote.status.in_(['已创建', '已拣货']),
-        DeliveryNote.delivery_note_id != current_dn_id
-    ).scalar() or Decimal('0')
-    
-    # 最大允许数量 = 未发货数量 + 当前发货单中的原数量 - 其他未过账发货单的分配量
-    current_item = DeliveryItem.query.filter_by(
-        delivery_note_id=current_dn_id,
-        sales_order_item_no=item_no
-    ).first()
-    
-    current_qty = Decimal(current_item.planned_delivery_quantity) if current_item else Decimal('0')
-    return max(Decimal('0'), unshipped + current_qty - allocated_qty)
-
-
+    return render_template(
+        'delivery/edit_delivery.html',
+        form=form,
+        delivery=delivery_note,
+        item_forms=item_forms
+    )
 
 ##2、发货单拣货
 # -------------------------
@@ -688,8 +755,6 @@ def picking_task_list():
         rows.append({'task': t, 'delivery': dn})
 
     return render_template('delivery/picking_task_list.html', form=form, rows=rows)
-
-
 
 
 # -------------------------
@@ -972,28 +1037,6 @@ def confirm_picking(delivery_id):
                 if hasattr(delivery, 'updated_by'):
                     delivery.updated_by = operator
 
-            # 8. 同步销售订单状态
-            so_ids = {i.sales_order_item_no for i in items if i.sales_order_item_no}
-            if so_ids:
-                so_headers = (db.session.query(SalesOrder)
-                              .filter(SalesOrder.sales_order_id.in_(list(so_ids)))
-                              .with_for_update()
-                              .all())
-                for so in so_headers:
-                    all_lines_so = all(
-                        Decimal(str(oi.actual_delivery_quantity or 0)) >= Decimal(str(oi.planned_delivery_quantity or 0))
-                        for oi in so.items
-                    )
-                    any_lines_so = any(
-                        Decimal(str(oi.actual_delivery_quantity or 0)) > 0
-                        for oi in so.items
-                    )
-                    so.status = ('已拣货' if all_lines_so else '部分拣货' )
-                    if hasattr(so, 'updated_at'):
-                        so.updated_at = now
-                    if hasattr(so, 'updated_by'):
-                        so.updated_by = operator
-
         # 手动提交
         db.session.commit()
 
@@ -1101,7 +1144,7 @@ def cancel_picking_task(task_id):
                                   .filter(DeliveryItem.delivery_note_id == delivery_locked.delivery_note_id)
                                   .with_for_update()
                                   .all())
-                # map by sales_order_item_no (若你的模型使用不同字段，可替换)
+                # map by sales_order_item_no 
                 delivery_item_map = {di.sales_order_item_no: di for di in delivery_items if getattr(di, 'sales_order_item_no', None) is not None}
 
             # only allow cancel for two statuses
@@ -1242,42 +1285,6 @@ def cancel_picking_task(task_id):
                         delivery_locked.updated_at = now
                     if hasattr(delivery_locked, 'updated_by'):
                         delivery_locked.updated_by = operator
-
-                # collect sales_order ids from delivery items
-                if delivery_items:
-                    for di in delivery_items:
-                        if getattr(di, 'sales_order_id', None):
-                            so_ids.add(di.sales_order_id)
-
-            # update sales orders (set to '待拣货') if we have ids
-            if so_ids:
-                # if DeliveryItem did not have sales_order_id, try mapping by SalesOrderItem rows
-                missing_so_ids = {sid for sid in so_ids if sid is None}
-                # remove Nones
-                so_ids = {sid for sid in so_ids if sid is not None}
-
-                # if there are still none and we have delivery_items with sales_order_item_no, attempt join
-                if not so_ids and delivery_items:
-                    item_nos = [di.sales_order_item_no for di in delivery_items if getattr(di, 'sales_order_item_no', None) is not None]
-                    if item_nos:
-                        so_item_rows = (db.session.query(OrderItem)
-                                        .filter(OrderItem.item_no.in_(item_nos))
-                                        .all())
-                        for sitem in so_item_rows:
-                            if getattr(sitem, 'sales_order_id', None):
-                                so_ids.add(sitem.sales_order_id)
-
-                if so_ids:
-                    so_headers = (db.session.query(SalesOrder)
-                                  .filter(SalesOrder.sales_order_id.in_(list(so_ids)))
-                                  .with_for_update()
-                                  .all())
-                    for so in so_headers:
-                        so.status = '待拣货'
-                        if hasattr(so, 'updated_at'):
-                            so.updated_at = now
-                        if hasattr(so, 'updated_by'):
-                            so.updated_by = operator
 
         # commit the transaction
         db.session.commit()
@@ -1449,23 +1456,6 @@ def shipment(delivery_id):
         delivery.status = '已发货'
         delivery.updated_at = datetime.now()
         delivery.updated_by = operator
-
-        if getattr(delivery, 'sales_order_id', None):
-            so = (db.session.query(SalesOrder)
-                  .filter_by(sales_order_id=delivery.sales_order_id)
-                  .with_for_update()
-                  .one_or_none())
-            if so:
-                all_shipped = all(
-                    Decimal(str(getattr(oi, 'actual_delivery_quantity', 0) or 0)) >=
-                    Decimal(str(getattr(oi, 'order_quantity', 0) or 0))
-                    for oi in so.items
-                )
-                so.status = '已发货' if all_shipped else '部分发货'
-                if hasattr(so, 'updated_at'):
-                    so.updated_at = datetime.now()
-                if hasattr(so, 'updated_by'):
-                    so.updated_by = operator
 
         db.session.commit()
         flash(f'发货单 {delivery_id} 发货成功', 'success')
@@ -1675,67 +1665,24 @@ def inventory_movement():
         total_records=total_records
     )
 
-# 仅查看过账导致的库存变动（发货）
-def _parse_ymd(s: str):
-    s = (s or '').strip()
-    if not s:
-        return None
-    try:
-        return datetime.strptime(s, "%Y-%m-%d")
-    except ValueError:
-        return None
-
-
-def validate_stock_availability(delivery_items: list, warehouse_code: str) -> list[str]:
-    """验证库存可用性，返回错误信息列表"""
-    errors = []
-    
-    # 按物料汇总需求量
-    material_demands = {}
-    for item in delivery_items:
-        material_id = item['material_id']
-        actual_qty = item['actual_quantity']
-        if actual_qty > 0:
-            material_demands[material_id] = material_demands.get(material_id, Decimal('0')) + actual_qty
-    
-    if not material_demands:
-        return errors
-    
-    # 批量查询物料库存（加锁防止并发问题）
-    materials = (db.session.query(Inventory)
-                .filter(Inventory.material_id.in_(list(material_demands.keys())))
-                .with_for_update(nowait=False)
-                .all())
-    
-    materials_dict = {m.material_id: m for m in materials}
-    
-    # 检查每个物料的库存
-    for material_id, demand_qty in material_demands.items():
-        material = materials_dict.get(material_id)
-        if not material:
-            errors.append(f'物料 {material_id} 不存在')
-            continue
-            
-        available = to_decimal(material.available_stock)
-        if available < demand_qty:
-            errors.append(f'物料 {material_id} 库存不足：需要 {demand_qty}，可用 {available}')
-    
-    return errors
-
 
 ###-----------自动加载销售订单商品信息---------##
 @delivery_bp.get('/api/sales_orders/<sales_order_id>')
 @login_required
 def api_sales_order_items(sales_order_id):
     try:
-        # 可选：数据库连通性检查（SQLAlchemy 2.0 需要 text()）
+        sales_order_id = (sales_order_id or '').strip()
+        if not sales_order_id:
+            return jsonify({'found': False, 'items': []}), 200
+
+        # 确保 DB 可用
         db.session.execute(text('SELECT 1'))
 
-        # joinedload 使用 sqlalchemy.orm.joinedload
+        # 查询订单及其行
         so = (
             db.session.query(SalesOrder)
             .options(joinedload(SalesOrder.items))
-            .filter(SalesOrder.sales_order_id == sales_order_id.strip())
+            .filter(SalesOrder.sales_order_id == sales_order_id)
             .first()
         )
 
@@ -1744,23 +1691,26 @@ def api_sales_order_items(sales_order_id):
             return jsonify({'found': False, 'items': []}), 200
 
         items = []
+        storage_locations_set = set()  # 用集合收集仓库位置
+
         for oi in so.items:
             try:
-                ordered = Decimal(oi.order_quantity or 0)
-                shipped = Decimal(oi.shipped_quantity or 0)
+                ordered = float(oi.order_quantity or 0)
+                shipped = float(oi.shipped_quantity or 0)
                 unshipped = ordered - shipped
                 if unshipped <= 0:
                     continue
 
-                # 确保 material 总是已定义
+                # 获取物料信息
                 material = None
                 if getattr(oi, 'material_id', None):
-                    # Flask‑SQLAlchemy 3.x 推荐 session.get；老版本用 Inventory.query.get 也可
                     material = db.session.get(Inventory, oi.material_id)
 
-                base_unit = (material.base_unit if material else (oi.unit or ''))
-                storage_location = (material.storage_location if material else '未知')
-                material_desc = (material.description if material else '') or ''
+                base_unit = material.base_unit if material else (oi.unit or '')
+                storage_location = material.storage_location if material else '未知'
+                material_desc = material.description if material else ''
+
+                storage_locations_set.add(storage_location)
 
                 items.append({
                     'sales_order_item_no': oi.item_no,
@@ -1769,20 +1719,27 @@ def api_sales_order_items(sales_order_id):
                     'base_unit': base_unit,
                     'storage_location': storage_location,
                     'unit': oi.unit or '',
-                    'order_quantity': str(ordered),
-                    'unshipped_quantity': str(unshipped),
-                    'planned_delivery_quantity': str(unshipped),
+                    'order_quantity': ordered,
+                    'unshipped_quantity': unshipped,
+                    'planned_delivery_quantity': unshipped
                 })
+
             except Exception as item_error:
                 current_app.logger.error(
                     f"Error processing item {getattr(oi, 'item_no', '?')}: {item_error}",
                     exc_info=True
                 )
 
+        # 将所有仓库位置用逗号拼接，返回给前端
+        warehouse_code = ','.join(sorted(storage_locations_set)) if storage_locations_set else ''
+
         return jsonify({
             'found': True,
             'items': items,
-            'order_status': so.status
+            'order_status': so.status,
+            'warehouse_code': warehouse_code,
+            'order_date': so.order_date.isoformat() if so.order_date else '',
+            'required_delivery_date': so.required_delivery_date.isoformat() if so.required_delivery_date else ''
         }), 200
 
     except SQLAlchemyError as db_error:

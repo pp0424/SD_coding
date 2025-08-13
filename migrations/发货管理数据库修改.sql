@@ -1,22 +1,20 @@
--- 1. 删除所有触发器
+
+-- 1. 删除触发器
 DROP TRIGGER IF EXISTS sync_material_insert;
 DROP TRIGGER IF EXISTS sync_material_update;
 DROP TRIGGER IF EXISTS sync_material_delete;
 DROP TRIGGER IF EXISTS sync_inventory_update;
 
--- 2. 删除锁表
+-- 2. 删除/重建锁表与 Inventory
 DROP TABLE IF EXISTS sync_lock;
-
 DROP TABLE IF EXISTS Inventory;
 
--- 创建持久化的锁表（替代临时表）
 CREATE TABLE IF NOT EXISTS sync_lock (
     lock_id INTEGER PRIMARY KEY DEFAULT 1,
     locked INTEGER NOT NULL DEFAULT 0
 );
 INSERT OR IGNORE INTO sync_lock (lock_id, locked) VALUES (1, 0);
 
--- 创建 Inventory 表
 CREATE TABLE IF NOT EXISTS Inventory (
     material_id TEXT PRIMARY KEY,
     description TEXT NOT NULL,
@@ -28,46 +26,32 @@ CREATE TABLE IF NOT EXISTS Inventory (
     pending_outbound NUMERIC(18,4) NOT NULL DEFAULT 0
 );
 
--- 为 Material 表创建同步触发器
--- INSERT 触发器
+-- 3. 触发器（与原逻辑一致）
 CREATE TRIGGER IF NOT EXISTS sync_material_insert
 AFTER INSERT ON Material
 FOR EACH ROW
 WHEN (SELECT locked FROM sync_lock WHERE lock_id = 1) = 0
 BEGIN
     UPDATE sync_lock SET locked = 1 WHERE lock_id = 1;
-    
+
     REPLACE INTO Inventory (
-        material_id,
-        description,
-        base_unit,
-        storage_location,
-        available_stock,
-        physical_stock,
-        allocated_stock,
-        pending_outbound
+        material_id, description, base_unit, storage_location,
+        available_stock, physical_stock, allocated_stock, pending_outbound
     ) VALUES (
-        NEW.material_id,
-        NEW.description,
-        NEW.base_unit,
-        NEW.storage_location,
-        NEW.available_stock,
-        NEW.physical_stock,
-        NEW.allocated_stock,
-        NEW.pending_outbound
+        NEW.material_id, NEW.description, NEW.base_unit, NEW.storage_location,
+        NEW.available_stock, NEW.physical_stock, NEW.allocated_stock, NEW.pending_outbound
     );
-    
+
     UPDATE sync_lock SET locked = 0 WHERE lock_id = 1;
 END;
 
--- UPDATE 触发器
 CREATE TRIGGER IF NOT EXISTS sync_material_update
 AFTER UPDATE ON Material
 FOR EACH ROW
 WHEN (SELECT locked FROM sync_lock WHERE lock_id = 1) = 0
 BEGIN
     UPDATE sync_lock SET locked = 1 WHERE lock_id = 1;
-    
+
     UPDATE Inventory SET
         description = NEW.description,
         base_unit = NEW.base_unit,
@@ -77,24 +61,22 @@ BEGIN
         allocated_stock = NEW.allocated_stock,
         pending_outbound = NEW.pending_outbound
     WHERE material_id = NEW.material_id;
-    
+
     UPDATE sync_lock SET locked = 0 WHERE lock_id = 1;
 END;
 
--- DELETE 触发器
 CREATE TRIGGER IF NOT EXISTS sync_material_delete
 AFTER DELETE ON Material
 FOR EACH ROW
 WHEN (SELECT locked FROM sync_lock WHERE lock_id = 1) = 0
 BEGIN
     UPDATE sync_lock SET locked = 1 WHERE lock_id = 1;
-    
+
     DELETE FROM Inventory WHERE material_id = OLD.material_id;
-    
+
     UPDATE sync_lock SET locked = 0 WHERE lock_id = 1;
 END;
 
--- 为 Inventory 表创建同步触发器
 CREATE TRIGGER IF NOT EXISTS sync_inventory_update
 AFTER UPDATE ON Inventory
 FOR EACH ROW
@@ -109,7 +91,7 @@ WHEN (SELECT locked FROM sync_lock WHERE lock_id = 1) = 0 AND (
 )
 BEGIN
     UPDATE sync_lock SET locked = 1 WHERE lock_id = 1;
-    
+
     UPDATE OR IGNORE Material SET
         description = NEW.description,
         base_unit = NEW.base_unit,
@@ -119,12 +101,13 @@ BEGIN
         allocated_stock = NEW.allocated_stock,
         pending_outbound = NEW.pending_outbound
     WHERE material_id = NEW.material_id;
-    
+
     UPDATE sync_lock SET locked = 0 WHERE lock_id = 1;
 END;
 
--- 初始化数据同步
--- 第一步: 更新现有记录
+-- 4. 初始化同步（先加锁，避免 Inventory->Material 触发回写）
+UPDATE sync_lock SET locked = 1 WHERE lock_id = 1;
+
 UPDATE Inventory
 SET
     description = (SELECT description FROM Material WHERE Material.material_id = Inventory.material_id),
@@ -135,34 +118,28 @@ SET
     allocated_stock = (SELECT allocated_stock FROM Material WHERE Material.material_id = Inventory.material_id),
     pending_outbound = (SELECT pending_outbound FROM Material WHERE Material.material_id = Inventory.material_id)
 WHERE EXISTS (
-    SELECT 1 FROM Material
-    WHERE Material.material_id = Inventory.material_id
+    SELECT 1 FROM Material WHERE Material.material_id = Inventory.material_id
 );
 
--- 第二步: 插入新记录
 INSERT OR IGNORE INTO Inventory (
-    material_id,
-    description,
-    base_unit,
-    storage_location,
-    available_stock,
-    physical_stock,
-    allocated_stock,
-    pending_outbound
+    material_id, description, base_unit, storage_location,
+    available_stock, physical_stock, allocated_stock, pending_outbound
 )
 SELECT 
-    material_id,
-    description,
-    base_unit,
-    storage_location,
-    available_stock,
-    physical_stock,
-    allocated_stock,
-    pending_outbound
+    material_id, description, base_unit, storage_location,
+    available_stock, physical_stock, allocated_stock, pending_outbound
 FROM Material;
 
+UPDATE sync_lock SET locked = 0 WHERE lock_id = 1;
+
+INSERT OR REPLACE INTO Inventory
+SELECT * FROM Material;
+
+
+-- 5. 检查
 SELECT * FROM Material;
 SELECT * FROM Inventory;
+PRAGMA table_info(Inventory);
 
 
 PRAGMA foreign_keys = OFF;
@@ -264,4 +241,16 @@ CREATE TABLE users (
 INSERT INTO users (id, username, password_hash) VALUES
 (1, 'admin', '123456')
 
+
+SELECT * FROM Material;
+SELECT * FROM Inventory;
 SELECT * FROM users;
+SELECT * FROM PickingTask;
+SELECT * FROM PickingTaskItem;
+SELECT * FROM DeliveryNote;
+SELECT * FROM DeliveryItem;
+SELECT * FROM StockChangeLog;
+UPDATE DeliveryNote SET warehouse_code='WH001、WH002、WH003' WHERE delivery_note_id='DN20250813-001';
+SELECT * FROM DeliveryNote WHERE delivery_note_id='DN20250813-001';
+
+SELECT * from SalesOrder;

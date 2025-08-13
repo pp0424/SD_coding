@@ -17,6 +17,8 @@ class DeliveryItemForm(FlaskForm):
 
 class CreateDeliveryForm(FlaskForm):
     sales_order_id = StringField('销售订单编号', validators=[DataRequired()])
+    required_delivery_date=StringField("交货日期")
+    order_date = StringField("订单日期")
     expected_delivery_date = DateField('预计发货日期', validators=[DataRequired()])
     warehouse_code = StringField('发货仓库代码', validators=[DataRequired()])
     items = FieldList(FormField(DeliveryItemForm), min_entries=0)

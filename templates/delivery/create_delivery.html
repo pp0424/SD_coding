@@ -11,18 +11,26 @@
       <form method="post" id="pick-form">
         {{ form.hidden_tag() }}
 
-        <div class="row mb-3">
-          <div class="col-md-4">
+        <div class="row mb-5">
+          <div class="col-md-2">
             {{ form.sales_order_id.label(class="form-label fw-bold") }}
             {{ form.sales_order_id(class="form-control", id="sales_order_id") }}
           </div>
-          <div class="col-md-4">
+          <div class="col-md-3">
             {{ form.warehouse_code.label(class="form-label fw-bold") }}
-            {{ form.warehouse_code(class="form-control") }}
+            {{ form.warehouse_code(class="form-control", id="warehouse_code") }}
           </div>
-          <div class="col-md-4">
+          <div class="col-md-2">
+            {{ form.order_date.label(class="form-label fw-bold") }}
+            {{ form.order_date(class="form-control", type="date", id="order_date") }}
+          </div>
+          <div class="col-md-2">
+            {{ form.required_delivery_date.label(class="form-label fw-bold") }}
+            {{ form.required_delivery_date(class="form-control", type="date", id="required_delivery_date") }}
+          </div>
+          <div class="col-md-2">
             {{ form.expected_delivery_date.label(class="form-label fw-bold") }}
-            {{ form.expected_delivery_date(class="form-control", type="date") }}
+            {{ form.expected_delivery_date(class="form-control", type="date", id="expected_delivery_date") }}
           </div>
         </div>
 
@@ -80,21 +88,20 @@
   </div>
 </div>
 
-<!-- 简单的脚本：根据销售订单加载项目 -->
+<!-- JS: 根据销售订单自动加载拣货行及仓库、日期 -->
 <script>
 (function () {
   const soInput = document.getElementById('sales_order_id');
+  const warehouseInput = document.getElementById('warehouse_code');
+  const orderDateInput = document.getElementById('order_date');
+  const requiredDeliveryInput = document.getElementById('required_delivery_date');
   const itemsBody = document.getElementById('items-body');
   const hiddenContainer = document.getElementById('dynamic-inputs');
 
-  // 请确保下面的 URL 生成正确的前缀（如 /delivery/api/...）
   const apiBase = "{{ url_for('delivery.api_sales_order_items', sales_order_id='__SO__') }}";
 
   function clearRows() {
-    itemsBody.innerHTML = `
-      <tr>
-        <td colspan="8" class="text-center text-muted">暂无可拣货的订单行</td>
-      </tr>`;
+    itemsBody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">暂无可拣货的订单行</td></tr>`;
     hiddenContainer.innerHTML = '';
   }
 
@@ -147,7 +154,6 @@
       `;
       itemsBody.appendChild(tr);
 
-      // 隐藏字段，确保后端能还原 FieldList
       addHidden(`items-${idx}-sales_order_item_no`, it.sales_order_item_no ?? '');
       addHidden(`items-${idx}-material_id`, it.material_id ?? '');
       addHidden(`items-${idx}-material_desc`, it.material_desc ?? '');
@@ -164,37 +170,38 @@
     const raw = (soInput.value || '').trim();
     if (!raw) {
       clearRows();
+      warehouseInput.value = '';
+      requiredDeliveryInput.value = '';
       return;
     }
     const url = apiBase.replace('__SO__', encodeURIComponent(raw));
-    itemsBody.innerHTML = `
-      <tr>
-        <td colspan="8" class="text-center text-muted">加载中...</td>
-      </tr>`;
+    itemsBody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">加载中...</td></tr>`;
     fetch(url, { headers: { 'Accept': 'application/json' } })
       .then(r => r.json())
       .then(data => {
         if (!data.found) {
-          itemsBody.innerHTML = `
-            <tr><td colspan="8" class="text-center text-warning">
-              未找到销售订单：${escapeHtml(raw)}
-            </td></tr>`;
+          itemsBody.innerHTML = `<tr><td colspan="8" class="text-center text-warning">未找到销售订单：${escapeHtml(raw)}</td></tr>`;
           hiddenContainer.innerHTML = '';
+          warehouseInput.value = '';
+          requiredDeliveryInput.value = '';
           return;
         }
+
+        // 自动填充仓库代码和日期
+        warehouseInput.value = data.warehouse_code || '';
+        orderDateInput.value = data.order_date || '';
+        requiredDeliveryInput.value = data.required_delivery_date || '';
+
+
         buildRows(data.items || []);
       })
       .catch(err => {
         console.error(err);
-        itemsBody.innerHTML = `
-          <tr><td colspan="8" class="text-center text-danger">
-            加载失败，请稍后重试
-          </td></tr>`;
+        itemsBody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">加载失败，请稍后重试</td></tr>`;
         hiddenContainer.innerHTML = '';
       });
   }
 
-  // 选择/输入后 300ms 触发加载（兼容 SelectField 或自由输入）
   ['change', 'blur', 'input'].forEach(evt =>
     soInput.addEventListener(evt, () => {
       clearTimeout(debounceTimer);
@@ -202,7 +209,7 @@
     })
   );
 
-  // 页面初始如果已有值，自动加载
+  // 页面初始如果已有销售订单号，自动加载
   if ((soInput.value || '').trim()) {
     triggerLoad();
   }
