@@ -1,5 +1,6 @@
 import os
 import csv
+from decimal import Decimal
 from sqlalchemy import event
 from order.models import (
     Inquiry, InquiryItem,
@@ -10,10 +11,10 @@ from order.models import (
 
 def export_table_to_csv(model_class, csv_filename):
     """
-    导出指定模型类对应表的数据到 CSV 文件
+    导出指定模型类对应表的数据到 CSV 文件（数字保留3位小数）
     """
     from database import db
-    folder_path = "Instance"  # ✅ 存到已有的 Instance 文件夹
+    folder_path = "Instance"
     os.makedirs(folder_path, exist_ok=True)
     file_path = os.path.join(folder_path, csv_filename)
 
@@ -24,7 +25,14 @@ def export_table_to_csv(model_class, csv_filename):
         writer = csv.writer(file)
         writer.writerow(columns)
         for row in records:
-            writer.writerow([getattr(row, col) for col in columns])
+            formatted_row = []
+            for col in columns:
+                value = getattr(row, col)
+                if isinstance(value, (float, Decimal)):  
+                    formatted_row.append(f"{value:.3f}")
+                else:
+                    formatted_row.append(value)
+            writer.writerow(formatted_row)
 
 
 def o_attach_csv_export_listeners():
