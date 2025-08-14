@@ -87,28 +87,12 @@ class ChangeStatusForm(FlaskForm):
     submit = SubmitField('确认变更')
 
 class SearchInventoryMovementForm(FlaskForm):
-    material_id = StringField('物料编号', validators=[Optional()])
+    material_id = SelectField('物料编号', validators=[Optional()], coerce=str, choices=[])
+    warehouse_code = SelectField('仓库代码', validators=[Optional()], coerce=str, choices=[])
     start_date = DateField('起始日期', validators=[Optional()],format='%Y-%m-%d')
     end_date = DateField('结束日期', validators=[Optional()],format='%Y-%m-%d')
     delivery_id = StringField('发货单编号', validators=[Optional()])
-    warehouse_code = StringField('仓库代码', validators=[Optional()])
-    movement_type = SelectField('移动类型', choices=[
-        ('all', '全部'),
-        ('IN', '入库'),
-        ('OUT', '出库')
-    ], validators=[Optional()])
-    submit = SubmitField('查询')
-
-class ShipmentConfirmForm(FlaskForm):
-    confirm = SubmitField('确认发货')
-
-
-class SearchInventoryMovementForm(FlaskForm):
-    material_id = StringField('物料编码', validators=[Optional()])
-    start_date = DateField('开始日期', format='%Y-%m-%d', validators=[Optional()])
-    end_date = DateField('结束日期', format='%Y-%m-%d', validators=[Optional()])
-    delivery_id = StringField('参考单号', validators=[Optional()])
-    warehouse_code = StringField('仓库编码', validators=[Optional()])
+    
     movement_type = SelectField(
         '变动类型',
         choices=[
@@ -120,3 +104,15 @@ class SearchInventoryMovementForm(FlaskForm):
             ('其他', '其他')
         ],
         default='all')
+    
+    submit = SubmitField('查询')
+
+class ShipmentConfirmForm(FlaskForm):
+    confirm = SubmitField('确认发货')
+
+
+class SearchInventoryForm(FlaskForm):
+    material_id = StringField('物料编号', validators=[Optional()])
+    description = StringField('物料描述', validators=[Optional()])
+    storage_location = StringField('存储位置', validators=[Optional()])
+    submit = SubmitField('搜索')

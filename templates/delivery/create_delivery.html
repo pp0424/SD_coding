@@ -13,9 +13,16 @@
 
         <div class="row mb-5">
           <div class="col-md-2">
-            {{ form.sales_order_id.label(class="form-label fw-bold") }}
-            {{ form.sales_order_id(class="form-control", id="sales_order_id") }}
+            <label class="form-label fw-bold" for="sales_order_id">{{ form.sales_order_id.label.text }}</label>
+            <div class="input-group">
+              {{ form.sales_order_id(class="form-control", id="sales_order_id") }}
+              <button type="button" class="btn btn-outline-secondary"
+                      onclick="window.open('{{ url_for('delivery.sales_helper') }}', 'salesHelper', 'width=1080,height=720')">
+                <i class="bi bi-search"></i>
+              </button>
+            </div>
           </div>
+          
           <div class="col-md-3">
             {{ form.warehouse_code.label(class="form-label fw-bold") }}
             {{ form.warehouse_code(class="form-control", id="warehouse_code") }}

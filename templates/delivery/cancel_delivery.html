@@ -73,17 +73,19 @@
   </div>
 </div>
 
-<!-- 确认取消模态框 -->
+<!-- 二次确认模态框 -->
 <div class="modal fade" id="confirmCancelModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">确认取消发货单</h5>
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-warning text-dark" >
+        <h5 class="modal-title" >
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>操作确认
+        </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
       </div>
       <div class="modal-body">
-        <p>你即将取消 <strong>发货单 {{ delivery.delivery_note_id }}</strong>，此操作不可撤销，请确认已填写取消原因。</p>
-        <div class="alert alert-secondary small">
+        <p class="mb-0">你即将取消 <strong>发货单 {{ delivery.delivery_note_id }}</strong>，此操作不可撤销，请确认已填写取消原因。</p>
+        <div class="alert alert-secondary small mt-3">
           <strong>当前状态：</strong> {{ delivery.status }}<br>
           <div id="cancel_reason_preview" class="small-muted mt-1"></div>
         </div>
@@ -101,70 +103,63 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   const modalEl = document.getElementById('confirmCancelModal');
-
-  // 确保模态框挂在 body 下
-  if (modalEl && modalEl.parentElement !== document.body) {
-    document.body.appendChild(modalEl);
-  }
-
-  if (!(window.bootstrap && window.bootstrap.Modal)) {
-    console.error('Bootstrap JS 未加载，模态框功能不可用');
-    return;
-  }
-
-  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl, { backdrop: false });
   const btnCancel = document.getElementById('btn-cancel-delivery');
   const confirmBtn = document.getElementById('confirm-cancel-btn');
   const reasonField = document.querySelector('textarea[name="cancel_reason"]');
   const csrfInput = document.querySelector('input[name="csrf_token"]');
 
-  btnCancel && btnCancel.addEventListener('click', () => {
-    const reason = reasonField ? reasonField.value.trim() : '';
+  // 点击“取消发货单” → 校验原因 → 弹出模态框
+  btnCancel?.addEventListener('click', () => {
+    const reason = reasonField?.value.trim() || '';
     if (reason.length < 5) {
       alert('请填写更明确的取消原因（至少 5 个字）');
-      reasonField && reasonField.focus();
+      reasonField?.focus();
       return;
     }
     document.getElementById('cancel_reason_preview').textContent = reason;
     modal.show();
   });
 
-  confirmBtn && confirmBtn.addEventListener('click', async function () {
-    this.disabled = true;
-    this.textContent = '处理中...';
-    try {
-      const url = "{{ url_for('delivery.cancel_delivery', delivery_id=delivery.delivery_note_id) }}";
-      const formData = new FormData();
-      formData.append('cancel_reason', reasonField ? reasonField.value : '');
-      formData.append('csrf_token', csrfInput ? csrfInput.value : '');
+  // 模态框“确认取消” → 关闭模态框 → 延迟执行取消请求
+  confirmBtn?.addEventListener('click', () => {
+    modal.hide();
+    setTimeout(async () => {
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = '处理中...';
+      try {
+        const url = "{{ url_for('delivery.cancel_delivery', delivery_id=delivery.delivery_note_id) }}";
+        const formData = new FormData();
+        formData.append('cancel_reason', reasonField?.value || '');
+        formData.append('csrf_token', csrfInput?.value || '');
 
-      const res = await fetch(url, {
-        method: 'POST',
-        body: formData,
-        credentials: 'same-origin',
-        headers: { 'Accept': 'application/json' }
-      });
+        const res = await fetch(url, {
+          method: 'POST',
+          body: formData,
+          credentials: 'same-origin',
+          headers: { 'Accept': 'application/json' }
+        });
 
-      let data = {};
-      try { data = await res.json(); } catch (e) {}
+        let data = {};
+        try { data = await res.json(); } catch {}
 
-      if (res.ok && data.success) {
-        modal.hide();
-        if (data.redirect) {
-          window.location.href = data.redirect;
+        if (res.ok && data.success) {
+          if (data.redirect) {
+            window.location.href = data.redirect;
+          } else {
+            window.location.reload();
+          }
         } else {
-          window.location.reload();
+          alert((data && data.message) || `取消失败（${res.status} ${res.statusText}）`);
         }
-      } else {
-        alert((data && data.message) || `取消失败（${res.status} ${res.statusText}）`);
+      } catch (err) {
+        console.error(err);
+        alert('网络或服务器错误，取消失败');
+      } finally {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = '确认取消';
       }
-    } catch (err) {
-      console.error(err);
-      alert('网络或服务器错误，取消失败');
-    } finally {
-      this.disabled = false;
-      this.textContent = '确认取消';
-    }
+    }, 200); // 延迟保证遮罩消失
   });
 });
 </script>

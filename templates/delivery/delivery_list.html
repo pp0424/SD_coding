@@ -4,42 +4,93 @@
 {% block head_extra %}
 <link rel="stylesheet" href="{{ url_for('static', filename='delivery/delivery_styles.css') }}">
 <style>
-      /* 表格所有单元格不换行 */
-      .delivery-table th,
-      .delivery-table td {
-        white-space: nowrap;   /* 禁止自动换行 */
-        vertical-align: middle; /* 让内容垂直居中，可选 */
-      }
+  /* 表格所有单元格不换行 */
+  .delivery-table th,
+  .delivery-table td {
+    white-space: nowrap;
+    vertical-align: middle;
+  }
 
-      .delivery-card {
-        width: 100%;
-      }
+  .delivery-card {
+    width: 100%;
+  }
+
+  /* 确保禁用态不可点击且有视觉弱化 */
+  .btn.disabled,
+  .btn[aria-disabled="true"],
+  .btn:disabled {
+    pointer-events: none;
+    opacity: .65;
+  }
+
+  /* 通用禁用按钮样式 */
+  .btn.disabled,
+  .btn[aria-disabled="true"],
+  .btn:disabled {
+      pointer-events: none;   /* 禁止点击 */
+      opacity: 0.5;           /* 半透明效果 */
+      background-color: #e0e0e0 !important; /* 灰底 */
+      color: #888 !important; /* 灰字 */
+      border-color: #ccc !important; /* 灰边框 */
+  }
+
 </style>
 {% endblock %}
 
 {% block content %}
+<!-- 搜索模态框 -->
+<div class="modal fade" id="searchModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">选择记录</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="searchKeyword" class="form-control mb-3" placeholder="输入关键字搜索..." oninput="doSearch()">
+        <div id="searchResults">
+          <!-- AJAX 查询结果表 -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
 <!-- 查询表单 -->
 <div class="form-title-container">
-    <h1 class="form-title">
-      🔍 发货单查询
-    </h1>
-  </div>
+  <h1 class="form-title">🔍 发货单查询</h1>
+</div>
 
 <div class="delivery-card animate-fade">
   <form method="post" class="row g-3 query-form align-items-end">
     {{ form.csrf_token }}
 
-    <div class="col-md-2">
-      {{ form.delivery_id.label(class="form-label") }}
-      {{ form.delivery_id(class="form-control", placeholder="发货单号") }}
+  <div class="col-md-2">
+      <label class="form-label" for="delivery_id">{{ form.delivery_id.label.text }}</label>
+      <div class="input-group">
+        {{ form.delivery_id(class="form-control", id="delivery_id") }}
+        <button type="button" class="btn btn-outline-secondary"
+                onclick="openCentered('{{ url_for('delivery.delivery_helper') }}', 'deliveryHelper', 800, 600)">
+          <i class="bi bi-search"></i>
+        </button>
+      </div>
     </div>
 
+    <!-- 销售订单 ID -->
     <div class="col-md-2">
-      {{ form.sales_order_id.label(class="form-label") }}
-      {{ form.sales_order_id(class="form-control", placeholder="销售订单号") }}
+      <label class="form-label" for="sales_order_id">{{ form.sales_order_id.label.text }}</label>
+      <div class="input-group">
+        {{ form.sales_order_id(class="form-control", id="sales_order_id") }}
+        <button type="button" class="btn btn-outline-secondary"
+                onclick="openCentered('{{ url_for('delivery.sales_helper') }}', 'salesHelper', 800, 600)">
+          <i class="bi bi-search"></i>
+        </button>
+      </div>
     </div>
 
-    <div class="col-md-2">
+
+ <div class="col-md-2">
       {{ form.status.label(class="form-label") }}
       {{ form.status(class="form-select") }}
     </div>
@@ -81,131 +132,113 @@
   </div>
 
   <div class="table-responsive" style="max-height: 70vh;">
-<table class="delivery-table table-hover">
+    <table class="delivery-table table-hover">
       <thead>
         <tr>
-          <th style="width: 140px;">发货单号</th>
-          <th style="width: 120px;">销售订单号</th>
-          <th style="width: 100px;">发货日期</th>
-          <th style="width: 100px;">仓库代码</th>
-          <th style="width: 80px;">状态</th>
-          <th style="width: 100px;">过账人</th>
-          <th style="width: 120px;">过账时间</th>
-          <th style="min-width: 150px;">备注</th>
-          <th style="width: 160px;">操作</th>
+          <th>发货单号</th>
+          <th>销售订单号</th>
+          <th>发货日期</th>
+          <th style="width: 8%;">仓库代码</th>
+          <th>状态</th>
+          <th>操作</th>
+          <th>备注</th>
         </tr>
       </thead>
       <tbody>
         {% for delivery in deliveries %}
-        <tr>
-          <td>
-            <a href="{{ url_for('delivery.delivery_detail', delivery_id=delivery.delivery_note_id) }}" 
-               class="text-decoration-none fw-bold text-primary">
-              {{ delivery.delivery_note_id }}
-            </a>
-          </td>
-          <td>
-            <span class="text-muted">{{ delivery.sales_order_id }}</span>
-          </td>
-          <td>
-            {{ delivery.delivery_date.strftime('%Y-%m-%d') if delivery.delivery_date else '-' }}
-          </td>
-          <td>
-            <span class="badge bg-light text-dark">{{ delivery.warehouse_code }}</span>
-          </td>
-          <td>
-          <span class="badge 
-              {% if delivery.status == '已创建' %}bg-primary
-              {% elif delivery.status == '已拣货' %}bg-warning
-              {% elif delivery.status == '已发货' %}bg-primary
-              {% elif delivery.status == '已过账' %}bg-success
-              {% elif delivery.status == '已完成' %}bg-light text-dark
-              {% elif delivery.status == '已取消' %}bg-danger
-              {% else %}bg-secondary{% endif %}">
-              {{ delivery.status }}
-            </span>
-          </td>
-          <td>
-            <small class="text-muted">{{ delivery.posted_by or '-' }}</small>
-          </td>
-          <td>
-            <small class="text-muted">
-              {{ delivery.posted_at.strftime('%Y-%m-%d %H:%M') if delivery.posted_at else '-' }}
-            </small>
-          </td>
-          <td>
-            <small class="text-muted">{{ delivery.remarks[:30] + '...' if delivery.remarks and delivery.remarks|length > 30 else (delivery.remarks or '-') }}</small>
-          </td>
-          <td>
-            <div class="d-flex flex-wrap gap-1">
-              <a href="{{ url_for('delivery.delivery_detail', delivery_id=delivery.delivery_note_id) }}" 
-                 class="btn btn-outline-info btn-action" title="查看详情">
-                <i class="bi bi-eye"></i>
-              </a>
-              
-              {# 编辑: 仅适用于'已创建'状态 #}
-              {% if delivery.status == '已创建' %}
-              <a href="{{ url_for('delivery.edit_delivery', delivery_id=delivery.delivery_note_id) }}" 
-                 class="btn btn-outline-warning btn-action" title="编辑">
-                <i class="bi bi-pencil"></i>
-              </a>
-              {% endif %}
-              
-              {# 拣货: 仅适用于'已创建'状态 #}
-              {% if delivery.status == '已创建' %}
-              <form action="{{ url_for('delivery.api_start_picking', task_id=delivery.picking_task_id) }}" method="POST" style="display: inline;">
-                <button type="submit" class="btn btn-outline-warning btn-action" title="拣货">
-                  <i class="bi bi-box-seam"></i>
-                </button>
-              </form>
-              {% endif %}
-              
-              
-              {# 发货: 仅适用于'已拣货'状态 #}
-              {% if delivery.status == '已拣货' %}
-              <form action="{{ url_for('delivery.shipment', delivery_id=delivery.delivery_note_id) }}" method="POST" style="display: inline;">
-                <button type="submit" class="btn btn-outline-primary btn-action" title="发货">
-                  <i class="bi bi-box-arrow-up"></i>
-                </button>
-              </form>
-              {% endif %}
+          {% set picking_cancelled = (delivery.picking_status == '已取消') %}
+          {% set can_edit = (delivery.status == '已创建') and (not picking_cancelled) %}
+          {% set can_pick = (delivery.status == '已创建') and (not picking_cancelled) %}
 
-              {# 过账: 仅适用于'已发货'状态 #}
-              {% if delivery.status == '已发货' %}
-              <a href="{{ url_for('delivery.post_delivery', delivery_id=delivery.delivery_note_id) }}" class="btn btn-outline-primary btn-action" title='过账'>
-                  <i class="bi bi-check2-circle"></i> 
+          <tr>
+            <td>
+              <a href="{{ url_for('delivery.delivery_detail', delivery_id=delivery.delivery_note_id) }}"
+                 class="text-decoration-none fw-bold text-primary">
+                {{ delivery.delivery_note_id }}
+              </a>
+            </td>
+            <td><span class="text-muted">{{ delivery.sales_order_id }}</span></td>
+            <td>{{ delivery.delivery_date.strftime('%Y-%m-%d') if delivery.delivery_date else '-' }}</td>
+            <td><span class="badge bg-light text-dark">{{ delivery.warehouse_code }}</span></td>
+            <td>
+              <span class="badge 
+                {% if delivery.status == '已创建' %}bg-primary
+                {% elif delivery.status == '已拣货' %}bg-warning
+                {% elif delivery.status == '已发货' %}bg-primary
+                {% elif delivery.status == '已过账' %}bg-success
+                {% elif delivery.status == '已完成' %}bg-light text-dark
+                {% elif delivery.status == '已取消' %}bg-danger
+                {% else %}bg-secondary{% endif %}">
+                {{ delivery.status }}
+              </span>
+            </td>
+
+            <td>
+              <div class="d-flex flex-wrap gap-1">
+
+                <!-- 查看 -->
+                <a href="{{ url_for('delivery.delivery_detail', delivery_id=delivery.delivery_note_id) }}"
+                   class="btn btn-outline-info btn-action" title="查看详情">
+                  <i class="bi bi-eye"></i>
                 </a>
-              {% endif %}
 
-              {# 取消: 仅适用于'已创建'或'已拣货'状态 #}
-              {% if delivery.status in ['已创建', '已拣货'] %}
-              <a href="{{ url_for('delivery.cancel_delivery', delivery_id=delivery.delivery_note_id) }}" 
-                 class="btn btn-outline-danger btn-action" title="取消">
-                <i class="bi bi-x-circle"></i>
-              </a>
-              {% endif %}
-              
-              {# 已过账状态显示禁用按钮 #}
-              {% if delivery.status == '已过账' %}
-              <button type="button" class="btn btn-outline-secondary btn-action" 
-                      title="已过账" disabled>
-                <i class="bi bi-check-circle-fill"></i>
-              </button>
-              {% endif %}
-              
-            </div>
-          </td>
-        </tr>
+                <!-- 编辑（仅“已创建”且拣货单未取消时可用） -->
+                <a href="{{ url_for('delivery.edit_delivery', delivery_id=delivery.delivery_note_id) }}"
+                   class="btn btn-outline-warning btn-action {% if not can_edit %}disabled{% endif %}"
+                   title="{% if not can_edit %}{% if picking_cancelled %}拣货单已取消，禁止修改{% else %}仅“已创建”可编辑{% endif %}{% else %}编辑{% endif %}"
+                   {% if not can_edit %}aria-disabled="true" tabindex="-1"{% endif %}>
+                  <i class="bi bi-pencil"></i>
+                </a>
+
+                <!-- 拣货（仅“已创建”且拣货单未取消时可用） -->
+                <a href="{{ url_for('delivery.picking_task_detail', task_id=delivery.picking_task_id) }}"
+                   class="btn btn-outline-warning btn-action {% if not can_pick %}disabled{% endif %}"
+                   title="{% if not can_pick %}{% if picking_cancelled %}拣货单已取消，禁止拣货{% else %}仅“已创建”可拣货{% endif %}{% else %}拣货{% endif %}"
+                   {% if not can_pick %}aria-disabled="true" tabindex="-1"{% endif %}>
+                  <i class="bi bi-box-seam"></i>
+                </a>
+
+                <!-- 发货（保持原逻辑：已拣货 → 可发货） -->
+                <form action="{{ url_for('delivery.shipment', delivery_id=delivery.delivery_note_id) }}" method="POST" style="display: inline;">
+                  <button type="submit"
+                          class="btn btn-outline-primary btn-action {% if delivery.status != '已拣货' %}disabled{% endif %}"
+                          title="发货" {% if delivery.status != '已拣货' %}disabled{% endif %}>
+                    <i class="bi bi-box-arrow-up"></i>
+                  </button>
+                </form>
+
+                <!-- 过账（保持原逻辑：已发货 → 可过账） -->
+                <a href="{{ url_for('delivery.post_delivery', delivery_id=delivery.delivery_note_id) }}"
+                   class="btn btn-outline-primary btn-action {% if delivery.status != '已发货' %}disabled{% endif %}"
+                   title="过账" {% if delivery.status != '已发货' %}aria-disabled="true" tabindex="-1"{% endif %}>
+                  <i class="bi bi-check2-circle"></i>
+                </a>
+
+                <!-- 取消（保持原逻辑） -->
+                <a href="{{ url_for('delivery.cancel_delivery', delivery_id=delivery.delivery_note_id) }}"
+                   class="btn btn-outline-danger btn-action {% if delivery.status not in ['已创建', '已拣货'] %}disabled{% endif %}"
+                   title="取消" {% if delivery.status not in ['已创建', '已拣货'] %}aria-disabled="true" tabindex="-1"{% endif %}>
+                  <i class="bi bi-x-circle"></i>
+                </a>
+              </div>
+            </td>
+
+            <td>
+              <small class="text-muted">
+                {{ delivery.remarks[:30] + '...' if delivery.remarks and delivery.remarks|length > 30 else (delivery.remarks or '-') }}
+              </small>
+            </td>
+          </tr>
         {% else %}
-        <tr>
-          <td colspan="9" class="empty-state">
-            <i class="bi bi-inbox display-4 d-block mb-2"></i>
-            <h5 class="mb-2">暂无符合条件的发货单记录</h5>
-            <p class="text-muted mb-0">请调整查询条件或 
-              <a href="{{ url_for('delivery.create_delivery') }}" class="text-decoration-none">创建新的发货单</a>
-            </p>
-          </td>
-        </tr>
+          <tr>
+            <td colspan="9" class="empty-state">
+              <i class="bi bi-inbox display-4 d-block mb-2"></i>
+              <h5 class="mb-2">暂无符合条件的发货单记录</h5>
+              <p class="text-muted mb-0">请调整查询条件或
+                <a href="{{ url_for('delivery.create_delivery') }}" class="text-decoration-none">创建新的发货单</a>
+              </p>
+            </td>
+          </tr>
         {% endfor %}
       </tbody>
     </table>
@@ -223,7 +256,7 @@
         {% if status_counts %}
         <span class="ms-3">
           {% for status, count in status_counts.items() %}
-          <span class="badge bg-secondary me-1">{{ status }}: {{ count }}</span>
+            <span class="badge bg-secondary me-1">{{ status }}: {{ count }}</span>
           {% endfor %}
         </span>
         {% endif %}
@@ -237,7 +270,6 @@
   </div>
   {% endif %}
 </div>
-
 {% endblock %}
 
 {% block scripts %}
@@ -256,13 +288,13 @@ document.querySelectorAll('tbody tr').forEach(row => {
   row.addEventListener('click', function(e) {
     // 如果点击的是按钮或链接，不触发行点击
     if (e.target.closest('a, button')) return;
-    
+
     const link = this.querySelector('a[href*="delivery_detail"]');
     if (link) {
       window.location.href = link.href;
     }
   });
-  
+
   // 添加鼠标悬停效果
   row.style.cursor = 'pointer';
 });
@@ -271,7 +303,7 @@ document.querySelectorAll('tbody tr').forEach(row => {
 function printTable() {
   const printWindow = window.open('', '_blank');
   const tableHtml = document.querySelector('.table-responsive').innerHTML;
-  
+
   printWindow.document.write(`
     <html>
       <head>
@@ -291,9 +323,41 @@ function printTable() {
       </body>
     </html>
   `);
-  
+
   printWindow.document.close();
   printWindow.print();
 }
+
+let currentSearchType = null;
+
+function openSearchModal(type) {
+  currentSearchType = type; // 'delivery' 或 'sales'
+  document.getElementById('searchKeyword').value = '';
+  document.getElementById('searchResults').innerHTML = '';
+  new bootstrap.Modal(document.getElementById('searchModal')).show();
+}
+
+function doSearch() {
+  const keyword = document.getElementById('searchKeyword').value;
+  if (!keyword) {
+    document.getElementById('searchResults').innerHTML = '';
+    return;
+  }
+  fetch(`/search/${currentSearchType}?q=` + encodeURIComponent(keyword))
+    .then(resp => resp.text())
+    .then(html => {
+      document.getElementById('searchResults').innerHTML = html;
+    });
+}
+
+function selectResult(value) {
+  if (currentSearchType === 'delivery') {
+    document.getElementById('delivery_id').value = value;
+  } else if (currentSearchType === 'sales') {
+    document.getElementById('sales_order_id').value = value;
+  }
+  bootstrap.Modal.getInstance(document.getElementById('searchModal')).hide();
+}
+
 </script>
 {% endblock %}

@@ -158,13 +158,27 @@
       <form method="post" class="row g-3 query-form align-items-end">
         {{ form.csrf_token }}
         <div class="col-md-2">
-          {{ form.delivery_id.label(class="form-label") }}
-          {{ form.delivery_id(class="form-control", placeholder="发货单号") }}
-        </div>
-        <div class="col-md-2">
-          {{ form.sales_order_id.label(class="form-label") }}
-          {{ form.sales_order_id(class="form-control", placeholder="销售订单号") }}
-        </div>
+            <label class="form-label" for="delivery_id">{{ form.delivery_id.label.text }}</label>
+            <div class="input-group">
+              {{ form.delivery_id(class="form-control", id="delivery_id") }}
+              <button type="button" class="btn btn-outline-secondary"
+                      onclick="openCentered('{{ url_for('delivery.delivery_helper') }}', 'deliveryHelper', 800, 600)">
+                <i class="bi bi-search"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- 销售订单 ID -->
+          <div class="col-md-2">
+            <label class="form-label" for="sales_order_id">{{ form.sales_order_id.label.text }}</label>
+            <div class="input-group">
+              {{ form.sales_order_id(class="form-control", id="sales_order_id") }}
+              <button type="button" class="btn btn-outline-secondary"
+                      onclick="openCentered('{{ url_for('delivery.sales_helper') }}', 'salesHelper', 800, 600)">
+                <i class="bi bi-search"></i>
+              </button>
+            </div>
+          </div>
         <div class="col-md-2">
           {{ form.start_date.label(class="form-label") }}
           {{ form.start_date(class="form-control", type="date") }}

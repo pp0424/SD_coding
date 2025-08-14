@@ -71,6 +71,19 @@
     color: #64748b;
     font-size: 0.85rem;
   }
+
+  /* 表格容器允许横向滚动 */
+  .table-responsive {
+    overflow-x: auto;  /* 超出宽度时出现横向滚动条 */
+  }
+
+  /* 表格单元格不换行，内容完整显示 */
+  .table-sm th,
+  .table-sm td {
+    white-space: nowrap;  /* 禁止换行 */
+    overflow: visible;    /* 显示全部内容，不隐藏 */
+  }
+
 </style>
 {% endblock %}
 
@@ -81,30 +94,62 @@
 
 <div class="container mt-4">
   <form method="get" class="row g-3 align-items-end mb-4">
+  <!-- 发货单号 -->
     <div class="col-md-2">
-      <label class="form-label">物料编号</label>
-      <input class="form-control" type="text" name="material_id" value="{{ (search_form.material_id.data or '') }}">
+      <label class="form-label" for="delivery_id">发货单号</label>
+      <div class="input-group">
+        <input type="text" class="form-control" id="delivery_id" name="delivery_id"
+              value="{{ (search_form.delivery_id.data or '') }}">
+        <button type="button" class="btn btn-outline-secondary"
+                style="height: 100%;"
+                onclick="openCentered('{{ url_for('delivery.delivery_helper') }}', 'deliveryHelper', 800, 600)">
+          <i class="bi bi-search"></i>
+        </button>
+      </div>
     </div>
+
+    <!-- 物料编号 -->
     <div class="col-md-2">
-      <label class="form-label">发货单号</label>
-      <input class="form-control" type="text" name="delivery_id" value="{{ (search_form.delivery_id.data or '') }}">
+      <label class="form-label" for="material_id">物料编号</label>
+      <select class="form-select" id="material_id" name="material_id">
+        {% for value in form.material_id.choices %}
+          <option value="{{ value }}" {% if form.material_id.data == value %}selected{% endif %}>{{ value }}</option>
+        {% endfor %}
+      </select>
     </div>
+
+    <!-- 仓库 -->
     <div class="col-md-2">
       <label class="form-label">仓库</label>
-      <input class="form-control" type="text" name="warehouse_code" value="{{ (search_form.warehouse_code.data or '') }}">
+      <select class="form-select" id="warehouse_code" name="warehouse_code">
+        {% for value in form.warehouse_code.choices %}
+          <option value="{{ value }}" {% if form.warehouse_code.data == value %}selected{% endif %}>{{ value }}</option>
+        {% endfor %}
+      </select>
     </div>
+
+    <!-- 起始日期 -->
     <div class="col-md-2">
       <label class="form-label">起始日期</label>
-      <input class="form-control" type="date" name="start_date" value="{{ search_form.start_date.data if search_form.start_date.data else '' }}">
+      <input class="form-control" type="date" name="start_date" 
+            value="{{ search_form.start_date.data if search_form.start_date.data else '' }}">
     </div>
+
+    <!-- 结束日期 -->
     <div class="col-md-2">
       <label class="form-label">结束日期</label>
-      <input class="form-control" type="date" name="end_date" value="{{ search_form.end_date.data if search_form.end_date.data else '' }}">
+      <input class="form-control" type="date" name="end_date" 
+            value="{{ search_form.end_date.data if search_form.end_date.data else '' }}">
     </div>
+
+    <!-- 查询按钮 -->
     <div class="col-md-2">
       <label class="form-label d-block">&nbsp;</label>
-      <button class="btn btn-primary w-100"><i class="bi bi-search"></i> 查询</button>
+      <button class="btn btn-primary w-100">
+        <i class="bi bi-search"></i> 查询
+      </button>
     </div>
+
   </form>
 
   <div class="d-flex justify-content-between align-items-center mb-2 filters-summary">
@@ -128,9 +173,15 @@
             <th>时间</th>
             <th>物料</th>
             <th>仓库</th>
-            <th>可用(前)</th>
             <th>变动数量</th>
+            <th>总库存(前)</th>
+            <th>总库存(后)</th>
+            <th>可用(前)</th>
             <th>可用(后)</th>
+            <th>已分配(前)</th>
+            <th>已分配(后)</th>
+            <th>出库(前)</th>
+            <th>出库(后)</th>
             <th>发货单</th>
             <th>类型</th>
             <th>操作人</th>
@@ -148,9 +199,15 @@
             </td>
             <td>{{ m.material_id }}</td>
             <td>{{ m.material.storage_location or '-'}}</td>
-            <td>{{ m.before_available }}</td>
             <td class="{% if m.quantity_change < 0 %}text-danger{% else %}text-success{% endif %}">{{ m.quantity_change }}</td>
+            <td>{{ m.before_physical }}</td>
+            <td>{{ m.after_physical }}</td>
+            <td>{{ m.before_available }}</td>
             <td>{{ m.after_available }}</td>
+            <td>{{ m.before_allocated }}</td>
+            <td>{{ m.after_allocated }}</td>
+            <td>{{ m.before_pending_outbound }}</td>
+            <td>{{ m.after_pending_outbound }}</td>
             <td>{{ m.reference_doc or '-' }}</td>
             <td>{{ m.change_type }}</td>
             <td>{{ m.operator or '-' }}</td>

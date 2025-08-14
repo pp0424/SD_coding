@@ -1,0 +1,151 @@
+{% extends 'delivery/base_popup.html' %}
+{% block title %}销售订单号查询{% endblock %}
+{% block content %}
+
+<div class="card gradient-bg shadow-sm">
+  <div class="card-header position-relative py-3 text-center">
+    <strong class="text-white fs-5">🔍 销售订单号查询</strong>
+    <button type="button" class="btn btn-sm btn-outline-light position-absolute top-50 end-0 translate-middle-y me-2"
+            onclick="window.close()">关闭</button>
+  </div>
+
+  <div class="card-body">
+    <form method="get" class="row g-2 mb-3">
+      <div class="col-md-3">
+        <input type="text" name="customer_id" value="{{ request.args.get('customer_id','') }}" class="form-control" placeholder="客户ID">
+      </div>
+      <div class="col-md-3">
+        <select name="status" class="form-select">
+          <option value="">全部状态</option>
+          {% for st in ['草稿','已创建','已审核','部分发货','已发货','已完成','已取消'] %}
+          <option value="{{ st }}" {% if request.args.get('status') == st %}selected{% endif %}>{{ st }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-3">
+        <input type="date" name="date_from" value="{{ request.args.get('date_from','') }}" class="form-control">
+      </div>
+      <div class="col-md-3">
+        <input type="date" name="date_to" value="{{ request.args.get('date_to','') }}" class="form-control">
+      </div>
+      <div class="col-md-3">
+        <button class="btn btn-primary w-100"><i class="bi bi-search"></i> 查询</button>
+      </div>
+    </form>
+
+    {% if items %}
+    <div class="table-responsive" style="max-height: 60vh;">
+      <table class="table table-hover table-sm align-middle">
+        <thead class="table-light sticky-top">
+          <tr>
+            <th>客户ID</th>
+            <th>订单日期</th>
+            <th>交货日期</th>
+            <th>状态</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in items %}
+          <tr>
+            <td>{{ r.customer_id }}</td>
+            <td>{{ r.order_date.strftime('%Y-%m-%d') }}</td>
+            <td>{{ r.required_delivery_date.strftime('%Y-%m-%d') }}</td>
+            <td>{{ r.status or '-' }}</td>
+            <td>
+            <button type="button" class="btn btn-success btn-sm"
+              data-sales-order-id="{{ r.sales_order_id }}"
+              onclick="selectSales(this)">
+              选择
+            </button>
+
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 分页 -->
+    {% if pagination %}
+    <div class="d-flex justify-content-between mt-2">
+      <span class="text-white small">第 {{ pagination.page }} / {{ pagination.pages }} 页，共 {{ pagination.total }} 条</span>
+      <div class="btn-group">
+        {% if pagination.has_prev %}
+        <a class="btn btn-sm btn-outline-light" href="{{ url_for('delivery.sales_helper', page=pagination.page-1, **args) }}">上一页</a>
+        {% endif %}
+        {% if pagination.has_next %}
+        <a class="btn btn-sm btn-outline-light" href="{{ url_for('delivery.sales_helper', page=pagination.page+1, **args) }}">下一页</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% elif request.args %}
+    <div class="text-white">没有找到匹配记录</div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+/**
+ * 从按钮的 data-* 属性回填父窗口字段，避免模板 JS 注入不完整导致 SyntaxError。
+ * usage: onclick="selectSales(this)"
+ */
+function selectSales(btn) {
+  try {
+    console.log('selectSales called', btn);
+    if (!window.opener || window.opener.closed) {
+      alert('父窗口已关闭或不存在，无法回填');
+      window.close();
+      return;
+    }
+
+    const getData = (attr) => btn.getAttribute('data-' + attr) ?? '';
+
+    const payload = {
+      salesOrderId: getData('sales-order-id'),
+      customerId: getData('customer-id'),
+      orderDate: getData('order-date'),
+      requiredDeliveryDate: getData('required-delivery-date'),
+      status: getData('status')
+    };
+
+    const setIfExists = (idOrName, val) => {
+      const doc = window.opener.document;
+      let el = doc.getElementById(idOrName);
+      if (!el) el = doc.querySelector('[name="' + idOrName + '"]');
+      if (!el) return false;
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
+        el.value = val;
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      } else {
+        el.textContent = val;
+      }
+      return true;
+    };
+
+    // 主字段回填（根据父页实际 id/name 调整）
+      setIfExists('sales_order_id', payload.salesOrderId)
+
+  } catch (err) {
+    console.error('回填异常', err);
+    alert('回填失败，请查看控制台错误：' + (err && err.message));
+  } finally {
+    window.close();
+  }
+}
+</script>
+
+
+<style>
+/* 局部 style */
+.gradient-bg { background: linear-gradient(135deg, #5a96f1, #ef7df9); color: #fff; border: none; border-radius: 12px; }
+.gradient-bg .card-header { background: transparent; border-bottom: 1px solid rgba(255,255,255,0.25); }
+.table-hover tbody tr:hover { background-color: rgba(255,255,255,0.06); }
+.btn-outline-light { color:#fff; border-color: rgba(255,255,255,0.6); }
+</style>
+
+{% endblock %}

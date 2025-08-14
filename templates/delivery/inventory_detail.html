@@ -1,0 +1,155 @@
+{% extends 'delivery/base.html' %}
+{% block title %}物料库存查询{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='delivery/delivery_styles.css') }}">
+
+<style>
+  /* 页面最大宽度与居中 */
+  .page-container { max-width: 1180px; margin: 0 auto; padding: 16px; }
+  /* 卡片样式 */
+  .delivery-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.04); overflow: hidden; }
+  /* 工具栏与标题 */
+  .card-header { padding: 16px 18px 8px; background: linear-gradient(180deg, #fafbfc 0%, #ffffff 100%); border-bottom: 1px solid #e5e7eb; }
+  .toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  .stats-info { font-size: 0.9rem; color: #6b7280; }
+  /* 查询表单 */
+  .query-form { padding: 12px 18px 8px; }
+  .query-form .form-label { font-weight: 600; color: #374151; }
+  .btn-search { background: #2563eb; border-color: #2563eb; color: white; }
+  .btn-search:hover { background: #1e40af; border-color: #1e40af; color: white; }
+  .btn-reset { background: #f3f4f6; border-color: #e5e7eb; }
+  /* 表格样式 */
+  .table-section { padding: 12px 18px 18px; }
+  .table-responsive { max-height: 62vh; border: 1px solid #e5e7eb; border-radius: 8px; overflow: auto; }
+  .delivery-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+  .delivery-table thead th { position: sticky; top: 0; background: #f8fafc; font-weight: 700; color: #374151; padding: 10px 12px; border-bottom: 1px solid #e5e7eb; }
+  .delivery-table tbody td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; color: #1f2937; vertical-align: middle; }
+  .delivery-table tbody tr:hover { background: #f9fafb; }
+  /* 空状态 */
+  .empty-state { text-align: center; color: #6b7280; }
+  .empty-state .inner { display: flex; height: 200px; align-items: center; justify-content: center; flex-direction: column; gap: 6px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-container">
+  <div class="form-title-container">
+    <h1 class="form-title">🔢 物料库存</h1>
+  </div>
+
+  <div class="delivery-card animate-fade">
+    <!-- 顶部工具栏 -->
+    <div class="card-header">
+      <div class="toolbar">
+        <div>
+          <i class="bi bi-box-seam me-2"></i>
+          <strong>物料信息列表</strong>
+          <span class="stats-info ms-3">
+            共找到 {{ pagination.total if pagination is defined and pagination else inventories|length }} 条记录
+          </span>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+            <i class="bi bi-printer me-1"></i> 打印
+          </button>
+        </div>
+      </div>
+
+      <!-- 查询表单 -->
+      <form method="get" class="row g-3 query-form align-items-end">
+        {{ form.csrf_token }}
+        <div class="col-md-3">
+          <label class="form-label" for="material_id">{{ form.material_id.label.text }}</label>
+          {{ form.material_id(class="form-control", id="material_id", placeholder="支持模糊查询") }}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label" for="description">{{ form.description.label.text }}</label>
+          {{ form.description(class="form-control", id="description", placeholder="物料描述关键词") }}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="storage_location">{{ form.storage_location.label.text }}</label>
+          {{ form.storage_location(class="form-control", id="storage_location", placeholder="仓库/库位") }}
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+          {{ form.submit(class="btn btn-search w-100") }}
+          <a class="btn btn-reset w-100" href="{{ url_for('delivery.inventory_detail') }}">重置</a>
+        </div>
+      </form>
+    </div>
+
+    <!-- 表格区域 -->
+    <div class="table-section">
+      <div class="table-responsive">
+        <table class="delivery-table table-hover">
+          <thead>
+            <tr>
+              <th>物料编号</th>
+              <th>物料描述</th>
+              <th>基本计量单位</th>
+              <th>存储位置</th>
+              <th>账面总库存</th>
+              <th>可用库存</th>
+              <th>已分配库存</th>
+              <th>待出库量</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for inv in inventories %}
+            <tr>
+              <td class="fw-bold text-primary">{{ inv.material_id }}</td>
+              <td>{{ inv.description }}</td>
+              <td><span class="badge bg-light text-dark">{{ inv.base_unit }}</span></td>
+              <td><span class="badge bg-light text-dark">{{ inv.storage_location }}</span></td>
+              <td>{{ inv.physical_stock }}</td>
+              <td>{{ inv.available_stock }}</td>
+              <td>{{ inv.allocated_stock }}</td>
+              <td>{{ inv.pending_outbound }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="8" class="empty-state">
+                <div class="inner">
+                  <i class="bi bi-inbox display-4 d-block mb-2"></i>
+                  <h5>暂无符合条件的物料记录</h5>
+                  <p class="text-muted">请调整查询条件后重试</p>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 分页 -->
+      {% if pagination is defined and pagination and pagination.pages > 1 %}
+      <div class="d-flex justify-content-between align-items-center mt-3">
+        <div class="text-muted">
+          第 {{ pagination.page }} / {{ pagination.pages }} 页，合计 {{ pagination.total }} 条
+        </div>
+        <div class="d-flex gap-2">
+          {% if pagination.has_prev %}
+            <a class="btn btn-outline-secondary btn-sm"
+               href="{{ url_for('delivery.inventory_detail') }}?page={{ pagination.prev_num }}&material_id={{ form.material_id.data }}&description={{ form.description.data }}&storage_location={{ form.storage_location.data }}">
+              上一页
+            </a>
+          {% else %}
+            <button class="btn btn-outline-secondary btn-sm" disabled>上一页</button>
+          {% endif %}
+
+          {% if pagination.has_next %}
+            <a class="btn btn-outline-secondary btn-sm"
+               href="{{ url_for('delivery.inventory_detail') }}?page={{ pagination.next_num }}&material_id={{ form.material_id.data }}&description={{ form.description.data }}&storage_location={{ form.storage_location.data }}">
+              下一页
+            </a>
+          {% else %}
+            <button class="btn btn-outline-secondary btn-sm" disabled>下一页</button>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+{% endblock %}

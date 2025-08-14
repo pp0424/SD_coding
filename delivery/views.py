@@ -462,38 +462,65 @@ def delivery_detail(delivery_id):
     return render_template('delivery/delivery_detail.html', delivery=delivery)
 
 # 发货列表/查询
+# 发货列表/查询
 @delivery_bp.route('/list', methods=['GET', 'POST'])
 @login_required
 def delivery_list():
     form = forms.SearchDeliveryForm()
-    deliveries = DeliveryNote.query.order_by(DeliveryNote.delivery_date.desc())
 
+    # 一次性加载关联的 PickingTask，避免 N+1 查询
+    deliveries_query = (
+        DeliveryNote.query
+        .options(joinedload(DeliveryNote.picking_task))
+        .order_by(DeliveryNote.delivery_date.desc())
+    )
+
+    # 兼容 GET 与 POST 的查询参数
     if form.validate_on_submit() or request.method == 'GET':
-        # 兼容 GET 参数
         form.delivery_id.data = form.delivery_id.data or request.args.get('delivery_id', '')
         form.sales_order_id.data = form.sales_order_id.data or request.args.get('sales_order_id', '')
         form.status.data = form.status.data or request.args.get('status', '')
-        if request.args.get('start_date'):
-            try:
-                form.start_date.data = datetime.strptime(request.args.get('start_date'), '%Y-%m-%d').date()
-            except: pass
-        if request.args.get('end_date'):
-            try:
-                form.end_date.data = datetime.strptime(request.args.get('end_date'), '%Y-%m-%d').date()
-            except: pass
 
+        # 解析日期参数
+        start_date_raw = request.args.get('start_date')
+        end_date_raw = request.args.get('end_date')
+        if start_date_raw and not form.start_date.data:
+            try:
+                form.start_date.data = datetime.strptime(start_date_raw, '%Y-%m-%d').date()
+            except Exception:
+                pass
+        if end_date_raw and not form.end_date.data:
+            try:
+                form.end_date.data = datetime.strptime(end_date_raw, '%Y-%m-%d').date()
+            except Exception:
+                pass
+
+        # 套用过滤
         if form.delivery_id.data:
-            deliveries = deliveries.filter(DeliveryNote.delivery_note_id.contains(form.delivery_id.data))
+            deliveries_query = deliveries_query.filter(
+                DeliveryNote.delivery_note_id.contains(form.delivery_id.data)
+            )
         if form.sales_order_id.data:
-            deliveries = deliveries.filter(DeliveryNote.sales_order_id.contains(form.sales_order_id.data))
+            deliveries_query = deliveries_query.filter(
+                DeliveryNote.sales_order_id.contains(form.sales_order_id.data)
+            )
         if form.start_date.data:
-            deliveries = deliveries.filter(DeliveryNote.delivery_date >= datetime.combine(form.start_date.data, time.min))
+            deliveries_query = deliveries_query.filter(
+                DeliveryNote.delivery_date >= datetime.combine(form.start_date.data, time.min)
+            )
         if form.end_date.data:
-            deliveries = deliveries.filter(DeliveryNote.delivery_date <= datetime.combine(form.end_date.data, time.max))
+            deliveries_query = deliveries_query.filter(
+                DeliveryNote.delivery_date <= datetime.combine(form.end_date.data, time.max)
+            )
         if form.status.data:
-            deliveries = deliveries.filter(DeliveryNote.status == form.status.data)
+            deliveries_query = deliveries_query.filter(DeliveryNote.status == form.status.data)
 
-    deliveries = deliveries.all()
+    deliveries = deliveries_query.all()
+
+    # 附加 picking_status，供模板直接使用
+    for d in deliveries:
+        d.picking_status = d.picking_task.status if d.picking_task else None
+
     return render_template('delivery/delivery_list.html', deliveries=deliveries, form=form)
 
 
@@ -750,6 +777,7 @@ def picking_task_list():
         q = q.filter(PickingTask.start_time <= form.end_date.data)
 
     q = q.order_by(
+        PickingTask.assigned_at.desc().nullslast(),
         PickingTask.complete_time.desc().nullslast(),
         PickingTask.start_time.desc().nullslast()
     )
@@ -1359,8 +1387,8 @@ def shipment_list():
         db.session.query(DeliveryNote, PickingTask)
         .join(PickingTask, DeliveryNote.picking_task_id == PickingTask.task_id)
         .filter(
-            DeliveryNote.status == '已拣货',
-            PickingTask.status == '已完成'
+            (DeliveryNote.status == '已拣货') & (PickingTask.status == '已完成')
+            | (DeliveryNote.status == '已发货')
         )
         .order_by(DeliveryNote.delivery_date.desc())
     )
@@ -1640,7 +1668,7 @@ def post_delivery(delivery_id):
 @login_required
 def post_list():
     form = forms.SearchDeliveryForm(request.args, meta={'csrf': False})
-    query = DeliveryNote.query.filter_by(status='已发货')
+    query = DeliveryNote.query.filter(DeliveryNote.status.in_(['已发货', '已过账'])).order_by(DeliveryNote.posted_at.desc())
 
     if form.validate():
         if form.delivery_id.data:
@@ -1670,7 +1698,15 @@ def post_list():
 def inventory_movement():
     search_form = forms.SearchInventoryMovementForm(request.args)
 
-    # 去除前后空格，避免输入误差
+    # 去重后的选项
+    materials = [m[0] for m in db.session.query(Inventory.material_id).distinct().order_by(Inventory.material_id).all()]
+    warehouses = [w[0] for w in db.session.query(Inventory.storage_location).distinct().order_by(Inventory.storage_location).all()]
+
+    # 如果是 WTForms 的 SelectField，通常建议用 (value, label) 元组；保持与你表单定义一致
+    search_form.material_id.choices = ['全部'] + materials
+    search_form.warehouse_code.choices = ['全部'] + warehouses
+
+    # 去除前后空格
     material_id = (search_form.material_id.data or '').strip()
     delivery_id = (search_form.delivery_id.data or '').strip()
     warehouse_code = (search_form.warehouse_code.data or '').strip()
@@ -1685,27 +1721,32 @@ def inventory_movement():
     except ValueError:
         page = 1
 
-    # 合法的类型枚举（结合模型的定义）
+    PER_PAGE = 20  # 若已有全局常量，保留你原来的
+
+    # 合法类型
     VALID_TYPES = {'发货', '拣货', '其他'}
 
+    # 基础查询
     query = StockChangeLog.query
 
-    # movement_type 校验
+    # 类型筛选
     if movement_type != 'all':
         if movement_type not in VALID_TYPES:
             abort(400, description='无效的库存变动类型')
         query = query.filter(StockChangeLog.change_type == movement_type)
 
     # 模糊查询（不区分大小写）
-    if material_id:
+    if material_id and material_id != '全部':
         query = query.filter(StockChangeLog.material_id.ilike(f"%{material_id}%"))
+
     if delivery_id:
         query = query.filter(StockChangeLog.reference_doc.ilike(f"%{delivery_id}%"))
-    if warehouse_code:
-        wc_material_id = Inventory.query.filter(Inventory.storage_location == warehouse_code).first().material_id
-        query = query.filter(StockChangeLog.material_id.ilike(f"%{wc_material_id}%"))
 
-    # 日期范围处理（支持 date 和 datetime）
+    # 直接用日志中的仓库字段过滤
+    if warehouse_code and warehouse_code != '全部':
+        query = query.filter(StockChangeLog.warehouse_code == warehouse_code)
+
+    # 日期范围
     if start_date:
         if isinstance(start_date, date) and not isinstance(start_date, datetime):
             start_dt = datetime.combine(start_date, time.min)
@@ -1715,7 +1756,6 @@ def inventory_movement():
 
     if end_date:
         if isinstance(end_date, date) and not isinstance(end_date, datetime):
-            # 用 < 次日零点，避免 <= 23:59:59 边界问题
             end_dt = datetime.combine(end_date + timedelta(days=1), time.min)
             query = query.filter(StockChangeLog.change_time < end_dt)
         else:
@@ -1727,9 +1767,10 @@ def inventory_movement():
     if page > total_pages:
         page = total_pages
 
+    # 用同一个 query 获取列表（不要重置为 StockChangeLog.query）
     movements = (
-        StockChangeLog.query
-        .join(StockChangeLog.material)  # 通过关系 join，ORM 友好
+        query
+        .join(StockChangeLog.material)  # 若有关系定义
         .options(
             load_only(
                 StockChangeLog.change_time,
@@ -1737,6 +1778,12 @@ def inventory_movement():
                 StockChangeLog.warehouse_code,
                 StockChangeLog.before_available,
                 StockChangeLog.after_available,
+                StockChangeLog.before_allocated,
+                StockChangeLog.after_allocated,
+                StockChangeLog.before_physical,
+                StockChangeLog.after_physical,
+                StockChangeLog.before_pending_outbound,
+                StockChangeLog.after_pending_outbound,
                 StockChangeLog.reference_doc,
                 StockChangeLog.change_type,
                 StockChangeLog.operator,
@@ -1755,12 +1802,54 @@ def inventory_movement():
 
     return render_template(
         'delivery/stock_changes.html',
+        form=search_form,
         search_form=search_form,
         movements=movements,
         page=page,
         total_pages=total_pages,
         total_records=total_records
     )
+
+@delivery_bp.route('/inventory_detail', methods=['GET', 'POST'])
+@login_required
+def inventory_detail():
+    form = forms.SearchInventoryForm()
+
+    # 基础查询
+    inv_q = Inventory.query.order_by(Inventory.material_id.asc())
+
+    # 兼容 GET 参数（无提交也能筛选）
+    if form.validate_on_submit() or request.method == 'GET':
+        # 优先表单值，否则取 URL 参数
+        form.material_id.data = form.material_id.data or request.args.get('material_id', '')
+        form.description.data = form.description.data or request.args.get('description', '')
+        form.storage_location.data = form.storage_location.data or request.args.get('storage_location', '')
+
+        # 条件过滤
+        if form.material_id.data:
+            inv_q = inv_q.filter(Inventory.material_id.ilike(f"%{form.material_id.data.strip()}%"))
+        if form.description.data:
+            inv_q = inv_q.filter(Inventory.description.ilike(f"%{form.description.data.strip()}%"))
+        if form.storage_location.data:
+            inv_q = inv_q.filter(Inventory.storage_location.ilike(f"%{form.storage_location.data.strip()}%"))
+
+    # 分页
+    try:
+        page = max(1, int(request.args.get('page', 1)))
+    except ValueError:
+        page = 1
+    PER_PAGE = 20
+    pagination = inv_q.paginate(page=page, per_page=PER_PAGE, error_out=False)
+
+    return render_template(
+        'delivery/inventory_detail.html',
+        form=form,
+        inventories=pagination.items,
+        pagination=pagination
+    )
+
+#-------------- 库存&物料 ---------------------
+#-------------- 库存&物料 ---------------------
 
 
 ###-----------自动加载销售订单商品信息---------##
@@ -1851,3 +1940,103 @@ def api_sales_order_items(sales_order_id):
             'error': 'Internal server error',
             'details': str(e)
         }), 500
+
+# ========== 搜索助手 ==========
+# 多条件检索弹窗
+@delivery_bp.route('/delivery_helper', methods=['GET'])
+def delivery_helper():
+    q = {
+        'delivery_id': request.args.get('delivery_id', '').strip(),
+        'sales_order_id': request.args.get('sales_order_id', '').strip(),
+        'customer_id': request.args.get('customer_id', '').strip(),
+        'status': request.args.get('status', '').strip(),
+        'date_from': request.args.get('date_from', '').strip(),
+        'date_to': request.args.get('date_to', '').strip(),
+    }
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+
+    # 预加载 SalesOrder 关系，避免模板取 r.sales_order 时触发额外查询
+    query = DeliveryNote.query.options(joinedload(DeliveryNote.sales_order)).join(
+        SalesOrder, DeliveryNote.sales_order_id == SalesOrder.sales_order_id
+    )
+
+    filters = []
+    if q['delivery_id']:
+        # 模糊、不区分大小写
+        filters.append(DeliveryNote.delivery_note_id.ilike(f"%{q['delivery_id']}%"))
+    if q['sales_order_id']:
+        filters.append(DeliveryNote.sales_order_id.ilike(f"%{q['sales_order_id']}%"))
+    if q['customer_id']:
+        filters.append(SalesOrder.customer_id.ilike(f"%{q['customer_id']}%"))
+    if q['status']:
+        filters.append(DeliveryNote.status == q['status'])
+    if q['date_from']:
+        try:
+            df = datetime.strptime(q['date_from'], '%Y-%m-%d')
+            filters.append(DeliveryNote.delivery_date >= df)
+        except ValueError:
+            pass
+    if q['date_to']:
+        try:
+            dt = datetime.strptime(q['date_to'], '%Y-%m-%d') + timedelta(days=1)
+            filters.append(DeliveryNote.delivery_date < dt)
+        except ValueError:
+            pass
+
+    if filters:
+        query = query.filter(and_(*filters))
+
+    query = query.order_by(DeliveryNote.delivery_date.desc(), DeliveryNote.delivery_note_id.desc())
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    args = request.args.to_dict()
+    args.pop('page', None)  # 去掉 page 避免冲突
+
+    return render_template('delivery/delivery_helper.html', items=pagination.items, pagination=pagination, args=args)
+
+
+@delivery_bp.route('/sales_helper', methods=['GET'])
+def sales_helper():
+    q = {
+        'sales_order_id': request.args.get('sales_order_id', '').strip(),
+        'customer_id': request.args.get('customer_id', '').strip(),
+        'status': request.args.get('status', '').strip(),
+        'date_from': request.args.get('date_from', '').strip(),
+        'date_to': request.args.get('date_to', '').strip(),
+    }
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+
+    # 预加载 items 以便模板显示 order items（如果需要）
+    query = SalesOrder.query.options(joinedload(SalesOrder.items))
+
+    filters = []
+    if q['sales_order_id']:
+        filters.append(SalesOrder.sales_order_id.ilike(f"%{q['sales_order_id']}%"))
+    if q['customer_id']:
+        filters.append(SalesOrder.customer_id.ilike(f"%{q['customer_id']}%"))
+    if q['status']:
+        filters.append(SalesOrder.status == q['status'])
+    if q['date_from']:
+        try:
+            df = datetime.strptime(q['date_from'], '%Y-%m-%d')
+            filters.append(SalesOrder.order_date >= df)
+        except ValueError:
+            pass
+    if q['date_to']:
+        try:
+            dt = datetime.strptime(q['date_to'], '%Y-%m-%d') + timedelta(days=1)
+            filters.append(SalesOrder.order_date < dt)
+        except ValueError:
+            pass
+
+    if filters:
+        query = query.filter(and_(*filters))
+
+    query = query.order_by(SalesOrder.order_date.desc(), SalesOrder.sales_order_id.desc())
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    args = request.args.to_dict()
+    args.pop('page', None)  # 去掉 page 避免冲突
+
+    return render_template('delivery/sales_helper.html', items=pagination.items, pagination=pagination, args=args)
+

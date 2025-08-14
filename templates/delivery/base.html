@@ -28,7 +28,23 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.staticfile.org/twitter-bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <script>
+    function openCentered(url, name, width, height) {
+    const screenLeft = window.screenLeft !== undefined ? window.screenLeft : window.screenX;
+    const screenTop  = window.screenTop  !== undefined ? window.screenTop  : window.screenY;
+    const screenWidth  = window.innerWidth || document.documentElement.clientWidth || screen.width;
+    const screenHeight = window.innerHeight || document.documentElement.clientHeight || screen.height;
 
+    const left = screenLeft + (screenWidth - width) / 2;
+    const top  = screenTop  + (screenHeight - height) / 2;
+
+    window.open(
+      url,
+      name,
+      `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes`
+    );
+    }
+    </script>
     <style>
       :root {
         --brand-1: #0d6efd;
@@ -296,6 +312,13 @@
             <li class="nav-item mx-1">
               <a class="nav-link text-white fw-medium position-relative" href="{{ url_for('delivery.delivery_home') }}" style="transition: all 0.3s; color: white !important;">
                 <h6>🚚 发货管理首页</h6>
+                <span class="position-absolute bottom-0 start-0 w-100 bg-white" style="height:2px; opacity:0; transition: opacity 0.3s;"></span>
+              </a>
+            </li>
+
+            <li class="nav-item mx-1">
+              <a class="nav-link text-white fw-medium position-relative" href="{{ url_for('delivery.inventory_detail') }}" style="transition: all 0.3s; color: white !important;">
+                <h6>🔢 物料信息</h6>
                 <span class="position-absolute bottom-0 start-0 w-100 bg-white" style="height:2px; opacity:0; transition: opacity 0.3s;"></span>
               </a>
             </li>

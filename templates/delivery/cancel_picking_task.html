@@ -238,7 +238,9 @@ document.addEventListener('DOMContentLoaded', () => {
         method: 'POST',
         body: formData,
         credentials: 'same-origin',
-        headers: { 'Accept': 'application/json' }
+        headers: { 'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest' 
+         }
       });
 
       let data = {};
