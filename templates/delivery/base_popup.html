@@ -1,6 +1,15 @@
+<!-- 
+  基础弹出框模板 - base_popup.html
+  功能: 提供其他弹出框页面的基础HTML结构和样式
+  特点:
+    - 响应式设计，适配不同设备
+    - 包含统一的头部和卡片样式
+    - 定义了可扩展的内容块(block)
+-->
 <!doctype html>
 <html lang="zh-CN">
 <head>
+  <!-- 元数据定义 -->
   <meta charset="utf-8">
   <title>{% block title %}搜索帮助{% endblock %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,105 +18,123 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
+  <!-- 
+    样式定义部分
+    包含整个弹出框的通用样式，确保视觉一致性
+  -->
   <style>
+    /* 页面基础样式 */
     body {
-      background: #eef2f7;
-      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #eef2f7; /* 浅蓝色背景 */
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; /* 跨平台字体支持 */
       margin: 0;
       padding: 0;
     }
 
+    /* 弹出框容器样式 */
     .popup-wrap {
-      max-width: 1100px;
-      margin: 30px auto;
-      background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.1);
-      overflow: hidden;
+      max-width: 1100px; /* 最大宽度限制 */
+      margin: 30px auto; /* 居中显示 */
+      background: #fff; /* 白色背景 */
+      border-radius: 16px; /* 圆角设计 */
+      box-shadow: 0 10px 30px rgba(0,0,0,.1); /* 柔和阴影效果 */
+      overflow: hidden; /* 隐藏溢出内容 */
       padding: 0;
-      transition: all 0.3s ease;
+      transition: all 0.3s ease; /* 平滑过渡效果 */
     }
 
+    /* 弹出框头部样式 - 渐变背景 */
     .popup-header {
-      background: linear-gradient(135deg, #4f8cff, #6fb1fc);
-      color: #fff;
-      padding: 16px 24px;
-      font-size: 1.2rem;
-      font-weight: 600;
-      border-bottom: 1px solid rgba(255,255,255,0.2);
+      background: linear-gradient(135deg, #4f8cff, #6fb1fc); /* 蓝色渐变背景 */
+      color: #fff; /* 白色文字 */
+      padding: 16px 24px; /* 内边距 */
+      font-size: 1.2rem; /* 字体大小 */
+      font-weight: 600; /* 字体粗细 */
+      border-bottom: 1px solid rgba(255,255,255,0.2); /* 半透明底部分隔线 */
       display: flex;
-      align-items: center;
-      justify-content: space-between;
+      align-items: center; /* 垂直居中 */
+      justify-content: space-between; /* 两端对齐 */
     }
 
     .popup-header i {
       font-size: 1.2rem;
     }
 
+    /* 卡片内容区域样式 */
     .popup-card {
-      padding: 20px;
+      padding: 20px; /* 内边距 */
     }
 
+    /* 表格基础样式 */
     table {
-      border-collapse: separate;
-      border-spacing: 0;
+      border-collapse: separate; /* 边框分离模式 */
+      border-spacing: 0; /* 单元格间距 */
     }
 
+    /* 表头样式 - 固定位置 */
     table thead {
-      background-color: #f8f9fa;
-      position: sticky;
-      top: 0;
-      z-index: 1;
-      font-weight: 600;
+      background-color: #f8f9fa; /* 浅灰色背景 */
+      position: sticky; /* 固定位置 */
+      top: 0; /* 顶部固定 */
+      z-index: 1; /* 层级控制 */
+      font-weight: 600; /* 加粗字体 */
     }
 
+    /* 表格行悬停效果 */
     .table-hover tbody tr:hover {
-      background-color: #f2f7ff;
-      cursor: pointer;
+      background-color: #f2f7ff; /* 浅蓝色背景 */
+      cursor: pointer; /* 手型指针 */
     }
 
+    /* 响应式表格容器 */
     .table-responsive {
-      max-height: 500px;
-      overflow-y: auto;
-      margin-top: 10px;
+      max-height: 500px; /* 最大高度限制 */
+      overflow-y: auto; /* 垂直滚动 */
+      margin-top: 10px; /* 顶部外边距 */
     }
 
-    /* 搜索栏美化 */
+    /* 搜索栏样式 */
     .search-bar {
-      margin-bottom: 15px;
-      display: flex;
-      gap: 8px;
+      margin-bottom: 15px; /* 底部外边距 */
+      display: flex; /* 弹性布局 */
+      gap: 8px; /* 元素间距 */
     }
 
+    /* 搜索输入框样式 */
     .search-bar input.form-control {
-      border-radius: 8px 0 0 8px;
-      border-right: 0;
+      border-radius: 8px 0 0 8px; /* 左侧圆角 */
+      border-right: 0; /* 去除右侧边框 */
     }
 
+    /* 搜索按钮样式 */
     .search-bar button {
-      border-radius: 0 8px 8px 0;
+      border-radius: 0 8px 8px 0; /* 右侧圆角 */
     }
 
-    /* 分页或操作按钮 */
+    /* 小尺寸按钮样式 */
     .btn-sm {
-      font-size: 0.85rem;
+      font-size: 0.85rem; /* 较小字体 */
     }
 
 
+    /* 渐变背景样式 */
     .gradient-bg {
-     background: linear-gradient(135deg, #5a96f1, #ef7df9);
-    color: #fff; /* 默认文字颜色白色 */
-    border: none; /* 去掉卡片边框，更干净 */
+     background: linear-gradient(135deg, #5a96f1, #ef7df9); /* 蓝紫色渐变 */
+     color: #fff; /* 白色文字 */
+     border: none; /* 无边框 */
     }
+    /* 渐变背景下的卡片头部样式 */
     .gradient-bg .card-header {
-    border-bottom: 1px solid rgba(255,255,255,0.3);
+      border-bottom: 1px solid rgba(255,255,255,0.3); /* 半透明底部分隔线 */
     }
 
   </style>
 </head>
 <body>
+  <!-- 弹出框主体结构 -->
   <div class="popup-wrap">
     <div class="card popup-card">
+      <!-- 内容块 - 子模板将在此插入具体内容 -->
       {% block content %}{% endblock %}
     </div>
   </div>

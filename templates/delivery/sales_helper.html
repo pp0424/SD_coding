@@ -1,8 +1,11 @@
 {% extends 'delivery/base_popup.html' %}
 {% block title %}销售订单号查询{% endblock %}
+
 {% block content %}
 
+<!-- 外层卡片容器，带渐变背景 -->
 <div class="card gradient-bg shadow-sm">
+  <!-- 卡片头部：标题 + 关闭按钮 -->
   <div class="card-header position-relative py-3 text-center">
     <strong class="text-white fs-5">🔍 销售订单号查询</strong>
     <button type="button" class="btn btn-sm btn-outline-light position-absolute top-50 end-0 translate-middle-y me-2"
@@ -10,10 +13,14 @@
   </div>
 
   <div class="card-body">
+    <!-- 查询条件表单（GET 提交） -->
     <form method="get" class="row g-2 mb-3">
+      <!-- 客户ID输入框 -->
       <div class="col-md-3">
         <input type="text" name="customer_id" value="{{ request.args.get('customer_id','') }}" class="form-control" placeholder="客户ID">
       </div>
+
+      <!-- 状态下拉框 -->
       <div class="col-md-3">
         <select name="status" class="form-select">
           <option value="">全部状态</option>
@@ -23,17 +30,23 @@
         </select>
       </div>
 
+      <!-- 起始日期 -->
       <div class="col-md-3">
         <input type="date" name="date_from" value="{{ request.args.get('date_from','') }}" class="form-control">
       </div>
+
+      <!-- 截止日期 -->
       <div class="col-md-3">
         <input type="date" name="date_to" value="{{ request.args.get('date_to','') }}" class="form-control">
       </div>
+
+      <!-- 查询按钮 -->
       <div class="col-md-3">
         <button class="btn btn-primary w-100"><i class="bi bi-search"></i> 查询</button>
       </div>
     </form>
 
+    <!-- 查询结果表格 -->
     {% if items %}
     <div class="table-responsive" style="max-height: 60vh;">
       <table class="table table-hover table-sm align-middle">
@@ -54,12 +67,12 @@
             <td>{{ r.required_delivery_date.strftime('%Y-%m-%d') }}</td>
             <td>{{ r.status or '-' }}</td>
             <td>
-            <button type="button" class="btn btn-success btn-sm"
-              data-sales-order-id="{{ r.sales_order_id }}"
-              onclick="selectSales(this)">
-              选择
-            </button>
-
+              <!-- 选择按钮：将所选订单回填到父窗口 -->
+              <button type="button" class="btn btn-success btn-sm"
+                data-sales-order-id="{{ r.sales_order_id }}"
+                onclick="selectSales(this)">
+                选择
+              </button>
             </td>
           </tr>
           {% endfor %}
@@ -67,7 +80,7 @@
       </table>
     </div>
 
-    <!-- 分页 -->
+    <!-- 分页器 -->
     {% if pagination %}
     <div class="d-flex justify-content-between mt-2">
       <span class="text-white small">第 {{ pagination.page }} / {{ pagination.pages }} 页，共 {{ pagination.total }} 条</span>
@@ -83,6 +96,7 @@
     {% endif %}
 
     {% elif request.args %}
+    <!-- 无匹配结果提示 -->
     <div class="text-white">没有找到匹配记录</div>
     {% endif %}
   </div>
@@ -90,8 +104,14 @@
 
 <script>
 /**
- * 从按钮的 data-* 属性回填父窗口字段，避免模板 JS 注入不完整导致 SyntaxError。
- * usage: onclick="selectSales(this)"
+ * selectSales - 回填选中销售订单到父窗口
+ * @param {HTMLElement} btn 当前点击的按钮元素
+ * 步骤：
+ * 1. 检查父窗口是否存在且未关闭
+ * 2. 从按钮的 data-* 属性获取订单信息
+ * 3. 根据父页面的字段 ID 或 name 回填值
+ * 4. 触发输入与变更事件，确保父页面监听器生效
+ * 5. 回填完成后关闭弹窗
  */
 function selectSales(btn) {
   try {
@@ -102,6 +122,7 @@ function selectSales(btn) {
       return;
     }
 
+    // 获取按钮上定义的数据属性
     const getData = (attr) => btn.getAttribute('data-' + attr) ?? '';
 
     const payload = {
@@ -112,6 +133,7 @@ function selectSales(btn) {
       status: getData('status')
     };
 
+    // 回填函数，根据元素id或name查找并设置值
     const setIfExists = (idOrName, val) => {
       const doc = window.opener.document;
       let el = doc.getElementById(idOrName);
@@ -127,8 +149,8 @@ function selectSales(btn) {
       return true;
     };
 
-    // 主字段回填（根据父页实际 id/name 调整）
-      setIfExists('sales_order_id', payload.salesOrderId)
+    // 实际回填销售订单ID到父窗口
+    setIfExists('sales_order_id', payload.salesOrderId);
 
   } catch (err) {
     console.error('回填异常', err);
@@ -139,9 +161,8 @@ function selectSales(btn) {
 }
 </script>
 
-
 <style>
-/* 局部 style */
+/* 局部样式覆盖 */
 .gradient-bg { background: linear-gradient(135deg, #5a96f1, #ef7df9); color: #fff; border: none; border-radius: 12px; }
 .gradient-bg .card-header { background: transparent; border-bottom: 1px solid rgba(255,255,255,0.25); }
 .table-hover tbody tr:hover { background-color: rgba(255,255,255,0.06); }

@@ -1,25 +1,35 @@
+{# 
+  模板功能：编辑现有发货单页面
+  继承：delivery/base.html 作为基础布局模板
+#}
 {% extends "delivery/base.html" %}
 
 {% block content %}
+{# ===== 页面标题区域 ===== #}
 <div class="form-title-container">
     <h1 class="form-title">
-      ✏️ 编辑发货单: {{ delivery.delivery_note_id }}
+      ✏️ 编辑发货单: {{ delivery.delivery_note_id }}  {# 显示当前发货单编号 #}
     </h1>
-  </div>
+</div>
 
 <div class="container mt-4">
+    {# 编辑发货单表单：POST 提交 #}
     <form method="POST">
-        {{ form.hidden_tag() }}
+        {{ form.hidden_tag() }} {# 包含 CSRF token 和隐藏字段 #}
+
+        {# ===== 发货单信息卡片 ===== #}
         <div class="card mb-4">
             <div class="card-header">发货单信息</div>
             <div class="card-body">
                 <div class="row">
+                    {# 预计发货日期输入框 #}
                     <div class="col-md-6">
                         <div class="form-group">
                             {{ form.expected_delivery_date.label(class="form-label") }}
                             {{ form.expected_delivery_date(class="form-control") }}
                         </div>
                     </div>
+                    {# 仓库代码输入框 #}
                     <div class="col-md-6">
                         <div class="form-group">
                             {{ form.warehouse_code.label(class="form-label") }}
@@ -27,6 +37,7 @@
                         </div>
                     </div>
                 </div>
+                {# 备注输入框（多行） #}
                 <div class="form-group">
                     {{ form.remarks.label(class="form-label") }}
                     {{ form.remarks(class="form-control", rows=3) }}
@@ -34,6 +45,7 @@
             </div>
         </div>
 
+        {# ===== 行项目卡片 ===== #}
         <div class="card mb-4">
             <div class="card-header">行项目</div>
             <div class="card-body">
@@ -47,13 +59,19 @@
                             </tr>
                         </thead>
                         <tbody>
+                            {# 遍历发货单行项目表单列表 #}
                             {% for item_form in item_forms %}
                             <tr>
+                                {# 显示物料编号（从 delivery 对象取）#}
                                 <td>{{ delivery.items[loop.index0].material_id }}</td>
+                                {# 显示物料描述（从关联的 material 对象取）#}
                                 <td>{{ delivery.items[loop.index0].material.description }}</td>
                                 <td>
+                                    {# 行项目隐藏字段（CSRF、ID等） #}
                                     {{ item_form.hidden_tag() }}
+                                    {# 计划发货数量输入框 #}
                                     {{ item_form.planned_delivery_quantity(class="form-control") }}
+                                    {# 如果有验证错误，显示错误信息 #}
                                     {% if item_form.planned_delivery_quantity.errors %}
                                         <div class="invalid-feedback" style="display: block;">
                                             {{ item_form.planned_delivery_quantity.errors[0] }}
@@ -68,9 +86,12 @@
             </div>
         </div>
 
+        {# ===== 底部操作按钮 ===== #}
         <div class="d-flex justify-content-between">
+            {# 取消按钮：跳转回发货单详情页 #}
             <a href="{{ url_for('delivery.delivery_detail', delivery_id=delivery.delivery_note_id) }}" 
                class="btn btn-secondary">取消</a>
+            {# 保存按钮：提交表单 #}
             <button type="submit" class="btn btn-primary">保存更改</button>
         </div>
     </form>

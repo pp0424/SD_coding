@@ -3,6 +3,7 @@
 
 {% block head_extra %}
 <style>
+  /* 页面标题样式 */
   h3.page-title {
     font-weight: 700;
     font-size: 1.5rem;
@@ -10,6 +11,7 @@
     margin-bottom: 1.5rem;
   }
 
+  /* 表单标签样式 */
   .form-label {
     font-weight: 600;
     font-size: 0.95rem;
@@ -17,16 +19,19 @@
     margin-bottom: 0.4rem;
   }
 
+  /* 表单控件统一圆角与字号 */
   .form-control {
     font-size: 0.85rem;
     border-radius: 8px;
   }
 
+  /* 主按钮阴影与圆角 */
   .btn-primary {
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(13,110,253,0.2);
   }
 
+  /* 紧凑表格的表头样式 */
   .table-sm thead th {
     background-color: #f5f9ff;
     font-size: 0.85rem;
@@ -35,31 +40,35 @@
     border-bottom: 1px solid #dee2e6;
   }
 
+  /* 紧凑表格的单元格样式 */
   .table-sm td {
     font-size: 0.85rem;
     vertical-align: middle;
   }
 
+  /* 行 hover 效果 */
   .table-sm tbody tr:hover {
     background-color: #f8fbff;
     transition: background-color 0.2s ease;
   }
 
+  /* 正负数高亮 */
   .text-success, .text-danger {
     font-weight: bold;
   }
 
+  /* 分页样式 */
   .pagination .page-link {
     border-radius: 6px;
     font-size: 0.85rem;
   }
-
   .pagination .active .page-link {
     background-color: #0d6efd;
     border-color: #0d6efd;
     color: #fff;
   }
 
+  /* 容器卡片化 */
   .card {
     border-radius: 14px;
     background: linear-gradient(135deg, #fff, #f4f8fc);
@@ -67,39 +76,45 @@
     padding: 24px;
   }
 
+  /* 筛选摘要样式 */
   .filters-summary {
     color: #64748b;
     font-size: 0.85rem;
   }
 
-  /* 表格容器允许横向滚动 */
+  /* 表格容器允许横向滚动，避免列过多导致溢出 */
   .table-responsive {
-    overflow-x: auto;  /* 超出宽度时出现横向滚动条 */
+    overflow-x: auto;
   }
 
-  /* 表格单元格不换行，内容完整显示 */
+  /* 表头/单元格不换行，确保数值列对齐显示；
+     若出现遮挡，可考虑改为 overflow: auto 并添加 title 提示 */
   .table-sm th,
   .table-sm td {
-    white-space: nowrap;  /* 禁止换行 */
-    overflow: visible;    /* 显示全部内容，不隐藏 */
+    white-space: nowrap;
+    overflow: visible;
   }
-
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="form-title-container">
+  <!-- 页面主标题（与 title 分离，便于页面内展示） -->
   <h1 class="form-title">📊 库存变动查询</h1>
 </div>
 
 <div class="container mt-4">
+  {# 筛选表单：GET 提交，保留可分享的查询链接 #}
   <form method="get" class="row g-3 align-items-end mb-4">
-  <!-- 发货单号 -->
+
+    <!-- 发货单号：输入框 + 弹窗选择器按钮 -->
     <div class="col-md-2">
       <label class="form-label" for="delivery_id">发货单号</label>
       <div class="input-group">
+        <!-- 优先从 search_form 取值，避免空值显示 None -->
         <input type="text" class="form-control" id="delivery_id" name="delivery_id"
               value="{{ (search_form.delivery_id.data or '') }}">
+        <!-- 打开辅助选择器的按钮；openCentered 为页面已有的 JS 工具函数 -->
         <button type="button" class="btn btn-outline-secondary"
                 style="height: 100%;"
                 onclick="openCentered('{{ url_for('delivery.delivery_helper') }}', 'deliveryHelper', 800, 600)">
@@ -108,7 +123,7 @@
       </div>
     </div>
 
-    <!-- 物料编号 -->
+    <!-- 物料编号：从后端提供的 choices 构建下拉（form.material_id 为 WTForms 对象） -->
     <div class="col-md-2">
       <label class="form-label" for="material_id">物料编号</label>
       <select class="form-select" id="material_id" name="material_id">
@@ -118,7 +133,7 @@
       </select>
     </div>
 
-    <!-- 仓库 -->
+    <!-- 仓库：同上，从 choices 构建下拉 -->
     <div class="col-md-2">
       <label class="form-label">仓库</label>
       <select class="form-select" id="warehouse_code" name="warehouse_code">
@@ -128,7 +143,7 @@
       </select>
     </div>
 
-    <!-- 起始日期 -->
+    <!-- 起始日期：直接使用原生 date 控件；无值则为空串 -->
     <div class="col-md-2">
       <label class="form-label">起始日期</label>
       <input class="form-control" type="date" name="start_date" 
@@ -142,7 +157,7 @@
             value="{{ search_form.end_date.data if search_form.end_date.data else '' }}">
     </div>
 
-    <!-- 查询按钮 -->
+    <!-- 查询按钮：占满列宽，便于触控 -->
     <div class="col-md-2">
       <label class="form-label d-block">&nbsp;</label>
       <button class="btn btn-primary w-100">
@@ -152,6 +167,7 @@
 
   </form>
 
+  <!-- 当前筛选条件摘要：仅显示已选择的条件 -->
   <div class="d-flex justify-content-between align-items-center mb-2 filters-summary">
     <div>
       <span>共 {{ total_records }} 条记录</span>
@@ -161,15 +177,18 @@
       {% if search_form.start_date.data or search_form.end_date.data %}
         | <span>日期: {{ search_form.start_date.data or '-' }} 至 {{ search_form.end_date.data or '-' }}</span>
       {% endif %}
+      {# mt 为“变动类型”简写；由视图提供。为避免未定义，可在视图默认 mt='all'。 #}
       {% if mt and mt != 'all' %} | <span>类型: {{ mt }}</span>{% endif %}
     </div>
   </div>
 
+  <!-- 数据表区域 -->
   <div class="card shadow-sm mb-4">
     <div class="table-responsive">
       <table class="table table-hover table-sm align-middle">
         <thead>
           <tr>
+            <!-- 列顺序：时间/物料/仓库/变动数量/库存维度（前后）/参考单据/类型/操作人 -->
             <th>时间</th>
             <th>物料</th>
             <th>仓库</th>
@@ -191,6 +210,7 @@
           {% for m in movements %}
           <tr>
             <td>
+              {# 若后端已格式化（formatted_time），优先使用；否则按固定格式格式化 #}
               {% if m.formatted_time %}
                 {{ m.formatted_time }}
               {% else %}
@@ -198,23 +218,30 @@
               {% endif %}
             </td>
             <td>{{ m.material_id }}</td>
+            <!-- 仓库显示：优先取物料主数据中的库位；没有则 '-' -->
             <td>{{ m.material.storage_location or '-'}}</td>
+            <!-- 变动数量：负数为红、正数为绿 -->
             <td class="{% if m.quantity_change < 0 %}text-danger{% else %}text-success{% endif %}">{{ m.quantity_change }}</td>
+            <!-- 物理库存（前/后） -->
             <td>{{ m.before_physical }}</td>
             <td>{{ m.after_physical }}</td>
+            <!-- 可用库存（前/后） -->
             <td>{{ m.before_available }}</td>
             <td>{{ m.after_available }}</td>
+            <!-- 已分配（前/后） -->
             <td>{{ m.before_allocated }}</td>
             <td>{{ m.after_allocated }}</td>
+            <!-- 待出库（前/后） -->
             <td>{{ m.before_pending_outbound }}</td>
             <td>{{ m.after_pending_outbound }}</td>
+            <!-- 参考单据：常用于存放发货单号/拣货任务号 -->
             <td>{{ m.reference_doc or '-' }}</td>
             <td>{{ m.change_type }}</td>
             <td>{{ m.operator or '-' }}</td>
           </tr>
           {% else %}
           <tr>
-            <td colspan="9" class="text-center text-muted">
+            <td colspan="15" class="text-center text-muted">
               <i class="bi bi-info-circle"></i> 无记录
             </td>
           </tr>
@@ -224,6 +251,7 @@
     </div>
   </div>
 
+  <!-- 分页器：保留所有查询参数，切换页码时不丢失筛选条件 -->
   <nav aria-label="pager">
     <ul class="pagination justify-content-center">
       {% for p in range(1, total_pages + 1) %}

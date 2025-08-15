@@ -1,142 +1,80 @@
-{# templates/delivery/cancel_picking_task.html #}
+{# 继承基础页面框架 #}
 {% extends 'delivery/base.html' %}
-{% block title %}取消拣货任务{% endblock %}
+
+{# 页面 title（浏览器标签） #}
+{% block title %}取消发货单{% endblock %}
 
 {% block head_extra %}
 <style>
-  .card-header-gradient {
-    background: linear-gradient(135deg, #dc3545, #ff6b6b);
-    border-radius: 0.5rem 0.5rem 0 0;
-    color: #fff;
+  /* 提升模态框层级，确保不被其他元素（如固定导航栏、Toast）遮挡 */
+  #confirmCancelModal {
+    z-index: 9999 !important;
   }
-  .small-muted { font-size: .9rem; color: #6c757d; }
-  .task-meta { font-size: .95rem; color: #495057; }
+  /* 同步提升遮罩层级（若启用 backdrop 时生效） */
+  .modal-backdrop {
+    z-index: 9998 !important;
+  }
 </style>
 {% endblock %}
 
 {% block content %}
-{% set badge_map = {
-  '待拣货':'bg-warning',
-  '已拣货':'bg-info',
-  '部分拣货':'bg-info',
-  '已完成':'bg-success',
-  '已取消':'bg-secondary'
-} %}
-{% set affects_inventory = task.inventory_locked or task.status in ['已拣货','部分拣货','已完成'] %}
-
 <div class="container mt-4">
   <div class="card border-0 shadow-sm">
-    <div class="card-header card-header-gradient text-center">
-      <h4 class="mb-0">🗑️ 取消拣货任务</h4>
+    <!-- 卡片头部：红色渐变，突出危险操作语义 -->
+    <div class="card-header text-white text-center"
+         style="background: linear-gradient(135deg, #dc3545, #ff6b6b); border-radius: 0.5rem 0.5rem 0 0;">
+      <h4 class="mb-0 text-center">🗑️ 取消发货单</h4>
     </div>
 
     <div class="card-body">
-      {% if affects_inventory %}
-        <div class="alert alert-danger d-flex align-items-start">
-          <i class="bi bi-exclamation-octagon-fill me-2 fs-4"></i>
-          <div>
-            <strong>重要：</strong> 取消将释放已占用库存并回退已拣数量，发货单与销售订单状态将变更，请确认你有相应权限并填写取消原因。
-          </div>
-        </div>
-      {% else %}
-        <div class="alert alert-warning d-flex align-items-start">
-          <i class="bi bi-exclamation-triangle me-2 fs-4"></i>
-          <div>
-            <strong>提示：</strong> 该拣货任务（{{ task.status }}）尚未发生库存占用。取消操作仅会改变任务/单据状态，不会触及库存。
-          </div>
-        </div>
-      {% endif %}
-
+      <!-- 强提醒：取消不可逆 -->
+      <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <strong>警告：</strong>取消发货单是不可逆操作，请谨慎操作！
+      </div>
+      
+      <!-- 发货单关键信息展示，便于确认当前操作对象 -->
       <div class="delivery-info mb-4">
         <h5>发货单信息</h5>
         <ul class="list-group">
-          <li class="list-group-item"><strong>发货单号：</strong> {{ delivery.delivery_note_id if delivery else '-' }}</li>
-          <li class="list-group-item"><strong>销售订单：</strong> {{ delivery.sales_order_id if delivery and delivery.sales_order_id else '-' }}</li>
           <li class="list-group-item">
-            <strong>发货单当前状态：</strong>
-            <span class="badge {{ badge_map.get(delivery.status if delivery else '', 'bg-secondary') }}">
-              {{ delivery.status if delivery else '-' }}
-            </span>
+            <strong>发货单号：</strong> {{ delivery.delivery_note_id }}
           </li>
-          <li class="list-group-item"><strong>计划发货日期：</strong> {{ delivery.delivery_date.strftime('%Y-%m-%d') if delivery and delivery.delivery_date else '-' }}</li>
+          <li class="list-group-item">
+            <strong>销售订单：</strong> {{ delivery.sales_order_id }}
+          </li>
+          <li class="list-group-item">
+            <strong>当前状态：</strong> 
+            <span class="badge bg-warning">{{ delivery.status }}</span>
+          </li>
+          <li class="list-group-item">
+            <strong>计划发货日期：</strong> 
+            {{ delivery.delivery_date.strftime('%Y-%m-%d') if delivery.delivery_date else '-' }}
+          </li>
         </ul>
       </div>
-
-      <div class="task-info mb-4">
-        <h5>拣货任务信息</h5>
-        <ul class="list-group">
-          <li class="list-group-item"><strong>任务号：</strong> {{ task.task_id }}</li>
-          <li class="list-group-item">
-            <strong>仓库：</strong> {{ task.warehouse_code or '-' }}
-            <span class="ms-3 task-meta">拣货人：{{ task.picker or '-' }}</span>
-          </li>
-          <li class="list-group-item">
-            <strong>任务状态：</strong>
-            <span class="badge {{ badge_map.get(task.status, 'bg-secondary') }}">{{ task.status }}</span>
-            <span class="ms-3 small-muted">
-              {% if task.start_time %}开始：{{ task.start_time.strftime('%Y-%m-%d %H:%M') }}{% endif %}
-              {% if task.complete_time %}<br>完成：{{ task.complete_time.strftime('%Y-%m-%d %H:%M') }}{% endif %}
-            </span>
-          </li>
-          {% if task.note %}
-            <li class="list-group-item"><strong>备注：</strong> <span class="small-muted">{{ task.note }}</span></li>
-          {% endif %}
-        </ul>
-      </div>
-
-      <form id="cancel-picking-form" method="post" novalidate>
+      
+      <!-- 取消表单：仅包含 CSRF 与取消原因。提交由 JS 控制，noscript 下允许直接提交 -->
+      <form id="cancel-delivery-form" method="post" novalidate>
         {{ form.csrf_token }}
         <div class="mb-3">
           {{ form.cancel_reason.label(class="form-label fw-bold") }}
           {{ form.cancel_reason(class="form-control", rows=4, placeholder="请输入取消原因（必填，至少 5 个字）", required=true, minlength="5") }}
-          <div class="form-text">取消原因将记录在任务变更历史，便于追溯。</div>
+          <small class="form-text text-muted">请详细说明取消原因，以便后续追踪</small>
         </div>
-
-        <div class="mb-4">
-          <h6>发货物料明细（仅供参考）</h6>
-          <div class="table-responsive">
-            <table class="table table-sm table-hover">
-              <thead>
-                <tr>
-                  <th>行号</th>
-                  <th>物料</th>
-                  <th>计划数量</th>
-                  <th>已拣数量</th>
-                  <th>单位</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% if delivery_items %}
-                  {% for it in delivery_items %}
-                  <tr>
-                    <td>{{ it.item_no }}</td>
-                    <td>{{ it.material_id }}
-                      {% if it.material and it.material.description %}
-                        <div class="small-muted">{{ it.material.description }}</div>
-                      {% endif %}
-                    </td>
-                    <td>{{ it.planned_delivery_quantity }}</td>
-                    <td>{{ it.actual_delivery_quantity or 0 }}</td>
-                    <td>{{ it.unit or '-' }}</td>
-                  </tr>
-                  {% endfor %}
-                {% else %}
-                  <tr><td colspan="5" class="small-muted">无发货明细</td></tr>
-                {% endif %}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="d-flex justify-content-end gap-2">
-          <a href="{{ url_for('delivery.picking_task_detail', task_id=task.task_id) }}" class="btn btn-secondary">
-            <i class="bi bi-arrow-left me-1"></i> 返回
+        
+        <!-- 操作按钮：返回详情 / 发起取消（弹出二次确认模态框） -->
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+          <a href="{{ url_for('delivery.delivery_detail', delivery_id=delivery.delivery_note_id) }}" 
+             class="btn btn-secondary me-md-2">
+            <i class="bi bi-arrow-left me-1"></i> 返回详情
           </a>
-          <button type="button" id="btn-cancel-picking" class="btn btn-danger" {% if task.status == '已取消' %}disabled{% endif %}>
-            <i class="bi bi-trash me-1"></i> 取消拣货
+          <button type="button" id="btn-cancel-delivery" class="btn btn-danger">
+            <i class="bi bi-trash me-1"></i> 取消发货单
           </button>
         </div>
 
+        <!-- 无 JS 场景的降级提示与按钮 -->
         <noscript>
           <div class="alert alert-info mt-3">浏览器未启用 JavaScript，可直接提交表单进行取消。</div>
           <button type="submit" class="btn btn-danger">提交取消</button>
@@ -146,29 +84,26 @@
   </div>
 </div>
 
+<!-- 二次确认模态框：防误操作，展示即将取消的对象与原因预览 -->
 <div class="modal fade" id="confirmCancelModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">确认取消拣货</h5>
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-warning text-dark" >
+        <h5 class="modal-title" >
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>操作确认
+        </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
       </div>
       <div class="modal-body">
-        <p>
-          你即将取消 <strong>拣货任务 {{ task.task_id }}</strong>。
-          {% if affects_inventory %}
-            此操作将 <strong>释放已占用库存</strong> 并回退发货行的已拣数量。请确认已获得相应权限并填写取消原因。
-          {% else %}
-            此操作不会触及库存，仅会将任务状态更新为 <strong>已取消</strong>。
-          {% endif %}
-        </p>
-        <div class="alert alert-secondary small">
-          <strong>任务：</strong> {{ task.task_id }}<br>
-          <strong>当前状态：</strong> {{ task.status }}<br>
-          <div id="cancel_reason" class="small-muted mt-1"></div>
+        <p class="mb-0">你即将取消 <strong>发货单 {{ delivery.delivery_note_id }}</strong>，此操作不可撤销，请确认已填写取消原因。</p>
+        <div class="alert alert-secondary small mt-3">
+          <strong>当前状态：</strong> {{ delivery.status }}<br>
+          <!-- 取消原因预览：由 JS 在打开模态框前写入 -->
+          <div id="cancel_reason_preview" class="small-muted mt-1"></div>
         </div>
       </div>
       <div class="modal-footer">
+        <!-- 确认取消：触发真正的提交逻辑 -->
         <button type="button" id="confirm-cancel-btn" class="btn btn-danger">确认取消</button>
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
       </div>
@@ -180,86 +115,75 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+  // 绑定 Bootstrap 模态框实例
   const modalEl = document.getElementById('confirmCancelModal');
+  // 这里设置 { backdrop: false } 表示不显示遮罩层，如需遮罩可改为 true 或移除此项
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl, { backdrop: false });
 
-  // 1) 将模态框移动到 body 下，避免被父级 stacking context 影响
-  if (modalEl && modalEl.parentElement !== document.body) {
-    document.body.appendChild(modalEl);
-  }
+  // 关键节点引用
+  const btnCancel = document.getElementById('btn-cancel-delivery'); // 页面“取消发货单”按钮
+  const confirmBtn = document.getElementById('confirm-cancel-btn'); // 模态框“确认取消”按钮
+  const reasonField = document.querySelector('textarea[name="cancel_reason"]'); // 取消原因输入框
+  const csrfInput = document.querySelector('input[name="csrf_token"]'); // CSRF 隐藏域
 
-  // 2) 确保 Bootstrap Modal 可用
-  if (!(window.bootstrap && window.bootstrap.Modal)) {
-    console.error('Bootstrap JS 未加载，模态框功能不可用');
-    return;
-  }
-  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-
-  // 3) 你的其余绑定逻辑（保持你当前的确认按钮逻辑即可）
-  const btnCancel = document.getElementById('btn-cancel-picking');
-  const confirmBtn = document.getElementById('confirm-cancel-btn');
-  const reasonField = document.querySelector('textarea[name="cancel_reason"]');
-  const csrfInput = document.querySelector('input[name="csrf_token"]');
-
-  modalEl.addEventListener('shown.bs.modal', () => confirmBtn && confirmBtn.focus());
-  modalEl.addEventListener('hidden.bs.modal', () => {
-    const div = document.getElementById('cancel_reason');
-    if (div) div.textContent = '';
-    btnCancel && btnCancel.focus();
-  });
-
-  btnCancel && btnCancel.addEventListener('click', () => {
-    const reason = reasonField ? reasonField.value.trim() : '';
+  // 点击“取消发货单”：先本地校验原因长度，再弹出确认模态框
+  btnCancel?.addEventListener('click', () => {
+    const reason = reasonField?.value.trim() || '';
     if (reason.length < 5) {
       alert('请填写更明确的取消原因（至少 5 个字）');
-      reasonField && reasonField.focus();
+      reasonField?.focus();
       return;
     }
-    btnCancel.disabled = true;
-    btnCancel.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 等待...`;
-    document.getElementById('cancel_reason').textContent = reason;
+    // 将用户输入的原因预览展示在模态框中，帮助确认
+    document.getElementById('cancel_reason_preview').textContent = reason;
     modal.show();
-    setTimeout(() => {
-      btnCancel.disabled = false;
-      btnCancel.innerHTML = `<i class="bi bi-trash me-1"></i> 取消拣货`;
-    }, 200);
   });
 
-  // 加强后的确认按钮逻辑，确保失败也能恢复
-  confirmBtn && confirmBtn.addEventListener('click', async function () {
-    this.disabled = true;
-    this.textContent = '处理中...';
-    try {
-      const url = "{{ url_for('delivery.cancel_picking_task', task_id=task.task_id) }}";
-      const formData = new FormData();
-      formData.append('cancel_reason', reasonField ? reasonField.value : '');
-      formData.append('csrf_token', csrfInput ? csrfInput.value : '');
+  // 模态框“确认取消”：关闭模态框后发起请求（延迟 200ms，确保关闭动画与遮罩处理完成）
+  confirmBtn?.addEventListener('click', () => {
+    modal.hide();
+    setTimeout(async () => {
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = '处理中...';
+      try {
+        // 后端取消接口地址：POST 表单（FormData）便于携带 CSRF 与字段
+        const url = "{{ url_for('delivery.cancel_delivery', delivery_id=delivery.delivery_note_id) }}";
+        const formData = new FormData();
+        formData.append('cancel_reason', reasonField?.value || '');
+        formData.append('csrf_token', csrfInput?.value || '');
 
-      const res = await fetch(url, {
-        method: 'POST',
-        body: formData,
-        credentials: 'same-origin',
-        headers: { 'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest' 
-         }
-      });
+        const res = await fetch(url, {
+          method: 'POST',
+          body: formData,
+          credentials: 'same-origin', // 携带同源 Cookie（CSRF/登录态）
+          headers: { 'Accept': 'application/json' } // 期望后端返回 JSON
+        });
 
-      let data = {};
-      try { data = await res.json(); } catch (e) {}
+        // 解析后端返回（容错处理：非 JSON 不抛出）
+        let data = {};
+        try { data = await res.json(); } catch {}
 
-      if (res.ok && data.success) {
-        modal.hide();
-        if (data.redirect) window.location.href = data.redirect;
-        else window.location.reload();
-      } else {
-        alert((data && data.message) || `取消拣货失败（${res.status} ${res.statusText}）`);
+        if (res.ok && data.success) {
+          // 优先使用后端给定跳转地址，否则刷新当前页
+          if (data.redirect) {
+            window.location.href = data.redirect;
+          } else {
+            window.location.reload();
+          }
+        } else {
+          // 汇总错误信息：优先显示后端 message，其次回退到 HTTP 状态
+          alert((data && data.message) || `取消失败（${res.status} ${res.statusText}）`);
+        }
+      } catch (err) {
+        // 网络异常或跨域等错误
+        console.error(err);
+        alert('网络或服务器错误，取消失败');
+      } finally {
+        // 恢复按钮状态，允许用户重试
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = '确认取消';
       }
-    } catch (err) {
-      console.error(err);
-      alert('网络或服务器错误，取消失败');
-    } finally {
-      this.disabled = false;
-      this.textContent = '确认取消';
-    }
+    }, 200);
   });
 });
 </script>

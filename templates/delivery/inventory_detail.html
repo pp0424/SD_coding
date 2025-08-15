@@ -1,89 +1,195 @@
+{# 
+  模板名称：物料库存查询
+  用途：用于展示和查询物料库存，包含查询表单、结果表格、分页与打印功能
+  继承：依赖 delivery/base.html 提供的基础布局（head、body、样式与脚手架）
+#}
 {% extends 'delivery/base.html' %}
+
 {% block title %}物料库存查询{% endblock %}
 
 {% block head_extra %}
+{# 公共样式文件（全局/模块级通用样式） #}
 <link rel="stylesheet" href="{{ url_for('static', filename='delivery/delivery_styles.css') }}">
 
 <style>
-  /* 页面最大宽度与居中 */
-  .page-container { max-width: 1180px; margin: 0 auto; padding: 16px; }
-  /* 卡片样式 */
-  .delivery-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.04); overflow: hidden; }
-  /* 工具栏与标题 */
-  .card-header { padding: 16px 18px 8px; background: linear-gradient(180deg, #fafbfc 0%, #ffffff 100%); border-bottom: 1px solid #e5e7eb; }
-  .toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
-  .stats-info { font-size: 0.9rem; color: #6b7280; }
-  /* 查询表单 */
-  .query-form { padding: 12px 18px 8px; }
-  .query-form .form-label { font-weight: 600; color: #374151; }
-  .btn-search { background: #2563eb; border-color: #2563eb; color: white; }
-  .btn-search:hover { background: #1e40af; border-color: #1e40af; color: white; }
-  .btn-reset { background: #f3f4f6; border-color: #e5e7eb; }
-  /* 表格样式 */
-  .table-section { padding: 12px 18px 18px; }
-  .table-responsive { max-height: 62vh; border: 1px solid #e5e7eb; border-radius: 8px; overflow: auto; }
-  .delivery-table { width: 100%; border-collapse: separate; border-spacing: 0; }
-  .delivery-table thead th { position: sticky; top: 0; background: #f8fafc; font-weight: 700; color: #374151; padding: 10px 12px; border-bottom: 1px solid #e5e7eb; }
-  .delivery-table tbody td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; color: #1f2937; vertical-align: middle; }
-  .delivery-table tbody tr:hover { background: #f9fafb; }
-  /* 空状态 */
-  .empty-state { text-align: center; color: #6b7280; }
-  .empty-state .inner { display: flex; height: 200px; align-items: center; justify-content: center; flex-direction: column; gap: 6px; }
+  /* ===== 页面布局与容器 ===== */
+  /* 设置页面内容最大宽度并居中，内边距用于提供呼吸空间 */
+  .page-container { 
+    max-width: 1180px; 
+    margin: 0 auto; 
+    padding: 16px; 
+  }
+
+  /* ===== 卡片样式 ===== */
+  /* 统一内容承载容器：卡片样式、圆角与浅阴影 */
+  .delivery-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    overflow: hidden; /* 防止圆角区域溢出 */
+  }
+
+  /* ===== 顶部工具栏与标题区域 ===== */
+  .card-header {
+    padding: 16px 18px 8px;
+    background: linear-gradient(180deg, #fafbfc 0%, #ffffff 100%);
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .toolbar {
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between;
+    flex-wrap: wrap; 
+    gap: 10px; /* 窄屏时元素换行的间距 */
+  }
+  .stats-info { 
+    font-size: 0.9rem; 
+    color: #6b7280; 
+  }
+
+  /* ===== 查询表单样式 ===== */
+  .query-form { 
+    padding: 12px 18px 8px; 
+  }
+  .query-form .form-label { 
+    font-weight: 600; 
+    color: #374151; 
+  }
+  /* 统一主按钮（查询）样式：品牌色与悬停反馈 */
+  .btn-search { 
+    background: #2563eb; 
+    border-color: #2563eb; 
+    color: white; 
+  }
+  .btn-search:hover { 
+    background: #1e40af; 
+    border-color: #1e40af; 
+    color: white; 
+  }
+  /* 次级按钮（重置）样式：浅灰背景 */
+  .btn-reset { 
+    background: #f3f4f6; 
+    border-color: #e5e7eb; 
+  }
+
+  /* ===== 表格区域样式 ===== */
+  .table-section { 
+    padding: 12px 18px 18px; 
+  }
+  .table-responsive {
+    /* 限高 + 滚动，配合 sticky 表头提升可读性 */
+    max-height: 62vh;
+    border: 1px solid #e5e7eb; 
+    border-radius: 8px; 
+    overflow: auto;
+  }
+  .delivery-table { 
+    width: 100%; 
+    border-collapse: separate; 
+    border-spacing: 0; 
+  }
+  .delivery-table thead th {
+    position: sticky; 
+    top: 0;              /* 启用表头吸顶 */
+    background: #f8fafc; 
+    font-weight: 700; 
+    color: #374151;
+    padding: 10px 12px; 
+    border-bottom: 1px solid #e5e7eb;
+    z-index: 1;          /* 防止被内容覆盖 */
+  }
+  .delivery-table tbody td {
+    padding: 10px 12px; 
+    border-bottom: 1px solid #f1f5f9;
+    color: #1f2937; 
+    vertical-align: middle; /* 多行文本时保持垂直居中 */
+  }
+  .delivery-table tbody tr:hover { 
+    background: #f9fafb; 
+  }
+
+  /* ===== 空状态 ===== */
+  .empty-state { 
+    text-align: center; 
+    color: #6b7280; 
+  }
+  .empty-state .inner {
+    display: flex; 
+    height: 200px; 
+    align-items: center;
+    justify-content: center; 
+    flex-direction: column; 
+    gap: 6px;
+  }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="page-container">
+  {# 页面主标题：与业务模块对应 #}
   <div class="form-title-container">
     <h1 class="form-title">🔢 物料库存</h1>
   </div>
 
   <div class="delivery-card animate-fade">
-    <!-- 顶部工具栏 -->
+    {# ================= 顶部：工具栏 + 查询表单 ================= #}
     <div class="card-header">
       <div class="toolbar">
         <div>
           <i class="bi bi-box-seam me-2"></i>
           <strong>物料信息列表</strong>
+          {# 统计信息：优先显示分页总数；无分页时显示当前列表长度 #}
           <span class="stats-info ms-3">
             共找到 {{ pagination.total if pagination is defined and pagination else inventories|length }} 条记录
           </span>
         </div>
         <div class="d-flex gap-2">
+          {# 打印：调用浏览器打印当前页面 #}
           <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
             <i class="bi bi-printer me-1"></i> 打印
           </button>
         </div>
       </div>
 
-      <!-- 查询表单 -->
+      {# 查询表单：GET 提交以支持分享/回显；字段为模糊匹配 #}
       <form method="get" class="row g-3 query-form align-items-end">
-        {{ form.csrf_token }}
+        {{ form.csrf_token }} {# 即便 GET 也保留 CSRF，便于统一模板 #}
+
+        {# 物料编号（支持模糊） #}
         <div class="col-md-3">
           <label class="form-label" for="material_id">{{ form.material_id.label.text }}</label>
           {{ form.material_id(class="form-control", id="material_id", placeholder="支持模糊查询") }}
         </div>
+
+        {# 物料描述关键词 #}
         <div class="col-md-4">
           <label class="form-label" for="description">{{ form.description.label.text }}</label>
           {{ form.description(class="form-control", id="description", placeholder="物料描述关键词") }}
         </div>
+
+        {# 仓库/库位筛选 #}
         <div class="col-md-3">
           <label class="form-label" for="storage_location">{{ form.storage_location.label.text }}</label>
           {{ form.storage_location(class="form-control", id="storage_location", placeholder="仓库/库位") }}
         </div>
+
+        {# 查询与重置 #}
         <div class="col-md-2 d-flex gap-2">
           {{ form.submit(class="btn btn-search w-100") }}
+          {# 重置：跳转至无查询参数的详情页，清空筛选条件 #}
           <a class="btn btn-reset w-100" href="{{ url_for('delivery.inventory_detail') }}">重置</a>
         </div>
       </form>
     </div>
 
-    <!-- 表格区域 -->
+    {# ================= 表格：库存数据展示 ================= #}
     <div class="table-section">
       <div class="table-responsive">
         <table class="delivery-table table-hover">
           <thead>
             <tr>
+              {# 列含义：主键/描述/计量/库位/库存四象限 #}
               <th>物料编号</th>
               <th>物料描述</th>
               <th>基本计量单位</th>
@@ -95,18 +201,27 @@
             </tr>
           </thead>
           <tbody>
+            {# 循环渲染库存数据；无数据则走 else 分支展示空状态 #}
             {% for inv in inventories %}
             <tr>
+              {# 主键/编号：用强调样式提升可辨识度 #}
               <td class="fw-bold text-primary">{{ inv.material_id }}</td>
+
+              {# 物料描述 #}
               <td>{{ inv.description }}</td>
+
+              {# 基本计量单位与库位：用 badge 弱强调 #}
               <td><span class="badge bg-light text-dark">{{ inv.base_unit }}</span></td>
               <td><span class="badge bg-light text-dark">{{ inv.storage_location }}</span></td>
+
+              {# 库存四象限：数值精度已在模型层处理，无需再格式化 #}
               <td>{{ inv.physical_stock }}</td>
               <td>{{ inv.available_stock }}</td>
               <td>{{ inv.allocated_stock }}</td>
               <td>{{ inv.pending_outbound }}</td>
             </tr>
             {% else %}
+            {# 空数据占位：给出友好提示与引导 #}
             <tr>
               <td colspan="8" class="empty-state">
                 <div class="inner">
@@ -121,12 +236,15 @@
         </table>
       </div>
 
-      <!-- 分页 -->
+      {# ================= 分页：仅在存在分页对象且总页数大于 1 时显示 ================= #}
       {% if pagination is defined and pagination and pagination.pages > 1 %}
       <div class="d-flex justify-content-between align-items-center mt-3">
+        {# 左侧：当前页信息 #}
         <div class="text-muted">
           第 {{ pagination.page }} / {{ pagination.pages }} 页，合计 {{ pagination.total }} 条
         </div>
+
+        {# 右侧：上一页/下一页，保留当前查询条件 #}
         <div class="d-flex gap-2">
           {% if pagination.has_prev %}
             <a class="btn btn-outline-secondary btn-sm"

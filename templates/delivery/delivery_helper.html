@@ -1,42 +1,60 @@
+{# 
+  模板功能：发货单号查询弹出窗口
+  继承：delivery/base_popup.html（用于弹出式页面的基础布局）
+#}
 {% extends 'delivery/base_popup.html' %}
 {% block title %}发货单号查询{% endblock %}
+
 {% block content %}
 
 <div class="card gradient-bg shadow-sm">
-  <!-- Header -->
+  <!-- ===== 卡片头部 ===== -->
   <div class="card-header position-relative py-3 text-center">
+    <!-- 页面标题 -->
     <strong class="text-white fs-5">🔍 发货单号查询</strong>
+    <!-- 关闭按钮（绝对定位在右侧中部） -->
     <button type="button" class="btn btn-sm btn-outline-light position-absolute top-50 end-0 translate-middle-y me-2"
             onclick="window.close()">关闭</button>
   </div>
 
-  <!-- 搜索表单 -->
+  <!-- ===== 搜索表单区域 ===== -->
   <div class="card-body">
     <form method="get" class="row g-2 mb-3">
+      <!-- 客户ID输入框 -->
       <div class="col-md-3">
-        <input type="text" name="customer_id" value="{{ request.args.get('customer_id','') }}" class="form-control" placeholder="客户ID">
+        <input type="text" name="customer_id" 
+               value="{{ request.args.get('customer_id','') }}" 
+               class="form-control" placeholder="客户ID">
       </div>
+      <!-- 状态下拉框 -->
       <div class="col-md-3">
         <select name="status" class="form-select">
           <option value="">全部状态</option>
           {% for st in ['已创建','已拣货','已发货','已过账','已取消'] %}
+          <!-- 保留当前选择的状态 -->
           <option value="{{ st }}" {% if request.args.get('status') == st %}selected{% endif %}>{{ st }}</option>
           {% endfor %}
         </select>
       </div>
-
+      <!-- 发货日期起始 -->
       <div class="col-md-3">
-        <input type="date" name="date_from" value="{{ request.args.get('date_from','') }}" class="form-control">
+        <input type="date" name="date_from" 
+               value="{{ request.args.get('date_from','') }}" 
+               class="form-control">
       </div>
+      <!-- 发货日期结束 -->
       <div class="col-md-3">
-        <input type="date" name="date_to" value="{{ request.args.get('date_to','') }}" class="form-control">
+        <input type="date" name="date_to" 
+               value="{{ request.args.get('date_to','') }}" 
+               class="form-control">
       </div>
+      <!-- 查询按钮 -->
       <div class="col-md-3">
         <button class="btn btn-primary w-100"><i class="bi bi-search"></i> 查询</button>
       </div>
     </form>
 
-    <!-- 表格 -->
+    <!-- ===== 查询结果表格 ===== -->
     {% if items %}
     <div class="table-responsive" style="max-height: 60vh;">
       <table class="table table-hover table-sm align-middle">
@@ -51,16 +69,20 @@
         <tbody>
           {% for r in items %}
           <tr>
+            <!-- 客户ID：来自关联的销售订单，若不存在显示 '-' -->
             <td>{{ r.sales_order.customer_id if r.sales_order else '-' }}</td>
+            <!-- 格式化发货日期 -->
             <td>{{ r.delivery_date.strftime('%Y-%m-%d') }}</td>
+            <!-- 发货状态 -->
             <td>{{ r.status }}</td>
             <td>
-              <!-- 使用 tojson 安全传值，避免引号导致 JS 断裂 -->
-            <button type="button" class="btn btn-success btn-sm"
-              data-delivery-note-id="{{ r.delivery_note_id }}"
-              onclick="selectDelivery(this)">
-              选择
-            </button>
+              <!-- 操作按钮：选择当前发货单，使用 data 属性传递发货单ID -->
+              <!-- tojson 注释：原本可用于处理复杂对象，这里直接存放 ID -->
+              <button type="button" class="btn btn-success btn-sm"
+                data-delivery-note-id="{{ r.delivery_note_id }}"
+                onclick="selectDelivery(this)">
+                选择
+              </button>
             </td>
           </tr>
           {% endfor %}
@@ -68,40 +90,48 @@
       </table>
     </div>
 
-    <!-- 分页 -->
+    <!-- ===== 分页组件 ===== -->
     {% if pagination %}
     <div class="d-flex justify-content-between mt-2">
+      <!-- 当前页信息 -->
       <span class="text-white small">第 {{ pagination.page }} / {{ pagination.pages }} 页，共 {{ pagination.total }} 条</span>
+      <!-- 上一页 / 下一页按钮 -->
       <div class="btn-group">
         {% if pagination.has_prev %}
-        <a class="btn btn-sm btn-outline-light" href="{{ url_for('delivery.delivery_helper', page=pagination.page-1, **args) }}">上一页</a>
+        <a class="btn btn-sm btn-outline-light" 
+           href="{{ url_for('delivery.delivery_helper', page=pagination.page-1, **args) }}">上一页</a>
         {% endif %}
         {% if pagination.has_next %}
-        <a class="btn btn-sm btn-outline-light" href="{{ url_for('delivery.delivery_helper', page=pagination.page+1, **args) }}">下一页</a>
+        <a class="btn btn-sm btn-outline-light" 
+           href="{{ url_for('delivery.delivery_helper', page=pagination.page+1, **args) }}">下一页</a>
         {% endif %}
       </div>
     </div>
     {% endif %}
 
     {% elif request.args %}
+    <!-- 没有找到匹配数据时的提示 -->
     <div class="text-white">没有找到匹配记录</div>
     {% endif %}
   </div>
 </div>
 
+<!-- ===== JavaScript：选择并回填数据到父窗口 ===== -->
 <script>
 function selectDelivery(btn) {
   try {
+    // 检查父窗口是否存在
     if (!window.opener || window.opener.closed) {
       alert('父窗口已关闭或不存在，无法回填');
       window.close();
       return;
     }
 
-    // 获取当前行的数据
+    // 获取按钮所在的行
     const row = btn.closest('tr');
     const cells = row.querySelectorAll('td');
     
+    // 收集行数据
     const payload = {
       deliveryNoteId: btn.getAttribute('data-delivery-note-id'),
       customerId: cells[0].textContent.trim(),
@@ -111,7 +141,7 @@ function selectDelivery(btn) {
 
     console.log('回填数据:', payload);
 
-    // 设置值到父窗口
+    // 回填方法：优先通过 ID 查找，如果没有则用 name
     const setIfExists = (idOrName, val) => {
       const doc = window.opener.document;
       let el = doc.getElementById(idOrName);
@@ -120,6 +150,7 @@ function selectDelivery(btn) {
       
       if (['INPUT','TEXTAREA','SELECT'].includes(el.tagName)) {
         el.value = val;
+        // 触发 input 和 change 事件，保证父页面能感知到变更
         el.dispatchEvent(new Event('input', {bubbles: true}));
         el.dispatchEvent(new Event('change', {bubbles: true}));
       } else {
@@ -128,25 +159,38 @@ function selectDelivery(btn) {
       return true;
     };
 
-    // 回填数据
+    // 将发货单号回填到父窗口
     setIfExists('delivery_id', payload.deliveryNoteId);
     
   } catch(err) {
     console.error('回填异常', err);
     alert('回填失败，请查看控制台错误：' + (err && err.message));
   } finally {
+    // 完成后关闭当前弹窗
     window.close();
   }
 }
 </script>
 
-
+<!-- ===== 局部样式===== -->
 <style>
-/* 局部 style 可放到 base 或全局 css 中 */
-.gradient-bg { background: linear-gradient(135deg, #5a96f1, #ef7df9); color: #fff; border: none; border-radius: 12px; }
-.gradient-bg .card-header { background: transparent; border-bottom: 1px solid rgba(255,255,255,0.25); }
-.table-hover tbody tr:hover { background-color: rgba(255,255,255,0.06); }
-.btn-outline-light { color:#fff; border-color: rgba(255,255,255,0.6); }
+.gradient-bg { 
+  background: linear-gradient(135deg, #5a96f1, #ef7df9); 
+  color: #fff; 
+  border: none; 
+  border-radius: 12px; 
+}
+.gradient-bg .card-header { 
+  background: transparent; 
+  border-bottom: 1px solid rgba(255,255,255,0.25); 
+}
+.table-hover tbody tr:hover { 
+  background-color: rgba(255,255,255,0.06); 
+}
+.btn-outline-light { 
+  color:#fff; 
+  border-color: rgba(255,255,255,0.6); 
+}
 </style>
 
 {% endblock %}

@@ -1,69 +1,93 @@
+<!-- 
+  基础模板 - base.html
+  功能: 作为整个交付模块的基础模板，包含通用的页面结构、导航栏、样式和脚本
+  特点:
+    - 定义全局CSS变量和基础样式
+    - 包含响应式导航栏和内容区域
+    - 提供可扩展的内容块(title, head_extra, content, scripts)
+    - 集成Bootstrap和Google Fonts
+    - 包含消息提示和页面加载脚本
+-->
 <!doctype html>
 <html lang="zh-CN">
   <head>
+    <!-- 元数据定义 -->
     <meta charset="utf-8">
     <title>{% block title %}发货管理{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Moment.js集成 - 用于日期时间格式化 -->
     {{ moment.include_moment() }}
     
-    <!-- Google Fonts -->
+    <!-- Google Fonts - 引入中文字体 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
 
-    <!-- Bootstrap 5 -->
+    <!-- Bootstrap 5 CSS框架 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
 
+    <!-- 自定义交付模块样式 -->
     <link rel="stylesheet" href="{{ url_for('static', filename='delivery/delivery_styles.css') }}">
     
-    <!-- Bootstrap CSS -->
+    <!-- Bootstrap 4 CSS (兼容旧组件) -->
     <link rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/4.3.1/css/bootstrap.min.css">
 
-    <!-- jQuery（Bootstrap JS 依赖） -->
+    <!-- jQuery (Bootstrap JS依赖) -->
     <script src="https://cdn.staticfile.org/jquery/3.2.1/jquery.min.js"></script>
 
-    <!-- Popper.js（用于弹出框等组件） -->
+    <!-- Popper.js (用于弹出框等组件) -->
     <script src="https://cdn.staticfile.org/popper.js/1.15.0/umd/popper.min.js"></script>
 
-    <!-- Bootstrap JS -->
+    <!-- Bootstrap 4 JS (兼容旧组件) -->
     <script src="https://cdn.staticfile.org/twitter-bootstrap/4.3.1/js/bootstrap.min.js"></script>
     <script>
+    /**
+     * 打开居中窗口
+     * @param {string} url - 要打开的URL
+     * @param {string} name - 窗口名称
+     * @param {number} width - 窗口宽度
+     * @param {number} height - 窗口高度
+     */
     function openCentered(url, name, width, height) {
-    const screenLeft = window.screenLeft !== undefined ? window.screenLeft : window.screenX;
-    const screenTop  = window.screenTop  !== undefined ? window.screenTop  : window.screenY;
-    const screenWidth  = window.innerWidth || document.documentElement.clientWidth || screen.width;
-    const screenHeight = window.innerHeight || document.documentElement.clientHeight || screen.height;
+      // 计算屏幕位置和尺寸
+      const screenLeft = window.screenLeft !== undefined ? window.screenLeft : window.screenX;
+      const screenTop  = window.screenTop  !== undefined ? window.screenTop  : window.screenY;
+      const screenWidth  = window.innerWidth || document.documentElement.clientWidth || screen.width;
+      const screenHeight = window.innerHeight || document.documentElement.clientHeight || screen.height;
 
-    const left = screenLeft + (screenWidth - width) / 2;
-    const top  = screenTop  + (screenHeight - height) / 2;
+      // 计算居中位置
+      const left = screenLeft + (screenWidth - width) / 2;
+      const top  = screenTop  + (screenHeight - height) / 2;
 
-    window.open(
-      url,
-      name,
-      `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes`
-    );
+      // 打开新窗口
+      window.open(
+        url,
+        name,
+        `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes`
+      );
     }
     </script>
     <style>
+      /* CSS变量定义 - 用于主题一致性 */
       :root {
-        --brand-1: #0d6efd;
-        --brand-2: #2b9af3;
-        --muted: #6c757d;
-        --card-radius: 16px;
-        --glass: rgba(255,255,255,0.85);
-        --bg-gradient: linear-gradient(120deg, #f7fbff 0%, #eef6ff 50%, #f4fbff 100%);
+        --brand-1: #0d6efd; /* 主品牌色 */
+        --brand-2: #2b9af3; /* 次品牌色 */
+        --muted: #6c757d;   /* 弱化文本色 */
+        --card-radius: 16px; /* 卡片圆角 */
+        --glass: rgba(255,255,255,0.85); /* 毛玻璃效果 */
+        --bg-gradient: linear-gradient(120deg, #f7fbff 0%, #eef6ff 50%, #f4fbff 100%); /* 背景渐变 */
         
-        /* 新增字体变量 */
-        --font-heading: 'Noto Serif SC', serif;
-        --font-body: 'Noto Sans SC', sans-serif;
+        /* 字体变量 */
+        --font-heading: 'Noto Serif SC', serif; /* 标题字体 */
+        --font-body: 'Noto Sans SC', sans-serif; /* 正文字体 */
         
         /* 新增色彩 */
-        --gold: #ffd700;
-        --silver: #c0c0c0;
+        --gold: #ffd700; /* 金色 */
+        --silver: #c0c0c0; /* 银色 */
       }
       
-      /* 添加微妙纹理背景 */
+      /* 添加微妙纹理背景 - 增强视觉层次 */
       body::after {
         content: "";
         position: absolute;
@@ -76,16 +100,18 @@
         z-index: -2;
         opacity: 0.3;
       }
+      /* 基础HTML和BODY样式 */
       html, body {
-        height: 100%;
-        font-family: var(--font-body);
-        color: #223;
-        -webkit-font-smoothing: antialiased;
+        height: 100%; /* 全屏高度 */
+        font-family: var(--font-body); /* 使用正文字体 */
+        color: #223; /* 深蓝色文本 */
+        -webkit-font-smoothing: antialiased; /* 字体抗锯齿 */
         margin: 0;
-        background: url('/static/deliverypages_background.png') center/cover no-repeat fixed;
+        background: url('/static/deliverypages_background.png') center/cover no-repeat fixed; /* 固定背景图 */
         position: relative;
-        line-height: 1.6;
+        line-height: 1.6; /* 行高 */
       }
+      /* 半透明覆盖层 - 增强背景可读性 */
       body::before {
         content: "";
         position: absolute;
@@ -93,27 +119,27 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(255, 255, 255, 0.92);
-        backdrop-filter: blur(5px);
-        z-index: -1;
+        background: rgba(255, 255, 255, 0.92); /* 白色半透明 */
+        backdrop-filter: blur(5px); /* 背景模糊效果 */
+        z-index: -1; /* 置于底层 */
       }
       
-      /* 标题字体美化 */
+      /* 标题字体美化 - 使用标题字体 */
       h1, h2, h3, h4, h5, h6,
       .navbar-brand,
       .nav-link {
-        font-family: var(--font-heading);
-        font-weight: 600;
-        letter-spacing: 0.5px;
-        text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        font-family: var(--font-heading); /* 使用标题字体 */
+        font-weight: 600; /* 中等加粗 */
+        letter-spacing: 0.5px; /* 字母间距 */
+        text-shadow: 0 1px 2px rgba(0,0,0,0.1); /* 文字阴影 */
       }
       
-      /* 导航栏字体特殊美化 */
+      /* 导航栏链接特殊样式 */
       .navbar .nav-link {
-        font-weight: 600;
-        letter-spacing: 0.8px;
-        text-transform: uppercase;
-        font-size: 0.95rem;
+        font-weight: 600; /* 加粗 */
+        letter-spacing: 0.8px; /* 字母间距 */
+        text-transform: uppercase; /* 大写文本 */
+        font-size: 0.95rem; /* 字体大小 */
       }
       
       .navbar-brand {
@@ -121,88 +147,97 @@
         letter-spacing: 1px;
       }
 
+      /* 导航栏基础样式 */
       .navbar {
-        box-shadow: 0 6px 18px rgba(35,63,109,0.06);
-        transition: all 0.3s ease;
+        box-shadow: 0 6px 18px rgba(35,63,109,0.06); /* 柔和阴影 */
+        transition: all 0.3s ease; /* 过渡效果 */
       }
+      /* 导航栏品牌标志样式 */
       .navbar-brand {
-        font-weight: 700;
-        font-size: 1.1rem;
-        letter-spacing: 0.5px;
-        transition: color 0.3s ease;
+        font-weight: 700; /* 加粗 */
+        font-size: 1.1rem; /* 字体大小 */
+        letter-spacing: 0.5px; /* 字母间距 */
+        transition: color 0.3s ease; /* 颜色过渡效果 */
       }
       .navbar-brand:hover {
-        color: var(--brand-1);
+        color: var(--brand-1); /* 悬停时使用品牌色 */
       }
+      /* 导航链接基础样式 */
       .nav-link {
-        color: rgba(34,34,34,0.75) !important;
-        transition: color 0.3s ease;
+        color: rgba(34,34,34,0.75) !important; /* 深灰色半透明 */
+        transition: color 0.3s ease; /* 颜色过渡效果 */
       }
       .nav-link:hover {
-        color: var(--brand-1) !important;
+        color: var(--brand-1) !important; /* 悬停时使用品牌色 */
       }
-      .navbar-toggler { border: none; }
+      .navbar-toggler { 
+        border: none; /* 移除边框 */
+      }
 
+      /* 内容卡片样式 - 主内容区域 */
       .content-card {
-        background-color: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255,255,255,0.6);
-        border-radius: var(--card-radius);
-        padding: 30px;
-        box-shadow: 0 15px 50px rgba(23,43,77,0.18);
-        transition: all 0.3s ease;
-        width: 1250px;
-        margin-left: -60px;
+        background-color: rgba(255, 255, 255, 0.95); /* 半透明白色背景 */
+        backdrop-filter: blur(12px); /* 背景模糊 */
+        border: 1px solid rgba(255,255,255,0.6); /* 半透明边框 */
+        border-radius: var(--card-radius); /* 使用CSS变量定义的圆角 */
+        padding: 30px; /* 内边距 */
+        box-shadow: 0 15px 50px rgba(23,43,77,0.18); /* 阴影效果 */
+        transition: all 0.3s ease; /* 过渡效果 */
+        width: 1250px; /* 固定宽度 */
+        margin-left: -60px; /* 左侧负边距用于居中 */
       }
 
       
-      /* 重要字段样式 */
+      /* 重要字段突出样式 */
       .important-field {
-        font-weight: 600;
-        color: #0d6efd;
-        background: linear-gradient(to right, #f8f9fa, #e9ecef);
-        padding: 8px 15px;
-        border-radius: 10px;
-        border-left: 3px solid #0d6efd;
+        font-weight: 600; /* 加粗 */
+        color: #0d6efd; /* 品牌蓝色 */
+        background: linear-gradient(to right, #f8f9fa, #e9ecef); /* 渐变背景 */
+        padding: 8px 15px; /* 内边距 */
+        border-radius: 10px; /* 圆角 */
+        border-left: 3px solid #0d6efd; /* 左侧边框 */
       }
       
-      /* 状态标签美化 */
+      /* 状态标签美化 - 用于显示发货状态 */
       .badge-status {
-        font-weight: 700;
-        letter-spacing: 0.5px;
-        text-shadow: 0 1px 1px rgba(0,0,0,0.1);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        font-weight: 700; /* 加粗 */
+        letter-spacing: 0.5px; /* 字母间距 */
+        text-shadow: 0 1px 1px rgba(0,0,0,0.1); /* 文字阴影 */
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* 盒子阴影 */
       }
       
-      /* 数字高亮 */
+      /* 数字高亮样式 - 用于突出显示重要数值 */
       .highlight-number {
-        font-weight: 700;
-        font-size: 1.2em;
-        color: #0d6efd;
-        background: rgba(13, 110, 253, 0.1);
-        padding: 3px 10px;
-        border-radius: 8px;
-        display: inline-block;
+        font-weight: 700; /* 加粗 */
+        font-size: 1.2em; /* 较大字体 */
+        color: #0d6efd; /* 品牌蓝色 */
+        background: rgba(13, 110, 253, 0.1); /* 浅蓝色背景 */
+        padding: 3px 10px; /* 内边距 */
+        border-radius: 8px; /* 圆角 */
+        display: inline-block; /* 行内块显示 */
       }
 
+      /* 表格头部样式 */
       .table thead th {
-        border-bottom: 0;
-        color: #445;
-        font-weight: 600;
+        border-bottom: 0; /* 移除底部边框 */
+        color: #445; /* 深灰色文本 */
+        font-weight: 600; /* 中等加粗 */
       }
+      /* 表格行悬停效果 */
       .table tbody tr {
-        transition: transform 0.12s ease, box-shadow 0.12s ease;
+        transition: transform 0.12s ease, box-shadow 0.12s ease; /* 平滑过渡 */
       }
       .table tbody tr:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 8px 24px rgba(25,40,70,0.05);
+        transform: translateY(-3px); /* 上移效果 */
+        box-shadow: 0 8px 24px rgba(25,40,70,0.05); /* 阴影效果 */
       }
 
+      /* 状态徽章基础样式 */
       .badge-status {
-        font-weight: 600;
-        border-radius: 10px;
-        padding: .4rem .6rem;
-        text-transform: capitalize;
+        font-weight: 600; /* 加粗 */
+        border-radius: 10px; /* 圆角 */
+        padding: .4rem .6rem; /* 内边距 */
+        text-transform: capitalize; /* 首字母大写 */
       }
       .badge-status[data-status="已发货"] {
         background-color: #198754;
@@ -217,16 +252,18 @@
         color: #fff;
       }
 
+      /* 通用过渡效果 - 按钮、导航链接、表格行 */
       .btn,
       .nav-link,
       .table tbody tr {
-        transition: all 0.3s ease;
+        transition: all 0.3s ease; /* 平滑过渡 */
       }
 
+      /* 主按钮样式 - 渐变背景 */
       .btn-primary {
-        background-image: linear-gradient(90deg,var(--brand-1),var(--brand-2));
-        border: none;
-        box-shadow: 0 6px 18px rgba(43,154,243,0.12);
+        background-image: linear-gradient(90deg,var(--brand-1),var(--brand-2)); /* 品牌色渐变 */
+        border: none; /* 无边框 */
+        box-shadow: 0 6px 18px rgba(43,154,243,0.12); /* 阴影效果 */
       }
       .btn-outline-soft {
         border-radius: 10px;
@@ -234,42 +271,45 @@
         background: transparent;
       }
 
+      /* 页脚样式 */
       .app-footer {
-        font-size: .9rem;
-        color: var(--muted);
-        padding: 18px 0;
+        font-size: .9rem; /* 较小字体 */
+        color: var(--muted); /* 使用弱化文本色 */
+        padding: 18px 0; /* 内边距 */
       }
       
-      /* Form title styling */
+      /* 表单标题容器 - 用于表单页面的标题区域 */
       .form-title-container {
-        background: linear-gradient(135deg, #0d6efd, #6f42c1);
-        border-radius: 16px;
-        padding: 15px 25px;
-        margin-bottom: 25px;
-        text-align: center;
-        box-shadow: 0 8px 24px rgba(13, 110, 253, 0.15);
+        background: linear-gradient(135deg, #0d6efd, #6f42c1); /* 渐变背景 */
+        border-radius: 16px; /* 圆角 */
+        padding: 15px 25px; /* 内边距 */
+        margin-bottom: 25px; /* 底部外边距 */
+        text-align: center; /* 居中文本 */
+        box-shadow: 0 8px 24px rgba(13, 110, 253, 0.15); /* 阴影效果 */
       }
       
+      /* 表单标题样式 */
       .form-title {
-        color: white;
-        font-weight: 700;
-        font-size: 1.6rem;
-        margin: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 15px;
+        color: white; /* 白色文本 */
+        font-weight: 700; /* 加粗 */
+        font-size: 1.6rem; /* 大字体 */
+        margin: 0; /* 无外边距 */
+        display: flex; /* 弹性布局 */
+        align-items: center; /* 垂直居中 */
+        justify-content: center; /* 水平居中 */
+        gap: 15px; /* 元素间距 */
       }
       
+      /* 表单标题图标样式 */
       .form-title i {
-        font-size: 1.8rem;
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 50%;
-        width: 50px;
-        height: 50px;
+        font-size: 1.8rem; /* 图标大小 */
+        background: rgba(255, 255, 255, 0.2); /* 半透明白色背景 */
+        border-radius: 50%; /* 圆形 */
+        width: 50px; /* 固定宽度 */
+        height: 50px; /* 固定高度 */
         display: flex;
-        align-items: center;
-        justify-content: center;
+        align-items: center; /* 垂直居中 */
+        justify-content: center; /* 水平居中 */
       }
 
       @media (max-width: 767px) {
@@ -280,35 +320,51 @@
 
 
     </style>
+    <!-- 结束样式定义 -->
 
+    <!-- 额外头部内容块 - 子模板可在此添加特定页面的CSS或meta标签 -->
     {% block head_extra %}{% endblock %}
   </head>
+  <!-- 结束头部区域 -->
   <body>
-    <!-- 顶部导航 - 美化版 -->
+    <!-- 
+      顶部导航栏 
+      功能: 提供主要导航功能，包含品牌标志和菜单项
+      特点:
+        - 渐变背景和阴影效果
+        - 响应式设计，支持移动设备
+        - 包含返回系统首页按钮
+    -->
     <nav class="navbar navbar-expand-lg" style="background: linear-gradient(135deg, #0d6efd, #6f42c1); box-shadow: 0 4px 20px rgba(13, 110, 253, 0.25);">
       <div class="container-fluid">
+        <!-- 品牌标志区域 -->
         <div class="d-flex align-items-center">
           
-          <!-- 品牌标志 - 美化 -->
+          <!-- 品牌标志 - 美化设计 -->
           <a class="navbar-brand text-white d-flex align-items-center gap-2" >
+            <!-- 圆形标志 -->
             <span class="rounded-circle d-inline-flex justify-content-center align-items-center" style="width:40px;height:40px;background:linear-gradient(90deg, #ffffff, #e6f7ff); color:#0d6efd; font-weight:800; box-shadow: 0 0 10px rgba(255,255,255,0.5)">发</span>
+            <!-- 品牌文字 (在中等及以上屏幕显示) -->
             <div class="d-none d-md-block">
               <div style="font-size:1.5rem; font-weight:600; text-shadow: 0 2px 4px rgba(0,0,0,0.2)">发货管理中心</div>
             </div>
           </a>
         </div>
         
-         <!-- 返回首页按钮 - 美化 -->
-          <a class="btn btn-home-return me-3" href="{{ url_for('auth.dashboard') }}">
-            🏠 系统首页
-          </a>
+        <!-- 返回首页按钮 - 美化设计 -->
+        <a class="btn btn-home-return me-3" href="{{ url_for('auth.dashboard') }}">
+          🏠 系统首页
+        </a>
 
-        <!-- 导航菜单 - 美化 -->
+        <!-- 导航菜单切换按钮 (移动设备) -->
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" style="border-color: rgba(255,255,255,0.5);">
           <span class="navbar-toggler-icon" style="filter: invert(1);"></span>
         </button>
+        
+        <!-- 导航菜单项 -->
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav">
+            <!-- 发货管理首页 -->
             <li class="nav-item mx-1">
               <a class="nav-link text-white fw-medium position-relative" href="{{ url_for('delivery.delivery_home') }}" style="transition: all 0.3s; color: white !important;">
                 <h6>🚚 发货管理首页</h6>
@@ -316,6 +372,7 @@
               </a>
             </li>
 
+            <!-- 物料信息 -->
             <li class="nav-item mx-1">
               <a class="nav-link text-white fw-medium position-relative" href="{{ url_for('delivery.inventory_detail') }}" style="transition: all 0.3s; color: white !important;">
                 <h6>🔢 物料信息</h6>
@@ -323,13 +380,15 @@
               </a>
             </li>
 
-              <li class="nav-item mx-1">
+            <!-- 发货单管理 -->
+            <li class="nav-item mx-1">
               <a class="nav-link text-white fw-medium position-relative" href="{{ url_for('delivery.delivery_list') }}" style="transition: all 0.3s; color: white !important;">
                 <h6>🔍 发货单管理</h6>
                 <span class="position-absolute bottom-0 start-0 w-100 bg-white" style="height:2px; opacity:0; transition: opacity 0.3s;"></span>
               </a>
             </li>
             
+            <!-- 创建发货单 -->
             <li class="nav-item mx-1">
               <a class="nav-link text-white fw-medium position-relative" href="{{ url_for('delivery.create_delivery') }}" style="transition: all 0.3s; color: white !important;">
                 <h6>📝 创建发货单</h6>
@@ -337,6 +396,7 @@
               </a>
             </li>
 
+            <!-- 拣货 -->
             <li class="nav-item mx-1">
               <a class="nav-link text-white fw-medium position-relative" href="{{ url_for('delivery.picking_task_list') }}" style="transition: all 0.3s; color: white !important;">
                 <h6>📦 拣货</h6>
@@ -344,6 +404,7 @@
               </a>
             </li>
 
+            <!-- 发货 -->
             <li class="nav-item mx-1">
               <a class="nav-link text-white fw-medium position-relative" href="{{ url_for('delivery.shipment_list')}}" style="transition: all 0.3s; color: white !important;">
                 <h6>📤 发货</h6>
@@ -351,6 +412,7 @@
               </a>
             </li>
 
+            <!-- 过账 -->
             <li class="nav-item mx-1">
               <a class="nav-link text-white fw-medium position-relative" href="{{ url_for('delivery.post_list' )}}" style="transition: all 0.3s; color: white !important;">
                 <h6>📜 过账</h6>
@@ -358,44 +420,49 @@
               </a>
             </li>
 
+            <!-- 库存变动查询 -->
             <li class="nav-item mx-1">
               <a class="nav-link text-white fw-medium position-relative" href="{{ url_for('delivery.inventory_movement' )}}" style="transition: all 0.3s; color: white !important;">
                 <h6>📊 库存变动查询</h6>
                 <span class="position-absolute bottom-0 start-0 w-100 bg-white" style="height:2px; opacity:0; transition: opacity 0.3s;"></span>
               </a>
             </li>
-            
           </ul>
         </div>
+        <!-- 结束导航菜单 -->
       </div>
     </nav>
+    <!-- 结束导航栏 -->
 
-    <!-- 导航栏悬停效果 -->
+    <!-- 导航栏悬停效果样式 -->
     <style>
+      /* 导航链接悬停效果 */
       .navbar .nav-link:hover {
-        transform: translateY(-2px);
-        opacity: 0.9 !important;
+        transform: translateY(-2px); /* 上移效果 */
+        opacity: 0.9 !important; /* 轻微透明 */
       }
+      /* 导航链接下划线悬停效果 */
       .navbar .nav-link:hover span {
-        opacity: 1 !important;
+        opacity: 1 !important; /* 显示下划线 */
       }
       
-      /* Home button styles */
+      /* 返回首页按钮样式 */
       .btn-home-return {
-        border-radius: 20px;
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(245, 247, 255, 0.95));
-        border: none;
-        color: #0d6efd;
-        font-weight: 600;
-        padding: 0.5rem 1.2rem;
-        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.15);
-        transition: all 0.3s ease;
-        display: inline-flex;
-        align-items: center;
-        position: relative;
-        overflow: hidden;
+        border-radius: 20px; /* 圆角 */
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(245, 247, 255, 0.95)); /* 渐变背景 */
+        border: none; /* 无边框 */
+        color: #0d6efd; /* 品牌蓝色 */
+        font-weight: 600; /* 加粗 */
+        padding: 0.5rem 1.2rem; /* 内边距 */
+        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.15); /* 阴影效果 */
+        transition: all 0.3s ease; /* 过渡效果 */
+        display: inline-flex; /* 行内弹性布局 */
+        align-items: center; /* 垂直居中 */
+        position: relative; /* 相对定位 */
+        overflow: hidden; /* 溢出隐藏 */
       }
       
+      /* 返回首页按钮悬停效果 - 覆盖层 */
       .btn-home-return::before {
         content: '';
         position: absolute;
@@ -403,37 +470,46 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background: linear-gradient(135deg, rgba(13, 110, 253, 0.1), rgba(111, 66, 193, 0.1));
-        opacity: 0;
-        transition: opacity 0.3s ease;
+        background: linear-gradient(135deg, rgba(13, 110, 253, 0.1), rgba(111, 66, 193, 0.1)); /* 渐变覆盖层 */
+        opacity: 0; /* 初始透明 */
+        transition: opacity 0.3s ease; /* 透明度过渡 */
       }
       
       .btn-home-return:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 6px 18px rgba(13, 110, 253, 0.25);
-        color: #0a58ca;
+        transform: translateY(-3px); /* 上移效果 */
+        box-shadow: 0 6px 18px rgba(13, 110, 253, 0.25); /* 增强阴影 */
+        color: #0a58ca; /* 深蓝色 */
       }
       
       .btn-home-return:hover::before {
-        opacity: 1;
+        opacity: 1; /* 显示覆盖层 */
       }
       
+      /* 返回首页按钮图标过渡效果 */
       .btn-home-return i {
-        transition: transform 0.3s ease;
+        transition: transform 0.3s ease; /* 变换过渡 */
       }
       
       .btn-home-return:hover i {
-        transform: translateX(-3px);
+        transform: translateX(-3px); /* 左移效果 */
       }
     </style>
+    <!-- 结束导航栏悬停效果 -->
 
-    <!-- 消息提示 -->
+    <!-- 
+      消息提示区域 
+      功能: 显示操作反馈消息(成功、错误、警告等)
+      特点:
+        - 使用Flask的flash消息系统
+        - 支持多种消息类型(通过category)
+        - 包含可关闭按钮
+    -->
     <div class="container mt-3">
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           {% for category, msg in messages %}
             <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-              {{ msg }}
+              {{ msg }} <!-- 消息内容 -->
               <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="关闭"></button>
             </div>
           {% endfor %}
@@ -441,30 +517,48 @@
       {% endwith %}
     </div>
 
-    <!-- 主体内容 -->
+    <!-- 
+      主体内容区域 
+      功能: 包含页面的主要内容
+      特点:
+        - 使用content-card样式容器
+        - 提供可扩展的内容块(content)
+    -->
     <div class="container">
       <div class="content-card">
+        <!-- 内容块 - 子模板将在此插入具体内容 -->
         {% block content %}{% endblock %}
       </div>
     </div>
 
-    <!-- Bootstrap JS -->
+    <!-- Bootstrap 5 JS (使用bundle版本包含所有组件) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
+    <!-- 脚本块 - 子模板可在此添加特定页面的JavaScript -->
     {% block scripts %}
     <script>
+      /**
+       * 页面加载后自动聚焦第一个输入元素
+       * 提高表单可用性
+       */
       (function(){
         try {
+          // 查找内容区域中的第一个输入元素
           const firstInput = document.querySelector('.content-card input:not([type=hidden]), .content-card textarea, .content-card select');
-          if (firstInput) firstInput.focus();
-        } catch(e){ /* noop */ }
+          if (firstInput) firstInput.focus(); // 自动聚焦
+        } catch(e){ /* 忽略错误 */ }
       })();
 
+      /**
+       * 初始化工具提示
+       * 为所有带有data-bs-toggle="tooltip"属性的元素启用Bootstrap工具提示
+       */
       document.addEventListener('DOMContentLoaded', function(){
         const tooltips = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        tooltips.map(el => new bootstrap.Tooltip(el));
+        tooltips.map(el => new bootstrap.Tooltip(el)); // 初始化工具提示
       });
     </script>
     {% endblock %}
   </body>
 </html>
+<!-- 结束基础模板 -->

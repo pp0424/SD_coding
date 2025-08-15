@@ -1,65 +1,77 @@
 {% extends "delivery/base.html" %}
+{# 
+  文件：拣货任务详情页模板
+  功能：显示单个拣货任务的详细信息及关联物料明细
+  继承：delivery/base.html 基础模板
+#}
 
 {% block content %}
+<!-- 页面标题：显示当前拣货任务编号 -->
 <div class="form-title-container">
   <h1 class="form-title">📦 拣货任务: {{ task.task_id }}</h1>
 </div>
 
 <div class="container mt-4">
+  <!-- 页面顶部按钮区 -->
   <div class="d-flex justify-content-between align-items-center mb-4">
+    <!-- 返回拣货任务列表 -->
     <a href="{{ url_for('delivery.picking_task_list') }}" class="btn btn-outline-primary">拣货任务列表</a>
+
     {% if delivery %}
+      <!-- 查看关联的发货单 -->
       <a href="{{ url_for('delivery.delivery_detail', delivery_id=delivery.delivery_note_id) }}" class="btn btn-outline-primary">查看发货单</a>
 
-    {% if task.status == '已取消' %}
-            <a href="javascript:void(0);"
-          class="btn btn-secondary disabled"
-          aria-disabled="true">
-            取消拣货
+      {# 判断状态：已取消时禁用“取消拣货”按钮 #}
+      {% if task.status == '已取消' %}
+        <a href="javascript:void(0);" class="btn btn-secondary disabled" aria-disabled="true">
+          取消拣货
         </a>
-
-    {% else %}
-        <a href="{{ url_for('delivery.cancel_picking_task', task_id=task.task_id) }}"
-          class="btn btn-primary">
-            取消拣货
+      {% else %}
+        <!-- 可点击的取消拣货按钮 -->
+        <a href="{{ url_for('delivery.cancel_picking_task', task_id=task.task_id) }}" class="btn btn-primary">
+          取消拣货
         </a>
-    {% endif %}
+      {% endif %}
 
-    {% if task.status == '待拣货' %}
+      {# 状态为待拣货时才能执行拣货，否则按钮禁用 #}
+      {% if task.status == '待拣货' %}
         <a href="{{ url_for('delivery.confirm_picking_page', delivery_id=delivery.delivery_note_id, task_id=task.task_id) }}"
-          class="btn btn-primary">
-            执行拣货
+           class="btn btn-primary">
+          执行拣货
         </a>
-    {% else %}
-        <a href="javascript:void(0);"
-          class="btn btn-secondary disabled"
-          aria-disabled="true">
-            执行拣货
+      {% else %}
+        <a href="javascript:void(0);" class="btn btn-secondary disabled" aria-disabled="true">
+          执行拣货
         </a>
+      {% endif %}
     {% endif %}
-        {% endif %}
   </div>
 
+  <!-- 任务信息卡片 -->
   <div class="card shadow-sm mb-4">
     <div class="card-header bg-light"><h5 class="mb-0">任务信息</h5></div>
     <div class="card-body">
       <div class="row">
+        <!-- 左半部分：任务基础信息 -->
         <div class="col-md-6">
           <p><strong>任务号:</strong> {{ task.task_id }}</p>
           <p><strong>销售订单:</strong> {{ task.sales_order_id }}</p>
           <p><strong>仓库:</strong> {{ task.warehouse_code }}</p>
           <p><strong>拣货员:</strong> {{ task.picker or '-' }}</p>
         </div>
+        <!-- 右半部分：任务进度信息 -->
         <div class="col-md-6">
           <p><strong>状态:</strong> {{ task.status }}</p>
           <p><strong>开始时间:</strong> {{ task.start_time.strftime('%Y-%m-%d %H:%M') if task.start_time else '-' }}</p>
           <p><strong>完成时间:</strong> {{ task.complete_time.strftime('%Y-%m-%d %H:%M') if task.complete_time else '-' }}</p>
         </div>
       </div>
+      <!-- 任务备注 -->
       <p><strong>备注:</strong> {{ task.remarks or '-' }}</p>
     </div>
   </div>
 
+  <!-- 拣货明细卡片 -->
   <div class="card shadow-sm mb-4">
     <div class="card-header bg-light"><h5 class="mb-0">拣货明细</h5></div>
     <div class="card-body">
@@ -77,21 +89,28 @@
         <tbody>
           {% for it in task.items %}
           <tr>
+            <!-- 行号 -->
             <td>{{ it.item_no }}</td>
+            <!-- 物料编号 -->
             <td>{{ it.material_id }}</td>
+            <!-- 物料描述：若未关联物料对象则显示 '-' -->
             <td>{{ it.material.description if it.material else '-' }}</td>
+            <!-- 仓库存放位置 -->
             <td>{{ it.storage_location or '-' }}</td>
+            <!-- 需求数量，保留两位小数 -->
             <td>{{ "%.2f"|format(it.required_quantity or 0) }}</td>
+            <!-- 已拣数量，保留两位小数 -->
             <td>{{ "%.2f"|format(it.picked_quantity or 0) }}</td>
           </tr>
           {% else %}
-          <tr><td colspan="6" class="text-center">暂无明细</td></tr>
+          <!-- 没有明细记录时的占位提示 -->
+          <tr>
+            <td colspan="6" class="text-center">暂无明细</td>
+          </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
   </div>
-
-
 </div>
 {% endblock %}

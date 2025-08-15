@@ -2,24 +2,25 @@
 {% block title %}过账发货列表{% endblock %}
 
 {% block head_extra %}
+<!-- 引入页面专用样式文件 -->
 <link rel="stylesheet" href="{{ url_for('static', filename='delivery/delivery_styles.css') }}">
 
 <style>
-  /* 布局与容器 */
+  /* ===== 布局与容器 ===== */
   .page-container {
     max-width: 1180px;
     margin: 0 auto;
     padding: 16px 16px 24px;
   }
 
-  /* 卡片 */
+  /* ===== 卡片容器与卡片头部 ===== */
   .delivery-card {
     width: 100%;
     background: #fff;
     border: 1px solid #eaecef;
     border-radius: 12px;
     box-shadow: 0 4px 16px rgba(18, 38, 63, 0.06);
-    overflow: hidden;
+    overflow: hidden; /* 圆角与阴影配合，避免内层溢出 */
   }
   .card-header {
     padding: 16px 18px 10px;
@@ -27,20 +28,20 @@
     background: linear-gradient(180deg, #fafbfd 0%, #ffffff 100%);
   }
 
-  /* 工具栏 */
+  /* ===== 工具栏（标题、统计、快捷按钮） ===== */
   .toolbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    flex-wrap: wrap;
+    flex-wrap: wrap; /* 保证小屏不挤压换行 */
   }
   .toolbar .stats-info {
     color: #6b7280;
     font-size: 0.9rem;
   }
 
-  /* 查询表单与元素 */
+  /* ===== 查询表单与元素 ===== */
   .query-form {
     padding: 12px 18px 4px;
   }
@@ -59,23 +60,23 @@
     color: #fff;
   }
 
-  /* 表格 */
+  /* ===== 列表表格区域 ===== */
   .table-wrap {
     padding: 10px 12px 16px;
   }
   .table-responsive {
-    max-height: 62vh;
+    max-height: 62vh; /* 纵向空间限制，头部 sticky 可用 */
     overflow: auto;
     border-radius: 10px;
     border: 1px solid #eef1f5;
   }
   .delivery-table {
     width: 100%;
-    border-collapse: separate;
+    border-collapse: separate; /* 允许 sticky 与圆角更好配合 */
     border-spacing: 0;
   }
   .delivery-table thead th {
-    position: sticky;
+    position: sticky; /* 固定表头 */
     top: 0;
     z-index: 2;
     background: #f8fafc;
@@ -84,20 +85,20 @@
     font-size: 0.92rem;
     border-bottom: 1px solid #e5e7eb;
     padding: 10px 12px;
-    white-space: nowrap;
+    white-space: nowrap; /* 防止表头换行 */
   }
   .delivery-table tbody td {
     padding: 10px 12px;
     border-bottom: 1px solid #f1f5f9;
     color: #1f2937;
     vertical-align: middle;
-    white-space: nowrap;
+    white-space: nowrap; /* 避免数据换行影响行高 */
   }
   .delivery-table tbody tr:hover {
     background: #fafafa;
   }
 
-  /* 徽章与操作按钮 */
+  /* ===== 徽章与操作按钮 ===== */
   .badge {
     border-radius: 999px;
     padding: 0.35rem 0.6rem;
@@ -108,7 +109,7 @@
     border-radius: 8px;
   }
 
-  /* 空状态 */
+  /* ===== 空状态展示 ===== */
   .empty-state {
     text-align: center;
     color: #6b7280;
@@ -124,6 +125,7 @@
     gap: 6px;
   }
 
+  /* ===== 响应式优化 ===== */
   @media (max-width: 768px) {
     .table-responsive { max-height: 60vh; }
     .btn-action { padding: 6px 8px; }
@@ -132,35 +134,45 @@
 {% endblock %}
 
 {% block content %}
+  <!-- 页标题（可复用项目样式） -->
   <div class="form-title-container">
     <h1 class="form-title">📜 执行过账</h1>
   </div>
   
 <div class="page-container">
+  <!-- 主卡片：包含工具栏、查询表单、结果表格 -->
   <div class="delivery-card animate-fade">
     <div class="card-header">
+      <!-- 工具栏：标题 + 统计 + 快捷操作 -->
       <div class="toolbar">
         <div>
           <i class="bi bi-list-ul me-2"></i>
           <strong>待过账发货单列表</strong>
+          <!-- 统计数量：deliveries 已被视图准备为待过账集合 -->
           <span class="stats-info ms-3">共找到 {{ deliveries|length }} 条记录</span>
         </div>
         <div class="d-flex gap-2">
+          <!-- 新建发货单入口 -->
           <a href="{{ url_for('delivery.create_delivery') }}" class="btn btn-primary btn-sm">
             <i class="bi bi-plus-circle me-1"></i> 新建发货单
           </a>
+          <!-- 打印当前页面 -->
           <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
             <i class="bi bi-printer me-1"></i> 打印
           </button>
         </div>
       </div>
 
+      <!-- 查询表单：支持按发货单号、销售订单号、日期范围过滤 -->
       <form method="post" class="row g-3 query-form align-items-end">
-        {{ form.csrf_token }}
+        {{ form.csrf_token }} <!-- CSRF 防护令牌 -->
+
+        <!-- 发货单 ID：带小窗选择 -->
         <div class="col-md-2">
             <label class="form-label" for="delivery_id">{{ form.delivery_id.label.text }}</label>
             <div class="input-group">
               {{ form.delivery_id(class="form-control", id="delivery_id") }}
+              <!-- 打开发货单选择辅助弹窗（openCentered 需全局定义） -->
               <button type="button" class="btn btn-outline-secondary"
                       onclick="openCentered('{{ url_for('delivery.delivery_helper') }}', 'deliveryHelper', 800, 600)">
                 <i class="bi bi-search"></i>
@@ -168,31 +180,39 @@
             </div>
           </div>
 
-          <!-- 销售订单 ID -->
+          <!-- 销售订单 ID：带小窗选择 -->
           <div class="col-md-2">
             <label class="form-label" for="sales_order_id">{{ form.sales_order_id.label.text }}</label>
             <div class="input-group">
               {{ form.sales_order_id(class="form-control", id="sales_order_id") }}
+              <!-- 打开销售订单选择辅助弹窗 -->
               <button type="button" class="btn btn-outline-secondary"
                       onclick="openCentered('{{ url_for('delivery.sales_helper') }}', 'salesHelper', 800, 600)">
                 <i class="bi bi-search"></i>
               </button>
             </div>
           </div>
+
+        <!-- 日期范围：开始 -->
         <div class="col-md-2">
           {{ form.start_date.label(class="form-label") }}
           {{ form.start_date(class="form-control", type="date") }}
         </div>
+
+        <!-- 日期范围：结束 -->
         <div class="col-md-2">
           {{ form.end_date.label(class="form-label") }}
           {{ form.end_date(class="form-control", type="date") }}
         </div>
+
+        <!-- 提交按钮 -->
         <div class="col-md-2">
           {{ form.submit(class="btn btn-search w-100") }}
         </div>
       </form>
     </div>
 
+    <!-- 结果表格区域 -->
     <div class="table-wrap">
       <div class="table-responsive">
         <table class="delivery-table table-hover">
@@ -212,15 +232,24 @@
           <tbody>
             {% for delivery in deliveries %}
             <tr>
+              <!-- 发货单号：跳转详情页 -->
               <td>
                 <a href="{{ url_for('delivery.delivery_detail', delivery_id=delivery.delivery_note_id) }}"
                    class="text-decoration-none fw-bold text-primary">
                   {{ delivery.delivery_note_id }}
                 </a>
               </td>
+
+              <!-- 关联销售订单号 -->
               <td><span class="text-muted">{{ delivery.sales_order_id }}</span></td>
+
+              <!-- 发货日期：允许为空 -->
               <td>{{ delivery.delivery_date.strftime('%Y-%m-%d') if delivery.delivery_date else '-' }}</td>
+
+              <!-- 仓库代码：用浅色徽章展示 -->
               <td><span class="badge bg-light text-dark">{{ delivery.warehouse_code }}</span></td>
+
+              <!-- 状态：根据不同状态显示不同颜色 -->
               <td>
                 <span class="badge
                   {% if delivery.status == '已创建' %}bg-primary
@@ -232,9 +261,15 @@
                   {{ delivery.status }}
                 </span>
               </td>
+
+              <!-- 过账人/时间/备注：为空时显示 '-' -->
               <td><small class="text-muted">{{ delivery.posted_by or '-' }}</small></td>
               <td><small class="text-muted">{{ delivery.posted_at.strftime('%Y-%m-%d %H:%M') if delivery.posted_at else '-' }}</small></td>
               <td><small class="text-muted">{{ delivery.remarks or '-' }}</small></td>
+
+              <!-- 操作按钮：
+                   - 已发货：可进入“过账”操作
+                   - 详情：总是可见 -->
               <td>
                 <div class="d-flex flex-wrap gap-1">
                   {% if delivery.status == '已发货' %}
@@ -251,6 +286,7 @@
               </td>
             </tr>
             {% else %}
+            <!-- 当 deliveries 为空时的占位行 -->
             <tr>
               <td colspan="9" class="empty-state">
                 <div class="inner">
@@ -272,15 +308,26 @@
 
 {% block scripts %}
 <script>
+  /**
+   * 自动关闭带关闭按钮的 Bootstrap Alert
+   * - 5 秒后依次关闭页面上所有 .alert-dismissible
+   */
   setTimeout(() => {
     document.querySelectorAll('.alert-dismissible').forEach(alert => {
       new bootstrap.Alert(alert).close();
     });
   }, 5000);
 
+  /**
+   * 行点击跳转逻辑：
+   * - 点击一行时，如果未点击到 a、button、form 等交互元素，则跳转到行内“详情”链接
+   * - 便于整行可点击的浏览体验
+   */
   document.querySelectorAll('tbody tr').forEach(row => {
     row.addEventListener('click', e => {
+      // 忽略在链接、按钮、或表单上的点击，避免冲突
       if (e.target.closest('a, button, form')) return;
+      // 找到该行中的详情链接（包含 delivery_detail 的链接）
       const link = row.querySelector('a[href*="delivery_detail"]');
       if (link) window.location.href = link.href;
     });
