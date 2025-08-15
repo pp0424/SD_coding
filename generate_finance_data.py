@@ -5,6 +5,10 @@ import random
 import uuid
 import csv
 from decimal import Decimal
+
+
+
+#财务模块数据生成脚本
 # 设置随机种子以确保可重现性
 np.random.seed(42)
 random.seed(42)

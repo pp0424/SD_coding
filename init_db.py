@@ -4,6 +4,8 @@ from order.models import Inquiry, InquiryItem  # 导入你所有模块的模型
 from order.models import  Quotation, QuotationItem
 from order.models import  SalesOrder,OrderItem,Material
 
+
+#数据库中订单模块相关部分的初始化
 with app.app_context():
     db.drop_all()  # 删除所有表
     print("✅ 数据库已重置，所有表已删除")

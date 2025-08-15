@@ -20,6 +20,7 @@ order_bp = Blueprint('order', __name__, template_folder='templates')
 def order_home():
     return render_template('order/index.html')
 
+#创建询价单
 @order_bp.route('/create-inquiry',methods=['GET', 'POST'])
 def create_inquiry():
     
@@ -73,9 +74,11 @@ def create_inquiry():
 
     return render_template('order/create_Inquiry_with_items.html', form=form)
 
+#获得询价单ID
 def get_inquiry_by_id(inquiry_id):
     return Inquiry.query.options(joinedload(Inquiry.items)).filter_by(inquiry_id=inquiry_id).first()
 
+#修改询价单
 @order_bp.route('/edit-inquiry', methods=['GET', 'POST'])
 def edit_prompt():
     if request.method == 'POST':
@@ -285,7 +288,7 @@ def approve_inquiry():
     flash('✅ 状态已更新为“已评审”', 'success')
     return redirect(url_for('order.edit_prompt'))
 
-
+#查询询价单
 @order_bp.route('/query-inquiry', methods=['GET', 'POST'])
 def query_inquiry():
     form = InquirySearchForm()
@@ -318,7 +321,7 @@ def query_inquiry():
 
 @order_bp.route('/api/inquiry/<inquiry_id>')
 def get_inquiry_data(inquiry_id):
-    """获取指定询价单的详细信息，用于复制到报价单"""
+    #获取指定询价单的详细信息，用于复制到报价单
     inquiry = Inquiry.query.options(joinedload(Inquiry.items)).filter_by(inquiry_id=inquiry_id).first()
     if not inquiry:
         return jsonify({'success': False, 'message': '询价单不存在'}), 404
@@ -344,6 +347,7 @@ def get_inquiry_data(inquiry_id):
         }
     })
 
+#复制询价单内容或自主创建报价单
 @order_bp.route('/create-quote', methods=['GET', 'POST'])
 def create_quotation():
     if request.method == 'POST':
@@ -410,6 +414,7 @@ def create_quotation():
 
     return render_template('order/create_quotation.html')
 
+#修改报价单前先查询
 @order_bp.route('/edit-quote', methods=['GET', 'POST'])
 def edit_quote_prompt():
     if request.method == 'POST':
@@ -574,6 +579,8 @@ def edit_quote_save():
     return render_template('order/edit_quote_confirm_update.html', old=old_data, new=new_data, quotation_id=quote_id,min=min,old_items_map=old_items_map,
     new_items_map=new_items_map,all_item_nos=all_item_nos)
 
+
+#修改报价单的确认页
 @order_bp.route('/edit-quote/confirm_update', methods=['POST'])
 def confirm_quote_update():
     quote_id = request.form.get('quotation_id')
@@ -586,7 +593,7 @@ def confirm_quote_update():
 
     return redirect(url_for('order.edit_quote_prompt'))
 
-
+#审批报价单——“审核通过”button
 @order_bp.route('/edit-quote/approve', methods=['POST'])
 def approve_quotation():
     quote_id = request.form.get('quotation_id')
@@ -597,11 +604,13 @@ def approve_quotation():
         flash('报价单状态已变更为“已发送”')
     return redirect(url_for('order.edit_quote_prompt'))
 
+#查询报价单
 @order_bp.route('/query-quote', methods=['GET', 'POST'])
 def query_quotation():
     form = QuotationSearchForm()
     results = []
 
+    #特定关键词搜索
     if form.validate_on_submit():
         if form.show_all.data:
             results = Quotation.query.options(joinedload(Quotation.items)).all()
@@ -648,20 +657,20 @@ def get_quotation_data(quotation_id):
         }
     })
 
-
+#物料编号搜索
 @order_bp.route('/api/check-material/<mat_id>')
 def api_check_material(mat_id):
     exists = Material.query.get(mat_id) is not None
     return {'exists': exists}
 
-
+#创建订单（复制报价单）
 @order_bp.route('/create-order', methods=['GET', 'POST'])
 def create_order():
     if request.method == 'GET':
         return render_template('order/create_order.html')
 
     # POST 创建逻辑
-    order_id = f"SO-{datetime.now().strftime('%Y%m%d-%H%M%S')}{random.randint(100,999)}"
+    order_id = f"SO-{datetime.now().strftime('%Y%m%d-%H%M%S')}{random.randint(100,999)}"#订单编号创建逻辑
     save_type = request.form.get('save_type')
     order = SalesOrder(
         sales_order_id=order_id,
@@ -706,7 +715,7 @@ def create_order():
     flash("订单创建完成 ✅" if save_type == 'create' else "草稿保存成功 ✅", "success")
     return redirect(url_for('order.order_detail', sales_order_id=order_id))
 
-
+#订单详情页
 @order_bp.route('/order-detail/<sales_order_id>')
 def order_detail(sales_order_id):
     order = SalesOrder.query.options(
@@ -734,7 +743,7 @@ def edit_order():
             error = f"未找到订单号 {order_id}。请确认输入。"
     return render_template('order/edit_order.html', order=order, searched=searched)
 
-
+#修改订单基本信息
 @order_bp.route('/edit-order/basic/<order_id>', methods=['GET', 'POST'])
 def edit_order_basic(order_id):
     order = SalesOrder.query.get_or_404(order_id)
@@ -763,6 +772,7 @@ def edit_order_basic(order_id):
 
     return render_template('order/edit_order_basic.html', order=order)
 
+#修改订单具体行项信息
 @order_bp.route('/edit-order/items/<order_id>', methods=['GET', 'POST'])
 def edit_order_items(order_id):
     order = SalesOrder.query.get_or_404(order_id)
@@ -844,7 +854,7 @@ def preview_salesorder_changes():  #订单基本信息更新预览页
 
 
 
-@order_bp.route('/preview-changes', methods=['GET', 'POST'])  # items更新预览页
+@order_bp.route('/preview-changes', methods=['GET', 'POST'])  # 订单具体行项信息更新预览页
 def preview_changes():
     temp_update = session.get('temp_update')
     if not temp_update:
@@ -990,8 +1000,7 @@ def preview_changes():
 
 
 
-
-
+#查询订单
 @order_bp.route('/query-order', methods=['GET', 'POST'])
 def query_order():
     page = int(request.args.get('page', 1))
