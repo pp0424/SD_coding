@@ -1,20 +1,3 @@
-
--- 1. 删除触发器
-DROP TRIGGER IF EXISTS sync_material_insert;
-DROP TRIGGER IF EXISTS sync_material_update;
-DROP TRIGGER IF EXISTS sync_material_delete;
-DROP TRIGGER IF EXISTS sync_inventory_update;
-
--- 2. 删除/重建锁表与 Inventory
-DROP TABLE IF EXISTS sync_lock;
-DROP TABLE IF EXISTS Inventory;
-
-CREATE TABLE IF NOT EXISTS sync_lock (
-    lock_id INTEGER PRIMARY KEY DEFAULT 1,
-    locked INTEGER NOT NULL DEFAULT 0
-);
-INSERT OR IGNORE INTO sync_lock (lock_id, locked) VALUES (1, 0);
-
 CREATE TABLE IF NOT EXISTS Inventory (
     material_id TEXT PRIMARY KEY,
     description TEXT NOT NULL,
@@ -26,57 +9,60 @@ CREATE TABLE IF NOT EXISTS Inventory (
     pending_outbound NUMERIC(18,4) NOT NULL DEFAULT 0
 );
 
--- 3. 触发器（与原逻辑一致）
-CREATE TRIGGER IF NOT EXISTS sync_material_insert
-AFTER INSERT ON Material
-FOR EACH ROW
-WHEN (SELECT locked FROM sync_lock WHERE lock_id = 1) = 0
-BEGIN
-    UPDATE sync_lock SET locked = 1 WHERE lock_id = 1;
+-- 列出所有触发器的名字和作用表
+SELECT name, tbl_name
+FROM sqlite_master
+WHERE type = 'trigger';
 
-    REPLACE INTO Inventory (
-        material_id, description, base_unit, storage_location,
-        available_stock, physical_stock, allocated_stock, pending_outbound
+-- 查看触发器的完整创建语句
+SELECT name, sql
+FROM sqlite_master
+WHERE type = 'trigger';
+
+SELECT sqlite_version();
+
+
+-- 确保锁表存在
+CREATE TABLE IF NOT EXISTS sync_lock (
+  lock_id INTEGER PRIMARY KEY CHECK(lock_id = 1),
+  locked  INTEGER NOT NULL DEFAULT 0 CHECK(locked IN (0,1))
+);
+INSERT OR IGNORE INTO sync_lock(lock_id, locked) VALUES (1, 0);
+SELECT * FROM sync_lock;
+
+-- 为 Inventory 表创建 INSERT 触发器
+CREATE TRIGGER IF NOT EXISTS sync_inventory_insert
+AFTER INSERT ON Inventory
+FOR EACH ROW
+WHEN (SELECT locked FROM sync_lock) = 0
+BEGIN
+    -- 设置锁防止递归
+    UPDATE sync_lock SET locked = 1;
+    
+    -- 插入或更新 Material 表（处理主键冲突）
+    INSERT INTO Material (
+        material_id,
+        description,
+        base_unit,
+        storage_location,
+        allocated_stock
     ) VALUES (
-        NEW.material_id, NEW.description, NEW.base_unit, NEW.storage_location,
-        NEW.available_stock, NEW.physical_stock, NEW.allocated_stock, NEW.pending_outbound
-    );
-
-    UPDATE sync_lock SET locked = 0 WHERE lock_id = 1;
-END;
-
-CREATE TRIGGER IF NOT EXISTS sync_material_update
-AFTER UPDATE ON Material
-FOR EACH ROW
-WHEN (SELECT locked FROM sync_lock WHERE lock_id = 1) = 0
-BEGIN
-    UPDATE sync_lock SET locked = 1 WHERE lock_id = 1;
-
-    UPDATE Inventory SET
+        NEW.material_id,
+        NEW.description,
+        NEW.base_unit,
+        NEW.storage_location,
+        NEW.allocated_stock
+    ) ON CONFLICT(material_id) DO UPDATE SET
         description = NEW.description,
         base_unit = NEW.base_unit,
         storage_location = NEW.storage_location,
-        available_stock = NEW.available_stock,
-        physical_stock = NEW.physical_stock,
-        allocated_stock = NEW.allocated_stock,
-        pending_outbound = NEW.pending_outbound
-    WHERE material_id = NEW.material_id;
-
-    UPDATE sync_lock SET locked = 0 WHERE lock_id = 1;
+        allocated_stock = NEW.allocated_stock;
+    
+    -- 释放锁
+    UPDATE sync_lock SET locked = 0;
 END;
 
-CREATE TRIGGER IF NOT EXISTS sync_material_delete
-AFTER DELETE ON Material
-FOR EACH ROW
-WHEN (SELECT locked FROM sync_lock WHERE lock_id = 1) = 0
-BEGIN
-    UPDATE sync_lock SET locked = 1 WHERE lock_id = 1;
-
-    DELETE FROM Inventory WHERE material_id = OLD.material_id;
-
-    UPDATE sync_lock SET locked = 0 WHERE lock_id = 1;
-END;
-
+-- UPDATE 触发器
 CREATE TRIGGER IF NOT EXISTS sync_inventory_update
 AFTER UPDATE ON Inventory
 FOR EACH ROW
@@ -84,64 +70,53 @@ WHEN (SELECT locked FROM sync_lock WHERE lock_id = 1) = 0 AND (
     OLD.description <> NEW.description OR
     OLD.base_unit <> NEW.base_unit OR
     OLD.storage_location <> NEW.storage_location OR
-    OLD.available_stock <> NEW.available_stock OR
-    OLD.physical_stock <> NEW.physical_stock OR
-    OLD.allocated_stock <> NEW.allocated_stock OR
-    OLD.pending_outbound <> NEW.pending_outbound
+    OLD.allocated_stock <> NEW.allocated_stock
 )
 BEGIN
     UPDATE sync_lock SET locked = 1 WHERE lock_id = 1;
-
+    
     UPDATE OR IGNORE Material SET
         description = NEW.description,
         base_unit = NEW.base_unit,
         storage_location = NEW.storage_location,
-        available_stock = NEW.available_stock,
-        physical_stock = NEW.physical_stock,
-        allocated_stock = NEW.allocated_stock,
-        pending_outbound = NEW.pending_outbound
+        allocated_stock = NEW.allocated_stock
     WHERE material_id = NEW.material_id;
-
+    
     UPDATE sync_lock SET locked = 0 WHERE lock_id = 1;
 END;
 
--- 4. 初始化同步（先加锁，避免 Inventory->Material 触发回写）
-UPDATE sync_lock SET locked = 1 WHERE lock_id = 1;
+--Inventory → Material : DELETE 同步
+CREATE TRIGGER IF NOT EXISTS sync_inventory_delete
+AFTER DELETE ON Inventory
+WHEN COALESCE((SELECT locked FROM sync_lock WHERE lock_id = 1), 0) = 0
+BEGIN
+  UPDATE sync_lock SET locked = 1 WHERE lock_id = 1;
 
+  DELETE FROM Material WHERE material_id = OLD.material_id;
+
+  UPDATE sync_lock SET locked = 0 WHERE lock_id = 1;
+END;
+
+
+----------------------
+-- 更新 Inventory 多行
 UPDATE Inventory
-SET
-    description = (SELECT description FROM Material WHERE Material.material_id = Inventory.material_id),
-    base_unit = (SELECT base_unit FROM Material WHERE Material.material_id = Inventory.material_id),
-    storage_location = (SELECT storage_location FROM Material WHERE Material.material_id = Inventory.material_id),
-    available_stock = (SELECT available_stock FROM Material WHERE Material.material_id = Inventory.material_id),
-    physical_stock = (SELECT physical_stock FROM Material WHERE Material.material_id = Inventory.material_id),
-    allocated_stock = (SELECT allocated_stock FROM Material WHERE Material.material_id = Inventory.material_id),
-    pending_outbound = (SELECT pending_outbound FROM Material WHERE Material.material_id = Inventory.material_id)
-WHERE EXISTS (
-    SELECT 1 FROM Material WHERE Material.material_id = Inventory.material_id
-);
+SET physical_stock   = abs(random() % 10000),
+    allocated_stock  = abs(random() % (IFNULL(physical_stock, 0) / 2 + 1)),
+    pending_outbound = abs(random() % (IFNULL(allocated_stock, 0) + 1)),
+    available_stock  = IFNULL(physical_stock,0) - IFNULL(allocated_stock,0) - IFNULL(pending_outbound,0);
 
-INSERT OR IGNORE INTO Inventory (
-    material_id, description, base_unit, storage_location,
-    available_stock, physical_stock, allocated_stock, pending_outbound
-)
-SELECT 
-    material_id, description, base_unit, storage_location,
-    available_stock, physical_stock, allocated_stock, pending_outbound
-FROM Material;
+-- 对照行数（两边受影响的行数应该一致或接近）
+SELECT changes() AS inventory_changes;
+SELECT COUNT(*) FROM Material; -- 或抽查几条 material_id 的值是否一致
 
-UPDATE sync_lock SET locked = 0 WHERE lock_id = 1;
-
-INSERT OR REPLACE INTO Inventory
-SELECT * FROM Material;
-
-
--- 5. 检查
+----------------------------
+----------------------------
 SELECT * FROM Material;
 SELECT * FROM Inventory;
 PRAGMA table_info(Inventory);
 
-
+-------------------------------
 PRAGMA foreign_keys = OFF;
 DROP TABLE IF EXISTS PickingTask;
 DROP TABLE IF EXISTS PickingTaskItem;
@@ -255,3 +230,30 @@ SELECT * FROM DeliveryNote WHERE delivery_note_id='DN20250813-001';
 
 SELECT * from SalesOrder;
 PRAGMA TABLE_INFO(SalesOrder);
+
+UPDATE Inventory
+SET  physical_stock = abs(random() %10000 );
+
+UPDATE Inventory
+SET allocated_stock = abs(random() % (IFNULL(physical_stock, 0) / 2 + 1));
+
+UPDATE Inventory
+SET pending_outbound = abs(random() % (IFNULL(allocated_stock, 0) + 1));
+
+UPDATE Inventory
+SET available_stock = IFNULL(physical_stock, 0) 
+                      - IFNULL(allocated_stock, 0) 
+                      - IFNULL(pending_outbound, 0);
+
+UPDATE Inventory SET 
+    physical_stock = 1125.0,
+    available_stock = 525.0,
+    allocated_stock=500.0,
+    pending_outbound = 100.0
+WHERE material_id = 'MAT-10002';
+
+-- 验证不同步
+SELECT 'Test 5: Inventory Unique Field Update -> No Sync' AS test_case;
+SELECT 
+    (SELECT physical_stock FROM Material) AS mat_physical,  -- 应返回NULL
+    (SELECT available_stock FROM Material) AS mat_available; -- 应返回NULL

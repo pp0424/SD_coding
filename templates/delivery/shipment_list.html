@@ -31,6 +31,29 @@
   /* 空状态 */
   .empty-state { text-align: center; color: #6b7280; }
   .empty-state .inner { display: flex; height: 200px; align-items: center; justify-content: center; flex-direction: column; gap: 6px; }
+  .delivery-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: auto; /* 或者 fixed，根据需要 */
+}
+
+.delivery-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: auto; /* 或者 fixed，根据需要 */
+}
+
+.delivery-table th,
+.delivery-table td {
+  white-space: nowrap; /* 不换行 */
+}
+
+.table-responsive {
+  overflow-x: auto; /* 横向滚动 */
+}
+
 </style>
 {% endblock %}
 

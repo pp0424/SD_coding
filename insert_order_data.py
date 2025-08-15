@@ -25,9 +25,9 @@ def write_csv(filename, fieldnames, rows):
 material_data = []
 for mid in materials:
     physical_stock = random.randint(100, 10000)  # 总库存
-    allocated_stock = random.randint(0, physical_stock)  # 已分配 ≤ 总库存
+    allocated_stock = random.randint(0, physical_stock//2)  # 已分配 ≤ 总库存
     pending_outbound = random.randint(0, allocated_stock)  # 待出库 ≤ 已分配
-    available_stock = physical_stock - allocated_stock    # 可用库存 = 总库存 - 已分配
+    available_stock = physical_stock - allocated_stock - pending_outbound  # 可用库存 = 总库存 - 已分配 - 待出库
 
     material_data.append({
         'material_id': mid,

@@ -283,7 +283,7 @@ class Inventory(db.Model):
         log = StockChangeLog(
             material_id=locked.material_id,
             change_time=datetime.now(timezone.utc),
-            change_type='发货',
+            change_type='发货过账',
             quantity_change=-qty,
             before_available=before_available,
             after_available=_to_decimal(locked.available_stock),

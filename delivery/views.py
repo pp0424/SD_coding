@@ -26,19 +26,174 @@ PER_PAGE = 20
 @delivery_bp.route('/')
 @login_required
 def delivery_home():
-    # 获取所有状态及其数量
-    statuses = ['已创建', '待拣货', '已拣货',  '已发货', '已过账', '已取消']
-    rows = db.session.query(DeliveryNote.status, func.count(DeliveryNote.delivery_note_id)).group_by(DeliveryNote.status).all()
+    # 状态计数
+    statuses = ['已创建', '已拣货', '已发货', '已过账', '已取消']
+    rows = (
+        db.session.query(DeliveryNote.status, func.count(DeliveryNote.delivery_note_id))
+        .group_by(DeliveryNote.status)
+        .all()
+    )
     counts_dict = dict(rows)
-    status_counts = {status: counts_dict.get(status, 0) for status in statuses}
+    status_counts = {s: counts_dict.get(s, 0) for s in statuses}
 
+    # 今日发货量
+    today = date.today()
+    ship_date = func.coalesce(DeliveryNote.delivery_date, DeliveryNote.posted_at)
+    today_delivery_count = (
+        db.session.query(func.count(DeliveryNote.delivery_note_id))
+        .filter(
+            DeliveryNote.status.in_(('已过账', '已发货')),
+            func.date(ship_date) == today
+        )
+        .scalar() or 0
+    )
+
+    # 准时/延迟发货率
+    base_filter = [
+        DeliveryNote.status.in_(('已过账', '已发货')),
+        DeliveryNote.delivery_date.isnot(None)
+    ]
+    total_deliveries = (
+        db.session.query(func.count(DeliveryNote.delivery_note_id))
+        .filter(*base_filter)
+        .scalar() or 0
+    )
+    on_time_deliveries = (
+        db.session.query(func.count(DeliveryNote.delivery_note_id))
+        .join(DeliveryNote.sales_order)
+        .filter(
+            *base_filter,
+            SalesOrder.required_delivery_date.isnot(None),
+            DeliveryNote.delivery_date <= SalesOrder.required_delivery_date
+        )
+        .scalar() or 0
+    )
+    on_time_rate = round((on_time_deliveries / total_deliveries) * 100, 1) if total_deliveries else 0.0
+    late_rate = round(max(0.0, 100.0 - on_time_rate), 1)
+
+    # 待处理订单
+    pending_orders = counts_dict.get('已创建', 0) + counts_dict.get('已拣货', 0)
+
+    # 省级坐标表（保持你原来的字典）
+    province_coords = {
+        "黑龙江省": {"lat": 45.8038, "lng": 126.5350},
+        "吉林省": {"lat": 43.8962, "lng": 125.3268},
+        "辽宁省": {"lat": 41.8057, "lng": 123.4315},
+        "河北省": {"lat": 38.0428, "lng": 114.5149},
+        "甘肃省": {"lat": 36.0611, "lng": 103.8343},
+        "青海省": {"lat": 36.6232, "lng": 101.7782},
+        "陕西省": {"lat": 34.3416, "lng": 108.9398},
+        "河南省": {"lat": 34.7657, "lng": 113.7532},
+        "山东省": {"lat": 36.6758, "lng": 117.0009},
+        "山西省": {"lat": 37.8706, "lng": 112.5489},
+        "安徽省": {"lat": 31.8206, "lng": 117.2272},
+        "湖北省": {"lat": 30.5928, "lng": 114.3055},
+        "湖南省": {"lat": 28.2278, "lng": 112.9389},
+        "江苏省": {"lat": 32.0603, "lng": 118.7969},
+        "四川省": {"lat": 30.6598, "lng": 104.0633},
+        "贵州省": {"lat": 26.5783, "lng": 106.7135},
+        "云南省": {"lat": 25.0453, "lng": 102.7097},
+        "浙江省": {"lat": 30.2741, "lng": 120.1551},
+        "江西省": {"lat": 28.6829, "lng": 115.8582},
+        "广东省": {"lat": 23.1291, "lng": 113.2644},
+        "福建省": {"lat": 26.0753, "lng": 119.3062},
+        "台湾省": {"lat": 25.0329, "lng": 121.5654},
+        "海南省": {"lat": 20.0440, "lng": 110.1999},
+        "新疆维吾尔自治区": {"lat": 43.7930, "lng": 87.6271},
+        "内蒙古自治区": {"lat": 40.8175, "lng": 111.7656},
+        "宁夏回族自治区": {"lat": 38.4872, "lng": 106.2309},
+        "广西壮族自治区": {"lat": 22.8150, "lng": 108.3275},
+        "西藏自治区": {"lat": 29.6525, "lng": 91.1721},
+        "北京市": {"lat": 39.9042, "lng": 116.4074},
+        "上海市": {"lat": 31.2304, "lng": 121.4737},
+        "天津市": {"lat": 39.3434, "lng": 117.3616},
+        "重庆市": {"lat": 29.5630, "lng": 106.5516},
+        "香港特别行政区": {"lat": 22.3193, "lng": 114.1694},
+        "澳门特别行政区": {"lat": 22.1987, "lng": 113.5439}
+    }
+
+    # 辅助函数：匹配省份名
+    def detect_province(name: str) -> str | None:
+        if not name:
+            return None
+        for p in province_coords:
+            if p in name:
+                return p
+        return None
+
+    # 先按库位聚合
+    raw = (
+        db.session.query(
+            Inventory.storage_location,
+            func.sum(Inventory.physical_stock).label('stock'),
+            func.sum(Inventory.available_stock).label('available')
+        )
+        .group_by(Inventory.storage_location)
+        .all()
+    )
+
+    # 再按省份二次聚合（原有 agg）
+    agg = {}
+    all_warehouses = []  # 新：保存每个具体库位的明细
+    for loc, stock, available in raw:
+        prov = detect_province(loc)
+        # 构造明细条目（即便没匹配到省份，也可保存，取决于你是否想展示）
+        item = {
+            'name': str(loc or ''),
+            'province': prov,   # 可能为 None
+            'stock': round(float(stock or 0.0), 2),
+            'available': round(float(available or 0.0), 2),
+        }
+        # 如果能匹配到省份，把经纬度填上（用 province_coords）
+        if prov and province_coords.get(prov):
+            latlng = province_coords[prov]
+            item['lat'] = float(latlng.get('lat', 0.0) or 0.0)
+            item['lng'] = float(latlng.get('lng', 0.0) or 0.0)
+        else:
+            # 若没匹配到省份，可选填默认或跳过坐标
+            item['lat'] = None
+            item['lng'] = None
+
+        all_warehouses.append(item)
+
+        # 原来的省级汇总逻辑
+        if not prov:
+            continue
+        s = agg.setdefault(prov, {'name': prov, 'stock': 0.0, 'available': 0.0})
+        s['stock'] += float(stock or 0)
+        s['available'] += float(available or 0)
+
+    # 构造前端使用的 warehouses 列表（省级）
+    warehouses = []
+    for prov, data in agg.items():
+        latlng = province_coords.get(prov)
+        if not latlng:
+            continue
+        warehouses.append({
+            'name': str(data.get('name', '') or ''),
+            'lat': float(latlng.get('lat', 0.0) or 0.0),
+            'lng': float(latlng.get('lng', 0.0) or 0.0),
+            'stock': round(float(data.get('stock', 0.0) or 0.0), 2),
+            'available': round(float(data.get('available', 0.0) or 0.0), 2),
+        })
+
+    # 最近记录（保持不变）
     recent_deliveries = DeliveryNote.query.order_by(DeliveryNote.delivery_date.desc()).limit(5).all()
     recent_changes = StockChangeLog.query.order_by(StockChangeLog.change_time.desc()).limit(5).all()
-    
-    return render_template('delivery/home.html',
-                           status_counts=status_counts,
-                           recent_deliveries=recent_deliveries,
-                           recent_changes=recent_changes)
+
+    return render_template(
+        'delivery/home.html',
+        status_counts=status_counts,
+        recent_deliveries=recent_deliveries,
+        recent_changes=recent_changes,
+        today_delivery_count=today_delivery_count,
+        on_time_rate=on_time_rate,
+        late_rate=late_rate,
+        pending_orders=pending_orders,
+        warehouses=warehouses,        # 省级
+        all_warehouses=all_warehouses # 明细（前端需要）
+    )
+
 
 # ========== 工具函数 ==========
 def to_decimal(val):
@@ -1466,8 +1621,6 @@ def shipment(delivery_id):
             raise ValueError(f'当前状态[{delivery.status}]不允许直接发货')
 
         operator = getattr(current_user, 'username', 'system')
-        wh_code = delivery.warehouse_code
-        reference = delivery.delivery_note_id
 
         for item in delivery.items:
             ship_qty = to_decimal(item.actual_delivery_quantity or 0)
@@ -1481,12 +1634,12 @@ def shipment(delivery_id):
             if not material:
                 raise ValueError(f'物料 {item.material_id} 不存在')
 
-            material.ship_stock(
-                qty=ship_qty,
-                operator=operator,
-                warehouse_code=wh_code,
-                reference=reference
-            )
+         #   material.ship_stock(
+         #       qty=ship_qty,
+         #       operator=operator,
+         #      warehouse_code=wh_code,
+         #       reference=reference
+         #  )
 
         delivery.status = '已发货'
         delivery.updated_at = datetime.now()
@@ -2039,4 +2192,3 @@ def sales_helper():
     args.pop('page', None)  # 去掉 page 避免冲突
 
     return render_template('delivery/sales_helper.html', items=pagination.items, pagination=pagination, args=args)
-
