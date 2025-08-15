@@ -9,6 +9,7 @@ from order.models import (
     Material
 )
 
+#订单模块数据库与csv数据表的同步
 def export_table_to_csv(model_class, csv_filename):
     """
     导出指定模型类对应表的数据到 CSV 文件（数字保留3位小数）

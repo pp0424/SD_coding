@@ -7,6 +7,8 @@ fake = Faker('zh_CN')
 
 NUM_RECORDS = 1000
 
+# 该脚本为订单模块的数据来源，如果修改该脚本，请告知具体改动细节，方便该模块同学的后续工作，谢谢。
+
 # 预生成基础主数据
 materials = [f"MAT-{10000+i}" for i in range(1, 51)]
 customers = [f"CUST-CN{str(i).zfill(5)}" for i in range(1, 21)]

@@ -3,6 +3,8 @@ import csv
 from sqlalchemy import event
 from finance.models import CustomerInvoice, InvoiceItem, CustomerPayment  # 替换为你真实的导入路径
 
+#财务模块数据库与csv数据表同步
+
 def export_table_to_csv(model_class, csv_filename):
     from database import db  # 替换成你项目中 db session 的导入
     folder_path = "Instance"
