@@ -1,12 +1,12 @@
 import os
 import csv
 from sqlalchemy import event
-from finance.models import CustomerInvoice, InvoiceItem, CustomerPayment  # 替换为你真实的导入路径
+from finance.models import CustomerInvoice, InvoiceItem, CustomerPayment  
 
 #财务模块数据库与csv数据表同步
 
 def export_table_to_csv(model_class, csv_filename):
-    from database import db  # 替换成你项目中 db session 的导入
+    from database import db  
     folder_path = "Instance"
     os.makedirs(folder_path, exist_ok=True)
     file_path = os.path.join(folder_path, csv_filename)
@@ -40,5 +40,5 @@ def f_attach_csv_export_listeners():
                 make_listener(model_class, csv_name)
             )
 
-# 在你的程序初始化或者 app 启动时调用
+# 在程序初始化或者 app 启动时调用
 # attach_csv_export_listeners()
