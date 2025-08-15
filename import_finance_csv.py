@@ -2,8 +2,8 @@ import csv
 from datetime import datetime
 from decimal import Decimal
 
-from app import app, db  # ❗替换为你项目实际的 Flask 应用上下文
-from finance.models import CustomerInvoice, InvoiceItem, CustomerPayment  # 替换为实际模型
+from app import app, db  # ❗项目实际的 Flask 应用上下文
+from finance.models import CustomerInvoice, InvoiceItem, CustomerPayment  # 实际模型
 
 #财务模块数据导入脚本
 

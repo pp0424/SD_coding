@@ -1,21 +1,28 @@
+{# 继承基础布局（delivery/base.html 提供公共样式/脚本/导航） #}
 {% extends "delivery/base.html" %}
 
 {% block content %}
 
+<!-- 页面标题：展示当前拣货任务号，便于操作人员确认任务 -->
 <div class="form-title-container">
   <h1 class="form-title">✅ 执行拣货任务: {{ task.task_id }}</h1>
 </div>
 
 <div class="container mt-4">
+  <!-- 顶部操作区：左侧返回，右侧开始按钮 -->
   <div class="d-flex justify-content-between mb-3">
+    <!-- 返回到任务详情页（使用 Flask 的 url_for 生成路由） -->
     <a href="{{ url_for('delivery.picking_task_detail', task_id=task.task_id) }}" class="btn btn-outline-secondary">返回任务</a>
     <div>
+      <!-- “开始拣货”按钮：前端会禁用防止重复点击，触发 start API -->
       <button id="startPickingBtn" class="btn btn-success">开始拣货</button>
     </div>
   </div>
 
+  <!-- 页面级消息提示区域：JS 会往此处注入 Bootstrap 的 alert，用于成功/失败提示 -->
   <div id="alertZone"></div>
 
+  <!-- 任务与发货单信息卡片：展示关键信息以便核对 -->
   <div class="card shadow-sm mb-4">
     <div class="card-header bg-light"><h5 class="mb-0">任务与发货单信息</h5></div>
     <div class="card-body">
@@ -27,6 +34,7 @@
         </div>
         <div class="col-md-6">
           <p><strong>发货单:</strong>
+            {# 这里将发货单链接到同一任务详情，如果存在独立的发货单详情页可替换为对应路由 #}
             <a href="{{ url_for('delivery.picking_task_detail', task_id=task.task_id) }}">{{ task.task_id }}</a>
           </p>
           <p><strong>任务状态:</strong> {{ task.status }}</p>
@@ -35,11 +43,13 @@
     </div>
   </div>
 
+  <!-- 拣货提交表单：前端阻止默认提交，用 JS 收集并以 JSON 提交到后端 API -->
   <form id="pickingForm" onsubmit="return false;">
     <div class="card shadow-sm mb-4">
       <div class="card-header bg-light"><h5 class="mb-0">拣货明细</h5></div>
       <div class="card-body">
         <div class="table-responsive">
+          <!-- 拣货明细表：每行对应任务明细行（item） -->
           <table class="table table-hover">
             <thead>
               <tr>
@@ -61,23 +71,33 @@
                 <td>{{ "%.2f"|format(item.required_quantity or 0) }}</td>
                 <td>{{ "%.2f"|format(item.picked_quantity or 0) }}</td>
                 <td>
+                  <!-- 本次拣货数量输入说明：
+                       - data-item-no 便于 JS 按行匹配
+                       - step=0.01 支持小数（两位）
+                       - min=0 避免输入负数
+                       - class 名称用于批量查询与校验 -->
                   <input type="number" step="0.01" min="0" class="form-control form-control-sm picked-qty"
                          data-item-no="{{ item.item_no }}" placeholder="输入数量" />
                 </td>
                 <td>
+                  <!-- 储位输入（可选）：默认回显任务行上的储位，方便拣货人员确认位置 -->
                   <input type="text" class="form-control form-control-sm storage-loc"
                          data-item-no="{{ item.item_no }}" value="{{ item.storage_location or '' }}" placeholder="储位 (可选)" />
                 </td>
               </tr>
               {% else %}
+              <!-- 无明细占位：当 task.items 为空时展示用户提示 -->
               <tr><td colspan="7" class="text-center">暂无明细</td></tr>
               {% endfor %}
             </tbody>
           </table>
         </div>
 
+        <!-- 提交与取消按钮组：确认由 JS 事件处理并发送到后端 -->
         <div class="d-flex justify-content-end mt-3 gap-2">
+          <!-- 确认拣货：JS 会收集所有 .picked-qty 并调用 confirmApiUrl -->
           <button id="submitPickingBtn" class="btn btn-primary">确认拣货</button>
+          <!-- 取消：直接回到任务详情页，不会提交任何数据 -->
           <a href="{{ url_for('delivery.picking_task_detail', task_id=task.task_id) }}" class="btn btn-outline-secondary">取消</a>
         </div>
       </div>
@@ -86,10 +106,23 @@
 </div>
 
 <script>
+/**
+ * 接口与跳转 URL 说明：
+ * - startApiUrl: 记录开始拣货时间（POST）
+ * - confirmApiUrl: 提交拣货结果（POST，payload 为 JSON { tasks: [...] }）
+ * - backDetailUrl: 提交成功后跳转回任务详情页
+ * 注意：confirmApiUrl 依赖模板上下文中提供的 delivery.delivery_note_id，
+ * 如果未提供 delivery 对象或 delivery.delivery_note_id 为空，需要后端传入或改为使用 task 相关路由。
+ */
 const startApiUrl = "{{ url_for('delivery.api_start_picking', task_id=task.task_id) }}";
 const confirmApiUrl = "{{ url_for('delivery.confirm_picking', delivery_id=delivery.delivery_note_id) }}";
 const backDetailUrl = "{{ url_for('delivery.picking_task_detail', task_id=task.task_id) }}";
 
+/**
+ * showAlert: 在页面顶部 alertZone 渲染一个 Bootstrap Alert
+ * @param {string} message - 提示内容（允许简单 HTML）
+ * @param {('info'|'success'|'warning'|'danger')} type - 提示级别
+ */
 function showAlert(message, type='info') {
   const zone = document.getElementById('alertZone');
   zone.innerHTML = `<div class="alert alert-${type} alert-dismissible fade show" role="alert">
@@ -98,16 +131,21 @@ function showAlert(message, type='info') {
                     </div>`;
 }
 
-// 记录开始时间
+// “开始拣货”按钮：发送 POST 到 startApiUrl，用于记录开始时间并防止重复开始
 document.getElementById('startPickingBtn').addEventListener('click', async function () {
   try {
+    // UI 防抖：禁用按钮并修改文案，避免重复点击
     this.disabled = true;
     this.textContent = '正在开始...';
+
+    // 发起请求（无 body 或者空 JSON），后端应返回 200/2xx 表示成功
     const resp = await fetch(startApiUrl, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({})
     });
+
+    // 处理非 2xx 状态码：显示错误并恢复按钮
     if (!resp.ok) {
       const txt = await resp.text();
       showAlert('启动拣货失败: ' + txt, 'danger');
@@ -115,25 +153,34 @@ document.getElementById('startPickingBtn').addEventListener('click', async funct
       this.textContent = '开始拣货';
       return;
     }
+
+    // 尝试解析响应 JSON（容错），但并不强依赖返回内容
     const data = await resp.json().catch(()=>null);
+
+    // 成功提示：记录开始时间并提示用户开始拣货
     showAlert('已记录开始时间，开始拣货吧！', 'success');
     this.textContent = '已开始';
   } catch (err) {
+    // 网络异常：显示错误并恢复按钮以便重试
     showAlert('网络错误: ' + err, 'danger');
     this.disabled = false;
     this.textContent = '开始拣货';
   }
 });
 
-// 提交拣货
+// “确认拣货”按钮：收集所有有效输入并以 JSON 发送给后端
 document.getElementById('submitPickingBtn').addEventListener('click', async function () {
+  // 选择所有本次拣货数量输入框
   const rows = Array.from(document.querySelectorAll('.picked-qty'));
   const tasks = [];
 
+  // 遍历并构建 payload 数组，跳过空值或非正数
   for (const el of rows) {
     const item_no = el.dataset.itemNo;
     const val = el.value.trim();
-    if (!val || Number(val) <= 0) continue;
+    if (!val || Number(val) <= 0) continue; // 跳过无效输入
+
+    // 获取同一行的储位输入（可选项）
     const storageEl = document.querySelector(`.storage-loc[data-item-no="${item_no}"]`);
     tasks.push({
       task_id: "{{ task.task_id }}",
@@ -143,20 +190,25 @@ document.getElementById('submitPickingBtn').addEventListener('click', async func
     });
   }
 
+  // 校验：至少应有一行有效拣货数据
   if (tasks.length === 0) {
     showAlert('请至少输入一行本次拣货数量（> 0）', 'warning');
     return;
   }
 
   try {
+    // UI 防抖：禁用按钮并显示提交中状态
     this.disabled = true;
     this.textContent = '提交中...';
+
+    // 提交到后端确认拣货接口，后端应处理 tasks 并返回 2xx
     const resp = await fetch(confirmApiUrl, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ tasks })
     });
 
+    // 非 2xx：提示错误并恢复按钮
     if (!resp.ok) {
       const txt = await resp.text();
       showAlert('提交失败: ' + txt, 'danger');
@@ -165,9 +217,10 @@ document.getElementById('submitPickingBtn').addEventListener('click', async func
       return;
     }
 
-    // 跳回发货单拣货详情页（确保刷新）
+    // 成功后跳回详情页，后端/详情页会展示最新的拣货状态
     window.location.href = backDetailUrl;
   } catch (err) {
+    // 网络异常兜底：提示并允许用户重试
     showAlert('网络错误: ' + err, 'danger');
     this.disabled = false;
     this.textContent = '确认拣货并提交';
@@ -175,6 +228,8 @@ document.getElementById('submitPickingBtn').addEventListener('click', async func
 });
 </script>
 
+{# Flask 的 flash 消息渲染区：当后端通过 flash() 传入消息时，会在页面顶部展示 #}
+{# with_categories=True 可获取 (category, message) 对便于按类型渲染颜色 #}
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
     {% for category, message in messages %}

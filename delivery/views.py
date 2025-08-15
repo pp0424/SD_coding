@@ -26,6 +26,13 @@ PER_PAGE = 20
 @delivery_bp.route('/')
 @login_required
 def delivery_home():
+    """
+    发货模块首页视图
+    功能：展示发货相关的统计信息，包括状态计数、今日发货量、准时/延迟发货率、库存分布等。
+    返回：
+        render_template: 渲染 home.html 模板，传递各种统计数据和最近记录
+    """
+    # 状态计数：按发货单状态分组统计数量
     # 状态计数
     statuses = ['已创建', '已拣货', '已发货', '已过账', '已取消']
     rows = (
@@ -74,7 +81,7 @@ def delivery_home():
     # 待处理订单
     pending_orders = counts_dict.get('已创建', 0) + counts_dict.get('已拣货', 0)
 
-    # 省级坐标表（保持你原来的字典）
+    # 省级坐标表 - 用于地图显示
     province_coords = {
         "黑龙江省": {"lat": 45.8038, "lng": 126.5350},
         "吉林省": {"lat": 43.8962, "lng": 125.3268},
@@ -112,63 +119,75 @@ def delivery_home():
         "澳门特别行政区": {"lat": 22.1987, "lng": 113.5439}
     }
 
-    # 辅助函数：匹配省份名
+    # 辅助函数：从库位名称中提取省份信息
     def detect_province(name: str) -> str | None:
+        """从库位名称中识别省份名称（模糊匹配）"""
         if not name:
             return None
+        # 遍历所有省份名称，检查是否在库位名称中出现
         for p in province_coords:
             if p in name:
                 return p
         return None
 
-    # 先按库位聚合
+    # ===== 库存数据两级聚合 =====
+    # 第一步：按库位分组聚合（数据库层面）
     raw = (
         db.session.query(
             Inventory.storage_location,
             func.sum(Inventory.physical_stock).label('stock'),
             func.sum(Inventory.available_stock).label('available')
         )
-        .group_by(Inventory.storage_location)
+        .group_by(Inventory.storage_location)  # 按库位分组
         .all()
     )
 
-    # 再按省份二次聚合（原有 agg）
-    agg = {}
-    all_warehouses = []  # 新：保存每个具体库位的明细
+    # 第二步：按省份二次聚合（应用层面）
+    agg = {}  # 省级汇总数据 {省份: {库存数据}}
+    all_warehouses = []  # 保存所有库位的明细数据
+    
+    # 处理每个库位的库存数据
     for loc, stock, available in raw:
+        # 1. 识别库位所属省份
         prov = detect_province(loc)
-        # 构造明细条目（即便没匹配到省份，也可保存，取决于你是否想展示）
+        
+        # 2. 构造库位明细对象
         item = {
             'name': str(loc or ''),
-            'province': prov,   # 可能为 None
+            'province': prov,   # 可能为 None（未识别到省份）
             'stock': round(float(stock or 0.0), 2),
             'available': round(float(available or 0.0), 2),
         }
-        # 如果能匹配到省份，把经纬度填上（用 province_coords）
+        
+        # 3. 添加经纬度坐标（如果识别到省份）
         if prov and province_coords.get(prov):
             latlng = province_coords[prov]
             item['lat'] = float(latlng.get('lat', 0.0) or 0.0)
             item['lng'] = float(latlng.get('lng', 0.0) or 0.0)
         else:
-            # 若没匹配到省份，可选填默认或跳过坐标
+            # 未识别到省份时不显示坐标
             item['lat'] = None
             item['lng'] = None
 
+        # 4. 添加到明细列表
         all_warehouses.append(item)
 
-        # 原来的省级汇总逻辑
+        # 5. 省级数据汇总（跳过未识别省份的库位）
         if not prov:
             continue
+            
+        # 初始化或更新省级数据
         s = agg.setdefault(prov, {'name': prov, 'stock': 0.0, 'available': 0.0})
         s['stock'] += float(stock or 0)
         s['available'] += float(available or 0)
 
-    # 构造前端使用的 warehouses 列表（省级）
+    # 构造前端地图展示数据（省级）
     warehouses = []
     for prov, data in agg.items():
         latlng = province_coords.get(prov)
         if not latlng:
-            continue
+            continue  # 跳过无坐标的省份
+            
         warehouses.append({
             'name': str(data.get('name', '') or ''),
             'lat': float(latlng.get('lat', 0.0) or 0.0),
@@ -177,7 +196,7 @@ def delivery_home():
             'available': round(float(data.get('available', 0.0) or 0.0), 2),
         })
 
-    # 最近记录（保持不变）
+    # 获取最近记录（用于首页展示）
     recent_deliveries = DeliveryNote.query.order_by(DeliveryNote.delivery_date.desc()).limit(5).all()
     recent_changes = StockChangeLog.query.order_by(StockChangeLog.change_time.desc()).limit(5).all()
 
@@ -191,7 +210,7 @@ def delivery_home():
         late_rate=late_rate,
         pending_orders=pending_orders,
         warehouses=warehouses,        # 省级
-        all_warehouses=all_warehouses # 明细（前端需要）
+        all_warehouses=all_warehouses # 明细
     )
 
 
@@ -446,7 +465,43 @@ def compute_max_allowable_qty(sales_order_id, item_no, current_dn_id):
 @login_required
 def create_delivery():
     """
-    创建发货单（状态：已创建），并生成拣货任务及 PickingTaskItem
+    创建发货单（状态：已创建），并生成拣货任务及PickingTaskItem
+    核心功能：
+      1. 通过表单获取销售订单号、仓库代码、预计发货日期等信息
+      2. 验证销售订单状态（必须为'已审核'或'部分发货'）
+      3. 收集并验证发货行项目（数量不能超过剩余可发货量）
+      4. 进行ATP检查（可用库存检查）
+      5. 生成拣货任务ID和发货单ID
+      6. 创建拣货任务和发货单，并添加行项目
+      7. 提交事务，若成功则重定向，若失败则回滚并显示错误
+    
+    状态流转：
+      - 成功创建后，发货单状态变为'已创建'
+      - 关联的拣货任务状态变为'待拣货'
+    
+    返回：
+      GET请求：渲染创建发货单的表单页面
+      POST请求：成功则重定向，失败则返回表单页并显示错误
+    """
+    """创建发货单（状态：已创建），并生成拣货任务及 PickingTaskItem
+    
+    核心功能：
+    1. 通过表单获取销售订单号、仓库代码、预计发货日期等信息
+    2. 验证销售订单状态（必须为'已审核'或'部分发货'）
+    3. 收集并验证发货行项目（数量不能超过剩余可发货量）
+    4. 进行ATP检查（可用库存检查）
+    5. 生成拣货任务ID和发货单ID
+    6. 创建拣货任务和发货单，并添加行项目
+    7. 提交事务，若成功则重定向，若失败则回滚并显示错误
+    
+    状态流转：
+    - 成功创建后，发货单状态变为'已创建'
+    - 关联的拣货任务状态变为'待拣货'
+    
+    注意事项：
+    - 需要数据库行级锁防止并发问题
+    - 涉及多个数据库操作，使用事务保证一致性
+    - 库存检查基于Inventory.available_stock
     """
     form = forms.CreateDeliveryForm()
     order_items_for_view = []
@@ -459,26 +514,34 @@ def create_delivery():
 
     if request.method == 'POST':
         try:
-            so_id = (form.sales_order_id.data or '').strip()
-            wh_code = (form.warehouse_code.data or '').strip()
-            ord_date = form.order_date.data
-            exp_date = form.expected_delivery_date.data
+            # 获取表单数据并预处理
+            so_id = (form.sales_order_id.data or '').strip()  # 销售订单ID
+            wh_code = (form.warehouse_code.data or '').strip()  # 仓库代码
+            ord_date = form.order_date.data  # 订单日期
+            exp_date = form.expected_delivery_date.data  # 预计发货日期
 
+            # 表单基础校验
             if not so_id:
                 flash('请填写销售订单编号', 'warning')
                 return render_template('delivery/create_delivery.html', form=form, order_items=form.items.entries)
             if not wh_code:
                 flash('请填写发货仓库代码', 'warning')
-            if ord_date>exp_date:
+            # 日期逻辑校验：预计发货日期不能早于订单日期
+            if ord_date > exp_date:
                 flash('预计发货日期不能早于订单日期', 'warning')
-
-            if ord_date>exp_date:
+            # 日期逻辑校验：预计发货日期不能晚于交货日期
+            if ord_date > exp_date:
                 flash('预计发货日期不能晚于交货日期', 'warning')
                 return render_template('delivery/create_delivery.html', form=form, order_items=form.items.entries)
             
 
-            # 1) 加锁读取订单与行，并进行订单头校验
+            # ===== 事务管理开始 =====
+            # 1) 加锁销售订单抬头和行项目，防止并发操作导致数据不一致
+            # 使用行级锁确保在创建发货单期间，其他会话不能修改同一销售订单
             sales_order, so_items = lock_sales_order_and_items(so_id)
+            
+            # 2) 校验销售订单抬头状态是否允许创建发货单
+            # 允许状态：'已审核'或'部分发货'
             header_err = validate_sales_order_header(sales_order)
             if header_err:
                 flash(header_err, 'danger')
@@ -489,7 +552,9 @@ def create_delivery():
                 flash('只有“已审核”或“部分发货”的订单允许创建发货单', 'danger')
                 return render_template('delivery/create_delivery.html', form=form, order_items=form.items.entries)
 
-            # 2) 行校验与收集
+            # 3) 收集并验证发货行项目
+            # - 检查计划发货量是否超过剩余可发货量
+            # - 确保所有行项目都有效
             valid_items, errs = collect_and_validate_items(form, so_items)
             if errs:
                 for e in errs:
@@ -499,37 +564,27 @@ def create_delivery():
                 flash('没有有效的发货行', 'warning')
                 return render_template('delivery/create_delivery.html', form=form, order_items=form.items.entries)
 
-            # 3) ATP 校验（基于 Inventory.available_stock）
+            # 4) ATP可用库存校验
+            # 检查物料可用库存是否满足计划发货量
+            # 如果库存不足，抛出ValueError异常
             atp_check_by_material(valid_items)
 
-            # 创建拣货任务
-            new_task_id = generate_picking_task_id()
+            # 5) 创建拣货任务
+            new_task_id = generate_picking_task_id()  # 生成唯一拣货任务ID
             picking_task = PickingTask(
                 task_id=new_task_id,
                 sales_order_id=so_id,
                 warehouse_code=wh_code,
-                status='待拣货',
-                picker=getattr(current_user, 'username', 'system'),
-                assigned_at=datetime.now(),
+                status='待拣货',  # 初始状态
+                picker=getattr(current_user, 'username', 'system'),  # 当前操作用户
+                assigned_at=datetime.now(),  # 任务分配时间
             )
             db.session.add(picking_task)
-            db.session.flush()
+            db.session.flush()  # 刷新以获取任务ID，但不提交事务
 
-            # 创建发货单（状态：已创建）
-            dn_id = gen_delivery_note_id()
-            delivery_dt = datetime.combine(exp_date, time(0, 0, 0))
-            dn = DeliveryNote(
-                delivery_note_id=dn_id,
-                sales_order_id=so_id,
-                delivery_date=delivery_dt,
-                warehouse_code=wh_code,
-                status='已创建',
-                remarks=form.remarks.data or '',
-                created_by=getattr(current_user, 'username', 'system'),
-                picking_task_id=new_task_id,
-            )
-            db.session.add(dn)
-            db.session.flush()
+            # 6) 创建发货单（状态：已创建）
+            dn_id = gen_delivery_note_id()  # 生成唯一发货单ID
+            delivery_dt = datetime.combine(exp_date, time(0, 0, 0))  # 组合日期和时间
 
             # 添加发货单行项目 + 同步生成 PickingTaskItem
             line_no = 1
@@ -613,14 +668,58 @@ def create_delivery():
 @delivery_bp.route('/detail/<delivery_id>')
 @login_required
 def delivery_detail(delivery_id):
+    """
+    发货单详情视图 - 显示指定发货单的详细信息
+    
+    参数:
+      delivery_id (str): 发货单ID，从URL路径中获取
+    
+    返回:
+      render_template: 渲染 delivery_detail.html 模板，传递发货单对象
+    
+    错误处理:
+      - 如果发货单不存在，返回404错误页面
+    """
+    """
+    发货单详情视图 - 显示指定发货单的详细信息
+    
+    功能:
+    - 查询并显示发货单的基本信息（状态、日期、仓库等）
+    - 展示关联的拣货任务信息（如果存在）
+    - 显示发货单行项目明细（物料、数量等）
+    - 根据发货单状态提供操作按钮（修改/取消/过账）
+    - 使用 Flask-Login 确保用户认证
+    
+    参数:
+    delivery_id (str): 发货单ID，从URL路径中获取
+    
+    返回:
+    render_template: 渲染'delivery/delivery_detail.html'模板，传递发货单对象
+    
+    错误处理:
+    - 如果发货单不存在，返回404错误页面
+    - 使用@login_required装饰器确保只有登录用户可访问
+    
+    模板依赖:
+    - delivery/delivery_detail.html: 显示发货单详情的模板
+    """
     delivery = DeliveryNote.query.get_or_404(delivery_id)
     return render_template('delivery/delivery_detail.html', delivery=delivery)
 
 # 发货列表/查询
-# 发货列表/查询
 @delivery_bp.route('/list', methods=['GET', 'POST'])
 @login_required
 def delivery_list():
+    """
+    发货单列表/查询功能
+    
+    功能:
+      - 支持按发货单ID、销售订单ID、状态、日期范围等多条件查询
+      - 分页展示查询结果
+    
+    返回:
+      render_template: 渲染 delivery_list.html 模板，传递查询结果和表单对象
+    """
     form = forms.SearchDeliveryForm()
 
     # 一次性加载关联的 PickingTask，避免 N+1 查询
@@ -683,6 +782,21 @@ def delivery_list():
 @delivery_bp.route('/cancel/<delivery_id>', methods=['GET', 'POST'])
 @login_required
 def cancel_delivery(delivery_id):
+    """
+    取消发货单功能
+    
+    状态转换规则:
+      - 已创建 -> 已取消：释放拣货任务库存
+      - 已拣货 -> 已取消：释放库存占用
+      - 已发货 -> 已取消：不允许直接取消，需走退货流程
+    
+    参数:
+      delivery_id (str): 要取消的发货单ID
+    
+    返回:
+      GET请求：渲染取消发货单确认页面
+      POST请求：执行取消操作，成功则重定向到详情页，失败返回错误
+    """
     from decimal import Decimal
     delivery = DeliveryNote.query.get_or_404(delivery_id)
     original_status = delivery.status
@@ -817,6 +931,22 @@ def cancel_delivery(delivery_id):
 @delivery_bp.route('/edit/<delivery_id>', methods=['GET', 'POST'])
 @login_required
 def edit_delivery(delivery_id):
+    """
+    编辑发货单功能（仅限'已创建'状态）
+    
+    允许修改:
+      - 预计发货日期
+      - 仓库代码
+      - 备注信息
+      - 发货行数量（不能超过最大可修改数量）
+    
+    参数:
+      delivery_id (str): 要编辑的发货单ID
+    
+    返回:
+      GET请求：渲染编辑表单页面
+      POST请求：提交修改，成功则重定向到详情页，失败返回表单页
+    """
     delivery_note = DeliveryNote.query.get_or_404(delivery_id)
 
     # 1️⃣ 只允许 "已创建" 状态修改
@@ -915,6 +1045,16 @@ def edit_delivery(delivery_id):
 @delivery_bp.route('/picking_tasks', methods=['GET', 'POST'])
 @login_required
 def picking_task_list():
+    """
+    拣货任务列表查询
+    
+    功能:
+      - 支持按发货单ID、销售订单ID、状态、日期范围查询
+      - 展示拣货任务及其关联的发货单信息
+    
+    返回:
+      render_template: 渲染 picking_task_list.html 模板
+    """
     form = forms.SearchPickingTaskForm(request.args)  # 如果用 GET
     q = db.session.query(PickingTask)
 
@@ -956,6 +1096,15 @@ def picking_task_list():
 @delivery_bp.route('/picking_task/<task_id>')
 @login_required
 def picking_task_detail(task_id):
+    """
+    拣货任务详情页
+    
+    参数:
+      task_id (str): 拣货任务ID
+    
+    返回:
+      render_template: 渲染 picking_task_detail.html 模板
+    """
     """
     展示单个拣货任务详情，同时加载关联的发货单及其发货物料明细。
     """
@@ -1034,6 +1183,22 @@ def api_start_picking(task_id):
 @delivery_bp.route('/confirm_picking/<delivery_id>', methods=['POST'])
 @login_required
 def confirm_picking(delivery_id):
+    """
+    确认拣货操作（API接口）
+    
+    核心逻辑:
+      1. 校验发货单和拣货任务状态
+      2. 更新拣货数量
+      3. 扣减库存可用量
+      4. 更新发货单实际发货量
+      5. 推进拣货任务和发货单状态
+    
+    参数:
+      delivery_id (str): 关联的发货单ID
+    
+    返回:
+      JSON响应: 成功或失败信息
+    """
     now = datetime.now()
     operator = getattr(current_user, 'username', 'system')
 
@@ -1263,6 +1428,20 @@ def confirm_picking(delivery_id):
 @login_required
 def cancel_picking_task(task_id):
     """
+    取消拣货任务功能
+    
+    处理逻辑:
+      - 待拣货状态：直接取消，无库存操作
+      - 已完成状态：释放已占用库存
+    
+    参数:
+      task_id (str): 要取消的拣货任务ID
+    
+    返回:
+      GET请求：渲染取消确认页面
+      POST请求：执行取消操作并返回结果
+    """
+    """
     取消拣货任务（支持两种状态）：
       - 若任务状态 == '待拣货'：仅将任务置为 '已取消'（不修改库存）
       - 若任务状态 == '已完成'：释放已占用库存（调用 Inventory.release_stock），并回退已拣数量与发货行已拣量
@@ -1419,7 +1598,7 @@ def cancel_picking_task(task_id):
                     if not mat:
                         raise ValueError(f'物料 {mat_id} 在库存表中不存在（release）')
                     try:
-                        # Inventory.release_stock 应该会 with_for_update() 并检查 allocated >= rel_qty
+                        # 调用Inventory.release_stock 进行 with_for_update() 并检查 allocated >= rel_qty
                         mat.release_stock(rel_qty, operator=operator,
                                           warehouse_code=(delivery_locked.warehouse_code if delivery_locked else None),
                                           reference=(delivery_locked.delivery_note_id if delivery_locked else None))
@@ -1529,6 +1708,16 @@ def to_decimal(v):
 @login_required
 def shipment_list():
     """
+    发货单发货列表
+    
+    功能:
+      - 列出状态为'已拣货'且关联拣货任务'已完成'的发货单
+      - 支持多条件查询
+    
+    返回:
+      render_template: 渲染 shipment_list.html 模板
+    """
+    """
     发货单列表 + 查询
     模板使用 {{ form.csrf_token }}，因此这里统一变量名为 form
     返回 (DeliveryNote, PickingTask) 元组，模板中解包使用
@@ -1605,6 +1794,18 @@ def shipment_page(delivery_id):
 @delivery_bp.route('/shipment/<delivery_id>', methods=['POST'])
 @login_required
 def shipment(delivery_id):
+    """
+    执行发货操作
+    
+    状态流转: 已拣货 -> 已发货
+    核心操作: 扣减库存实际数量
+    
+    参数:
+      delivery_id (str): 要发货的发货单ID
+    
+    返回:
+      重定向到发货列表页
+    """
     form = forms.ShipmentConfirmForm()
     if not form.validate_on_submit():
         flash('CSRF 校验失败，请重试', 'danger')
@@ -1665,7 +1866,22 @@ def shipment(delivery_id):
 @delivery_bp.route('/post_delivery/<delivery_id>', methods=['GET', 'POST'])
 @login_required
 def post_delivery(delivery_id):
-    """执行发货单过账（已发货 → 已过账）"""
+    """
+    执行发货单过账（已发货 → 已过账）
+    
+    核心操作:
+      1. 校验发货单状态
+      2. 扣减库存实际数量
+      3. 更新销售订单行已发货数量
+      4. 更新发货单状态为'已过账'
+    
+    参数:
+      delivery_id (str): 要过账的发货单ID
+    
+    返回:
+      GET请求: 渲染过账确认页面
+      POST请求: 执行过账操作并返回结果
+    """
 
     if request.method == 'GET':
         # 不加锁，仅展示数据
@@ -1820,6 +2036,16 @@ def post_delivery(delivery_id):
 @delivery_bp.route('/post-list', methods=['GET','POST'])
 @login_required
 def post_list():
+    """
+    已过账发货单列表
+    
+    功能:
+      - 列出状态为'已发货'或'已过账'的发货单
+      - 支持多条件查询
+    
+    返回:
+      render_template: 渲染 post_list.html 模板
+    """
     form = forms.SearchDeliveryForm(request.args, meta={'csrf': False})
     query = DeliveryNote.query.filter(DeliveryNote.status.in_(['已发货', '已过账'])).order_by(DeliveryNote.posted_at.desc())
 
@@ -1849,6 +2075,16 @@ def post_list():
 @delivery_bp.route('/inventory_movement', methods=['GET'])
 @login_required
 def inventory_movement():
+    """
+    库存变动查询
+    
+    功能:
+      - 按物料、仓库、变动类型、日期范围查询库存变动记录
+      - 分页展示查询结果
+    
+    返回:
+      render_template: 渲染 stock_changes.html 模板
+    """
     search_form = forms.SearchInventoryMovementForm(request.args)
 
     # 去重后的选项
@@ -1966,6 +2202,16 @@ def inventory_movement():
 @delivery_bp.route('/inventory_detail', methods=['GET', 'POST'])
 @login_required
 def inventory_detail():
+    """
+    库存明细查询
+    
+    功能:
+      - 按物料ID、描述、库位查询库存详情
+      - 分页展示查询结果
+    
+    返回:
+      render_template: 渲染 inventory_detail.html 模板
+    """
     form = forms.SearchInventoryForm()
 
     # 基础查询
@@ -2009,6 +2255,20 @@ def inventory_detail():
 @delivery_bp.get('/api/sales_orders/<sales_order_id>')
 @login_required
 def api_sales_order_items(sales_order_id):
+    """
+    销售订单商品信息API
+    
+    功能:
+      - 根据销售订单ID获取订单行信息
+      - 计算未发货数量
+      - 返回物料信息和仓库位置
+    
+    参数:
+      sales_order_id (str): 销售订单ID
+    
+    返回:
+      JSON响应: 包含订单行详细信息的JSON对象
+    """
     try:
         sales_order_id = (sales_order_id or '').strip()
         if not sales_order_id:
@@ -2098,6 +2358,16 @@ def api_sales_order_items(sales_order_id):
 # 多条件检索弹窗
 @delivery_bp.route('/delivery_helper', methods=['GET'])
 def delivery_helper():
+    """
+    发货单搜索助手（弹窗）
+    
+    功能:
+      - 提供多条件发货单检索功能
+      - 用于在其他页面快速查找发货单
+    
+    返回:
+      render_template: 渲染 delivery_helper.html 模板
+    """
     q = {
         'delivery_id': request.args.get('delivery_id', '').strip(),
         'sales_order_id': request.args.get('sales_order_id', '').strip(),
@@ -2150,6 +2420,16 @@ def delivery_helper():
 
 @delivery_bp.route('/sales_helper', methods=['GET'])
 def sales_helper():
+    """
+    销售订单搜索助手（弹窗）
+    
+    功能:
+      - 提供多条件销售订单检索功能
+      - 用于在其他页面快速查找销售订单
+    
+    返回:
+      render_template: 渲染 sales_helper.html 模板
+    """
     q = {
         'sales_order_id': request.args.get('sales_order_id', '').strip(),
         'customer_id': request.args.get('customer_id', '').strip(),
@@ -2160,7 +2440,7 @@ def sales_helper():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
 
-    # 预加载 items 以便模板显示 order items（如果需要）
+    # 预加载 items以便模板显示order items
     query = SalesOrder.query.options(joinedload(SalesOrder.items))
 
     filters = []

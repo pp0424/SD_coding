@@ -1,16 +1,18 @@
 {% extends 'delivery/base.html' %}
 
+{# 页面标题块：在 base 模板中填充 title #}
 {% block title %}发货管理首页{% endblock %}
 
 {% block head_extra %}
-<!-- 图表库 -->
+<!-- 引入第三方库：Chart.js（图表）、Leaflet（地图）、Leaflet Heat（热力图拓展） -->
+<!-- 这些脚本/样式会在页面 head 区域引入，确保地图与图表功能可用 -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<!-- 地图库 -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 
 <style>
+  /* 全局页面样式 */
   body {
     margin: 0;
     font-family: "Microsoft YaHei", sans-serif;
@@ -18,20 +20,27 @@
     background-position: center;
     background-repeat: no-repeat;
   }
+
+  /* 页面主标题样式 */
   h3.page-title { font-weight: 700; color: #0d6efd; }
+
+  /* 卡片基样式（供 KPI 卡、流程卡等复用） */
   .card {
     border-radius: 14px;
     background: linear-gradient(135deg, #ffffff, #f5f9ff);
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
     transition: transform 0.2s ease;
   }
-  /* 四核指标卡片样式 */
+
+  /* KPI 容器：使用 css grid，自动适配列数 */
   .kpi-container {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     gap: 12px;
     margin-bottom: 20px;
   }
+
+  /* KPI 卡片：垂直布局，居中显示内容 */
   .kpi-card {
     text-align: center;
     padding: 8px;
@@ -45,6 +54,8 @@
   }
   .kpi-card:hover { transform: scale(1.05); }
   .kpi-icon { font-size: 1.2rem; margin-bottom: 4px; }
+
+  /* 不同 KPI 卡片的渐变主题色（便于视觉分类） */
   .kpi-delivery   { background: linear-gradient(135deg, #b9d9f5, #9e60f5); }
   .kpi-pending    { background: linear-gradient(135deg, #efae5e, #e0d49c); }
   .kpi-created    { background: linear-gradient(135deg, #6d51f7, #7c9bf1); }
@@ -54,10 +65,12 @@
   .kpi-cancelled  { background: linear-gradient(135deg, #a4c5fa, #e68ff2); }
   .kpi-on-time    { background: linear-gradient(135deg, #e16262, #b8f5f2); }
   .kpi-late       { background: linear-gradient(135deg, #ff9966, #ff5e62); }
+
+  /* 上升/下降趋势颜色类（可在未来显示百分比变化时使用） */
   .trend-up { color: #28a745; }
   .trend-down { color: #dc3545; }
 
-  /* 地图容器 */
+  /* 地图容器样式，给 Leaflet 容器高度和圆角 */
   #warehouse-map {
     width: 100%;
     height: 400px;
@@ -66,7 +79,7 @@
     background: #1e2a38;
   }
 
-  /* 仓库标记弹出窗口样式 */
+  /* 仓库弹窗内容样式：提高可读性 */
   .warehouse-popup .leaflet-popup-content { min-width: 200px; font-size: 14px; }
   .warehouse-popup h4 {
     margin-top: 0; color: #0d6efd; border-bottom: 1px solid #eee; padding-bottom: 5px;
@@ -77,7 +90,7 @@
   }
   .warehouse-popup .stat-value { font-weight: bold; }
 
-  /* 响应式调整 */
+  /* 响应式布局：中小屏时调整 KPI 列数 */
   @media (max-width: 992px) { .kpi-container { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 576px) { .kpi-container { grid-template-columns: 1fr; } }
 
@@ -93,13 +106,15 @@
   .text-danger { font-weight: bold; }
   hr { border-top: 1px solid #dee2e6; }
 
-  /* Workflow container */
+  /* 工作流横向步骤条：允许横向滚动以适配窄屏 */
   .workflow-steps {
     display: flex; flex-wrap: nowrap; justify-content: flex-start; align-items: center;
     gap: 12px; overflow-x: auto; padding: 8px; scrollbar-width: thin; margin-bottom:30px;
   }
   .workflow-steps::-webkit-scrollbar { height: 6px; }
   .workflow-steps::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 3px; }
+
+  /* 单个步骤卡片样式：用于“创建->拣货->发货”等显示 */
   .workflow-steps .step-card {
     flex: 0 0 auto; min-width: 150px; max-width: 200px; padding: 15px 10px; border-radius: 12px;
     text-align: center; transition: all 0.3s ease; background: linear-gradient(135deg, #f580d0, #77a1f5);
@@ -109,10 +124,19 @@
 {% endblock %}
 
 {% block content %}
+{# 页面主标题：展示在页面顶部 #}
 <div class="form-title-container">
   <h1 class="form-title"> 🚚 发货管理首页 </h1>
 </div>
 
+{# KPI 区域：将后端注入的变量渲染到不同卡片中
+   重要变量说明（由后端传入）：
+   - today_delivery_count: 今日发货量（整数）
+   - pending_orders: 待处理订单数（整数）
+   - status_counts: 字典/映射，包含不同状态的计数，例如 status_counts['已创建'] 等
+   - on_time_rate: 准时发货率（百分比数值，不带 % 符号）
+   - late_rate: 延迟发货率（百分比数值）
+#}
 <div class="kpi-container">
   <!-- 今日发货量 -->
   <div class="kpi-card kpi-delivery">
@@ -178,7 +202,7 @@
   </div>
 </div>
 
-
+{# 横向流程条：导航到各个常用页面（使用 url_for 生成路由） #}
 <div class="workflow-steps animate-fade">
   <div class="step-card" style="background: linear-gradient(135deg, #358df9dd, #ee39ff);">发货流程</div>
   <div class="step-arrow">👉</div>
@@ -211,7 +235,7 @@
   </a>
 </div>
 
-<!-- 仓储地图区域 -->
+{# 地图区域标题与容器（Leaflet 地图会挂载到 #warehouse-map） #}
 <h5 class="fw-bold mb-3">🏭 仓储分布图</h5>
 <div id="warehouse-map"></div>
 <hr class="my-4">
@@ -220,26 +244,38 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-  // 从后端注入数据（确保后端传了 all_warehouses）
+  // ==== 从后端注入的数据变量说明 ====
+  // provincesData: 省/区域级别的汇总点数组（用于展示省级视图）
+  //   每个元素结构示例：{ "lat": 25.04, "lng": 102.71, "name": "WH-云南省", "stock": 2544, "available":71 }
+  // allWarehouses: 所有仓库的详细点数组（用于点击省份后展示站点级别）
+  //   每个元素应包含 province 字段以便按省过滤： { "province": "云南省", "lat":..., "lng":..., "name":..., "stock":..., "available":... }
   const provincesData = {{ warehouses | tojson | safe }} || [];
   const allWarehouses = {{ all_warehouses | tojson | safe }} || [];
 
+  // ==== 地图初始化与边界限制 ====
+  // chinaBounds 用于限制地图缩放与拖拽的边界，避免用户拖出地图过远
   const chinaBounds = L.latLngBounds([3.85, 73.66], [53.55, 135.05]);
+  // 创建地图并设置默认视点为中国中心附近
   const map = L.map('warehouse-map').setView([35.0, 105.0], 4);
 
+  // 使用高德地图瓦片
   L.tileLayer(
     'https://webrd02.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}',
     { attribution: '高德地图', maxZoom: 18 }
   ).addTo(map);
+
   map.setMaxBounds(chinaBounds);
 
-  // 修复在某些布局下 Leaflet 容器尺寸计算错误的问题
+  // 修复在某些布局下 Leaflet 容器尺寸计算错误的问题（常见于隐藏或弹出容器）
   map.whenReady(function() {
+    // 延迟触发 invalidateSize，确保地图渲染正确
     setTimeout(function(){ map.invalidateSize(); }, 200);
   });
 
+  // 使用一个 featureGroup 来统一管理点图层，方便清空/fitBounds 等操作
   let markerGroup = L.featureGroup().addTo(map);
 
+  // 半对数半径计算（示例实现）
   function calcRadius(stock) {
     stock = Number(stock) || 0;
     if (stock <= 0) return 6;
@@ -247,93 +283,103 @@ document.addEventListener('DOMContentLoaded', function () {
     return Math.max(6, Math.log10(stock + 1) * 6);
   }
 
-function renderPoints(data, level = 'province') {
-  // 清空旧图层
-  markerGroup.clearLayers();
+  // 渲染点集合的主函数
+  // 参数 data: 点数组， level: 'province' 或 'warehouse' （决定弹窗内容）
+  function renderPoints(data, level = 'province') {
+    // 清空旧图层（避免重复渲染）
+    markerGroup.clearLayers();
 
-  // 计算最大库存，用于颜色渐变（可选）
-  const maxStock = Math.max(...data.map(w => Number(w.stock) || 0), 1);
+    // 计算最大库存，用于将来做基于最大值的渐变比例（当前实现用离散分段）
+    const maxStock = Math.max(...data.map(w => Number(w.stock) || 0), 1);
 
-  // 颜色映射函数
-  function getColorByStock(stock) {
-    stock = Number(stock) || 0;
-    if (stock <= 0) return '#999';          // 无库存灰色
-    else if (stock < 100) return '#00bfff'; // 蓝
-    else if (stock < 1000) return '#32cd32'; // 绿
-    else if (stock < 2000) return '#ffa500'; // 橙
-    else if (stock < 3000) return '#ff8c00'; // 深橙
-    else if (stock < 4000) return '#ff6347'; // 番茄红
-    else if (stock < 5000) return '#ff4500'; // 橘红
-    else if (stock < 6000) return '#ff0000'; // 红
-    else return '#8b0000'; // 深红
-  }
-
-  // 半径计算函数
-  function calcRadius(stock) {
-    stock = Number(stock) || 0;
-    if (stock <= 0) return 4;                  // 最小半径更小
-    return Math.max(4, Math.log10(stock + 1) * 3); // 放大系数改成3，点不会太大
-  }
-  data.forEach((w) => {
-    if (w.lat == null || w.lng == null) return;
-    const stock = Number(w.stock) || 0;
-    const available = Number(w.available) || 0;
-
-    let popupHtml;
-    if (level === 'province') {
-      popupHtml = `
-        <div class="warehouse-popup">
-          <h4>${w.name}</h4>
-          <div>库存总量: ${stock.toLocaleString()}</div>
-          <div>可用库存量: ${available.toLocaleString()}</div>
-        </div>
-      `;
-    } else {
-      popupHtml = `
-        <div class="warehouse-popup">
-          <h4>${w.name}</h4>
-          <div>库区/仓库: ${w.name}</div>
-          <div>库存总量: ${stock.toLocaleString()}</div>
-          <div>可用库存: ${available.toLocaleString()}</div>
-        </div>
-      `;
+    // 颜色映射函数：根据库存量返回对应颜色（可根据需求调整分段阈值）
+    function getColorByStock(stock) {
+      stock = Number(stock) || 0;
+      if (stock <= 0) return '#999';          // 无库存灰色
+      else if (stock < 100) return '#00bfff'; // 蓝
+      else if (stock < 1000) return '#32cd32'; // 绿
+      else if (stock < 2000) return '#ffa500'; // 橙
+      else if (stock < 3000) return '#ff8c00'; // 深橙
+      else if (stock < 4000) return '#ff6347'; // 番茄红
+      else if (stock < 5000) return '#ff4500'; // 橘红
+      else if (stock < 6000) return '#ff0000'; // 红
+      else return '#8b0000'; // 深红（超出阈值）
     }
 
-    // 创建圆点，大小 + 颜色随库存量变化
-    const marker = L.circleMarker([w.lat, w.lng], {
-      radius: calcRadius(stock),
-      fillColor: getColorByStock(stock),
-      color: '#fff',
-      weight: 1,
-      fillOpacity: 0.9
-    }).bindPopup(popupHtml);
+    // 更紧凑的半径计算：避免在大数据下点过大覆盖地图
+    function calcRadius(stock) {
+      stock = Number(stock) || 0;
+      if (stock <= 0) return 4;                  // 最小半径更小
+      return Math.max(4, Math.log10(stock + 1) * 3); // 放大系数改成3，点不会太大
+    }
 
-    markerGroup.addLayer(marker);
-  });
+    // 遍历数据，创建 circleMarker 并绑定弹窗
+    data.forEach((w) => {
+      // 如果缺少经纬度，跳过（避免 runtime 错误）
+      if (w.lat == null || w.lng == null) return;
+      const stock = Number(w.stock) || 0;
+      const available = Number(w.available) || 0;
 
-  if (markerGroup.getLayers().length > 0) {
-    map.fitBounds(markerGroup.getBounds().pad(0.12));
-  } else {
-    map.setView([35.0, 105.0], 4);
+      // 根据不同层级生成不同的弹窗内容（省级 vs 仓库级）
+      let popupHtml;
+      if (level === 'province') {
+        popupHtml = `
+          <div class="warehouse-popup">
+            <h4>${w.name}</h4>
+            <div>库存总量: ${stock.toLocaleString()}</div>
+            <div>可用库存量: ${available.toLocaleString()}</div>
+          </div>
+        `;
+      } else {
+        popupHtml = `
+          <div class="warehouse-popup">
+            <h4>${w.name}</h4>
+            <div>库区/仓库: ${w.name}</div>
+            <div>库存总量: ${stock.toLocaleString()}</div>
+            <div>可用库存: ${available.toLocaleString()}</div>
+          </div>
+        `;
+      }
+
+      // 创建圆点，大小 + 颜色随库存量变化
+      const marker = L.circleMarker([w.lat, w.lng], {
+        radius: calcRadius(stock),
+        fillColor: getColorByStock(stock),
+        color: '#fff',      // 圆点边框色（白色）
+        weight: 1,
+        fillOpacity: 0.9
+      }).bindPopup(popupHtml);
+
+      markerGroup.addLayer(marker);
+    });
+
+    // 若有点则自动缩放到可见范围，pad 增加一点留白
+    if (markerGroup.getLayers().length > 0) {
+      map.fitBounds(markerGroup.getBounds().pad(0.12));
+    } else {
+      // 没有点时还原到默认视图
+      map.setView([35.0, 105.0], 4);
+    }
   }
-}
 
-// 渲染省级数据
-renderPoints(provincesData, 'province');
+  // 首次渲染为省级数据（若后端传入 provincesData）
+  renderPoints(provincesData, 'province');
 
-  // 点击省份 → 本地过滤仓库
+  // 暴露一个全局方法，便于在页面其它地方调用（例如点击省份元素）
+  // 参数 provinceName：点击时传入的省名称，用来过滤 allWarehouses 并渲染该省下的仓库点
   window.loadProvinceDetails = function (provinceName) {
-    // 防止 undefined
+    // 防止 allWarehouses 不是数组（前端容错）
     if (!Array.isArray(allWarehouses)) return;
+
+    // 过滤出该省有经纬度的仓库点
     const provincePoints = allWarehouses
       .filter(w => w.province === provinceName && w.lat != null && w.lng != null);
 
+    // 将地图切换到仓库级别渲染
     renderPoints(provincePoints, 'warehouse');
   };
 
-});
+}); // DOMContentLoaded end
 </script>
 
 {% endblock %}
-
-

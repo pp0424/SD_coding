@@ -4,26 +4,29 @@
 {% block head_extra %}
 <link rel="stylesheet" href="{{ url_for('static', filename='delivery/delivery_styles.css') }}">
 <style>
-  /* 表格所有单元格不换行 */
+  /* --------------------------- 样式：表格与卡片 --------------------------- */
+  /* 表格所有单元格不换行，保持每行一行显示，避免自动换行导致高度不一致 */
   .delivery-table th,
   .delivery-table td {
     white-space: nowrap;
-    vertical-align: middle;
+    vertical-align: middle; /* 垂直居中对齐单元格内容 */
   }
 
+  /* 容器卡片宽度设置为100%，确保在响应式布局中占满父容器 */
   .delivery-card {
     width: 100%;
   }
 
-  /* 确保禁用态不可点击且有视觉弱化 */
+  /* --------------------------- 通用禁用按钮样式 --------------------------- */
+  /* 禁用态：不可点击且视觉上弱化，适用于 a.btn、button 等 */
   .btn.disabled,
   .btn[aria-disabled="true"],
   .btn:disabled {
-    pointer-events: none;
-    opacity: .65;
+    pointer-events: none; /* 禁止点击 */
+    opacity: .65;         /* 透明度弱化 */
   }
 
-  /* 通用禁用按钮样式 */
+  /* 进一步强化禁用样式，保证颜色/边框也表现为灰色 */
   .btn.disabled,
   .btn[aria-disabled="true"],
   .btn:disabled {
@@ -38,18 +41,20 @@
 {% endblock %}
 
 {% block content %}
-<!-- 搜索模态框 -->
+<!-- --------------------------- 搜索模态框：复用在多处的“选择记录”弹窗 --------------------------- -->
 <div class="modal fade" id="searchModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
+        <!-- 弹窗标题 -->
         <h5 class="modal-title">选择记录</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
+        <!-- 搜索输入：实时 oninput 触发 doSearch() -->
         <input type="text" id="searchKeyword" class="form-control mb-3" placeholder="输入关键字搜索..." oninput="doSearch()">
         <div id="searchResults">
-          <!-- AJAX 查询结果表 -->
+          <!-- AJAX 查询结果将注入到这里 -->
         </div>
       </div>
     </div>
@@ -57,19 +62,22 @@
 </div>
 
 
-<!-- 查询表单 -->
+<!-- --------------------------- 查询表单：顶部查询条件区域 --------------------------- -->
 <div class="form-title-container">
   <h1 class="form-title">🔍 发货单查询</h1>
 </div>
 
 <div class="delivery-card animate-fade">
+  <!-- 使用 POST 提交查询表单（后端视图处理） -->
   <form method="post" class="row g-3 query-form align-items-end">
-    {{ form.csrf_token }}
+    {{ form.csrf_token }}  {# CSRF 令牌：防止跨站请求伪造 #}
 
   <div class="col-md-2">
       <label class="form-label" for="delivery_id">{{ form.delivery_id.label.text }}</label>
       <div class="input-group">
+        <!-- 发货单号输入框（由 WTForms 渲染） -->
         {{ form.delivery_id(class="form-control", id="delivery_id") }}
+        <!-- 辅助按钮：打开弹窗快速选择发货单（居中弹窗） -->
         <button type="button" class="btn btn-outline-secondary"
                 onclick="openCentered('{{ url_for('delivery.delivery_helper') }}', 'deliveryHelper', 800, 600)">
           <i class="bi bi-search"></i>
@@ -77,7 +85,7 @@
       </div>
     </div>
 
-    <!-- 销售订单 ID -->
+    <!-- 销售订单 ID（类似发货单的选择器） -->
     <div class="col-md-2">
       <label class="form-label" for="sales_order_id">{{ form.sales_order_id.label.text }}</label>
       <div class="input-group">
@@ -91,39 +99,46 @@
 
 
  <div class="col-md-2">
+      <!-- 状态下拉框（WTForms 渲染） -->
       {{ form.status.label(class="form-label") }}
       {{ form.status(class="form-select") }}
     </div>
 
     <div class="col-md-2">
+      <!-- 起始日期（type=date，浏览器会使用本地日期选择器） -->
       {{ form.start_date.label(class="form-label") }}
       {{ form.start_date(class="form-control", type="date") }}
     </div>
 
     <div class="col-md-2">
+      <!-- 结束日期 -->
       {{ form.end_date.label(class="form-label") }}
       {{ form.end_date(class="form-control", type="date") }}
     </div>
 
     <div class="col-md-2">
+      <!-- 查询按钮（WTForms 渲染的 submit） -->
       {{ form.submit(class="btn btn-search w-100") }}
     </div>
   </form>
 </div>
 
-<!-- 查询结果 -->
+<!-- --------------------------- 查询结果：表格展示发货单列表 --------------------------- -->
 <div class="delivery-card animate-fade">
   <div class="card-header">
     <div class="toolbar">
       <div>
         <i class="bi bi-list-ul me-2"></i>
         <strong>发货单列表</strong>
+        <!-- 展示当前查询到的记录数（deliveries 是后端传入的列表） -->
         <span class="stats-info ms-3">共找到 {{ deliveries|length }} 条记录</span>
       </div>
       <div>
+        <!-- 新建发货单按钮 -->
         <a href="{{ url_for('delivery.create_delivery') }}" class="btn btn-primary btn-sm">
           <i class="bi bi-plus-circle me-1"></i> 新建发货单
         </a>
+        <!-- 打印按钮（使用自定义的 printTable()） -->
         <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
           <i class="bi bi-printer me-1"></i> 打印
         </button>
@@ -131,6 +146,7 @@
     </div>
   </div>
 
+  <!-- 可滚动的表格容器，限制最大高度以支持长列表时的滚动 -->
   <div class="table-responsive" style="max-height: 70vh;">
     <table class="delivery-table table-hover">
       <thead>
@@ -145,13 +161,17 @@
         </tr>
       </thead>
       <tbody>
+        {# 遍历 deliveries 列表并渲染每一行 #}
         {% for delivery in deliveries %}
+          {# 判断该行是否为拣货已取消的状态（用于禁用某些操作） #}
           {% set picking_cancelled = (delivery.picking_status == '已取消') %}
+          {# 只有在 "已创建" 且拣货未取消时允许编辑/拣货 #}
           {% set can_edit = (delivery.status == '已创建') and (not picking_cancelled) %}
           {% set can_pick = (delivery.status == '已创建') and (not picking_cancelled) %}
 
           <tr>
             <td>
+              <!-- 发货单详情链接：点击跳转到详情页 -->
               <a href="{{ url_for('delivery.delivery_detail', delivery_id=delivery.delivery_note_id) }}"
                  class="text-decoration-none fw-bold text-primary">
                 {{ delivery.delivery_note_id }}
@@ -161,6 +181,7 @@
             <td>{{ delivery.delivery_date.strftime('%Y-%m-%d') if delivery.delivery_date else '-' }}</td>
             <td><span class="badge bg-light text-dark">{{ delivery.warehouse_code }}</span></td>
             <td>
+              <!-- 根据不同状态使用不同的 badge 样式，保持视觉一致性 -->
               <span class="badge 
                 {% if delivery.status == '已创建' %}bg-primary
                 {% elif delivery.status == '已拣货' %}bg-warning
@@ -176,7 +197,7 @@
             <td>
               <div class="d-flex flex-wrap gap-1">
 
-                <!-- 查看 -->
+                <!-- 查看：详情页的快捷入口（始终可用） -->
                 <a href="{{ url_for('delivery.delivery_detail', delivery_id=delivery.delivery_note_id) }}"
                    class="btn btn-outline-info btn-action" title="查看详情">
                   <i class="bi bi-eye"></i>
@@ -198,7 +219,7 @@
                   <i class="bi bi-box-seam"></i>
                 </a>
 
-                <!-- 发货（保持原逻辑：已拣货 → 可发货） -->
+                <!-- 发货（保持原逻辑：只有状态为“已拣货”才能发货） -->
                 <form action="{{ url_for('delivery.shipment', delivery_id=delivery.delivery_note_id) }}" method="POST" style="display: inline;">
                   <button type="submit"
                           class="btn btn-outline-primary btn-action {% if delivery.status != '已拣货' %}disabled{% endif %}"
@@ -207,14 +228,14 @@
                   </button>
                 </form>
 
-                <!-- 过账（保持原逻辑：已发货 → 可过账） -->
+                <!-- 过账（已发货后可过账） -->
                 <a href="{{ url_for('delivery.post_delivery', delivery_id=delivery.delivery_note_id) }}"
                    class="btn btn-outline-primary btn-action {% if delivery.status != '已发货' %}disabled{% endif %}"
                    title="过账" {% if delivery.status != '已发货' %}aria-disabled="true" tabindex="-1"{% endif %}>
                   <i class="bi bi-check2-circle"></i>
                 </a>
 
-                <!-- 取消（保持原逻辑） -->
+                <!-- 取消（仅在已创建或已拣货阶段允许取消） -->
                 <a href="{{ url_for('delivery.cancel_delivery', delivery_id=delivery.delivery_note_id) }}"
                    class="btn btn-outline-danger btn-action {% if delivery.status not in ['已创建', '已拣货'] %}disabled{% endif %}"
                    title="取消" {% if delivery.status not in ['已创建', '已拣货'] %}aria-disabled="true" tabindex="-1"{% endif %}>
@@ -224,12 +245,14 @@
             </td>
 
             <td>
+              <!-- 备注字段：超过 30 字显示省略并加省略号，避免过长文本破坏表格布局 -->
               <small class="text-muted">
                 {{ delivery.remarks[:30] + '...' if delivery.remarks and delivery.remarks|length > 30 else (delivery.remarks or '-') }}
               </small>
             </td>
           </tr>
         {% else %}
+          <!-- 空状态：当 deliveries 为空时显示提示信息 -->
           <tr>
             <td colspan="9" class="empty-state">
               <i class="bi bi-inbox display-4 d-block mb-2"></i>
@@ -249,6 +272,7 @@
     <div class="d-flex justify-content-between align-items-center">
       <div class="stats-info">
         显示 {{ deliveries|length }} 条记录
+        {# 汇总各状态的数量（用于在底部显示每个状态出现的次数） #}
         {% set status_counts = {} %}
         {% for delivery in deliveries %}
           {% set _ = status_counts.update({delivery.status: status_counts.get(delivery.status, 0) + 1}) %}
@@ -263,6 +287,7 @@
       </div>
       <div>
         <small class="text-muted">
+          <!-- 使用 moment() 显示当前页面渲染的时间戳，注意这是前端的时间显示，后端更新时间应由后端记录 -->
           最后更新: {{ moment().format('YYYY-MM-DD HH:mm:ss') }}
         </small>
       </div>
@@ -274,7 +299,8 @@
 
 {% block scripts %}
 <script>
-// 自动关闭提示信息
+// --------------------------- 自动关闭提示信息 ---------------------------
+// 页面加载后 5 秒自动关闭所有带有 .alert-dismissible 的警告提示（避免持续占用页面空间）
 setTimeout(function() {
   const alerts = document.querySelectorAll('.alert-dismissible');
   alerts.forEach(alert => {
@@ -283,23 +309,25 @@ setTimeout(function() {
   });
 }, 5000);
 
-// 表格行点击效果
+// --------------------------- 表格行点击逻辑：整行可点击进入详情 ---------------------------
+// 为每一行绑定点击事件，点击非按钮/链接区域时跳转到详情页
 document.querySelectorAll('tbody tr').forEach(row => {
   row.addEventListener('click', function(e) {
-    // 如果点击的是按钮或链接，不触发行点击
+    // 如果点击的是按钮或链接元素（包括其子元素），则不触发行点击以保留按钮行为
     if (e.target.closest('a, button')) return;
 
+    // 在行内查找指向 delivery_detail 的链接并跳转
     const link = this.querySelector('a[href*="delivery_detail"]');
     if (link) {
       window.location.href = link.href;
     }
   });
 
-  // 添加鼠标悬停效果
+  // 鼠标移入时显示手型，提示用户行可点击
   row.style.cursor = 'pointer';
 });
 
-// 打印功能优化
+// --------------------------- 打印功能（备用：生成打印专用窗口） ---------------------------
 function printTable() {
   const printWindow = window.open('', '_blank');
   const tableHtml = document.querySelector('.table-responsive').innerHTML;
@@ -328,7 +356,8 @@ function printTable() {
   printWindow.print();
 }
 
-let currentSearchType = null;
+// --------------------------- 弹窗搜索相关逻辑 ---------------------------
+let currentSearchType = null; // 标记当前弹窗是用于选择 "delivery" 还是 "sales"
 
 function openSearchModal(type) {
   currentSearchType = type; // 'delivery' 或 'sales'
@@ -343,6 +372,7 @@ function doSearch() {
     document.getElementById('searchResults').innerHTML = '';
     return;
   }
+  // 向后端发起 fetch 请求，后端应根据 currentSearchType 返回一个 HTML 片段（或表格行）
   fetch(`/search/${currentSearchType}?q=` + encodeURIComponent(keyword))
     .then(resp => resp.text())
     .then(html => {
@@ -351,6 +381,7 @@ function doSearch() {
 }
 
 function selectResult(value) {
+  // 选择某条记录后将值填入相应输入框并关闭模态框
   if (currentSearchType === 'delivery') {
     document.getElementById('delivery_id').value = value;
   } else if (currentSearchType === 'sales') {

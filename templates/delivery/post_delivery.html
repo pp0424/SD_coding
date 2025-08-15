@@ -4,25 +4,26 @@
 
 {% block content %}
 <div class="card shadow-sm border-0">
-  <!-- 顶部标题条 -->
-<div class="form-title-container">
+  <!-- 顶部标题条：展示当前处理的发货单号 -->
+  <div class="form-title-container">
     <h1 class="form-title">
       📜 执行过账 #{{ delivery.delivery_note_id }}
     </h1>
   </div>
 
-  <!-- 基本信息 -->
+  <!-- 基本信息概览：关联销售单、仓库与当前状态 -->
   <div class="px-3 py-2 small text-muted border-bottom">
     销售订单：{{ delivery.sales_order_id }}
     &nbsp;&nbsp;|&nbsp;&nbsp; 仓库：{{ delivery.warehouse_code }}
     &nbsp;&nbsp;|&nbsp;&nbsp; 当前状态：{{ delivery.status }}
   </div>
 
-  <!-- 闪存消息 -->
+  <!-- 闪存消息：统一展示成功/警告/错误等提示 -->
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
       <div class="px-3 pt-3">
         {% for category, message in messages %}
+          <!-- 将 danger 转换为 warning 样式以便视觉统一 -->
           <div class="alert alert-{{ 'warning' if category=='danger' else category }} alert-dismissible fade show" role="alert">
             {{ message }}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -32,10 +33,11 @@
     {% endif %}
   {% endwith %}
 
-  <!-- 表单 -->
+  <!-- 过账表单：提交后由后端执行库存与订单更新 -->
   <form method="post" action="{{ url_for('delivery.post_delivery', delivery_id=delivery.delivery_note_id) }}">
-    {{ form.csrf_token }}
+    {{ form.csrf_token }} {# CSRF 防护 #}
 
+    <!-- 明细行表格：包含计划数量与可编辑的实际数量 -->
     <div class="table-responsive">
       <table class="table mb-0 align-middle text-center">
         <thead class="table-light">
@@ -53,7 +55,7 @@
             {% set i = loop.index0 %}
             {% set di = delivery.items[i] %}
             <tr data-row="{{ i }}">
-              <!-- 展示用文本 -->
+              <!-- 只读展示字段（来自 delivery.items） -->
               <td class="text-center">{{ di.item_no }}</td>
               <td class="text-center">{{ di.material_id }}</td>
               <td class="text-start">
@@ -63,7 +65,7 @@
                 {{ '%.4f'|format(item_form.planned_quantity.data or 0) }}
               </td>
 
-              <!-- 可编辑输入 -->
+              <!-- 可编辑：实际数量。通过 data-planned 带入行内校验的上限 -->
               <td>
                 {{ item_form.actual_quantity(
                     class="form-control text-end actual",
@@ -73,15 +75,17 @@
                     autocomplete="off",
                     **{'data-planned': item_form.planned_quantity.data or 0}
                 ) }}
+                <!-- 行内校验错误信息容器（默认隐藏） -->
                 <div class="text-danger small mt-1 d-none" data-error></div>
                 {% if item_form.actual_quantity.errors %}
+                  <!-- 后端 WTForms 校验错误（提交后返回） -->
                   <div class="text-danger small mt-1">
                     {{ item_form.actual_quantity.errors|join('，') }}
                   </div>
                 {% endif %}
               </td>
 
-              <!-- 行备注：与后端 request.form.get(f"items-{i}-line_remark") 对齐 -->
+              <!-- 行备注：名称与后端解析 keys 对齐 items-{i}-line_remark -->
               <td>
                 <input
                   type="text"
@@ -92,7 +96,7 @@
                 >
               </td>
 
-              <!-- 隐藏域：提交所需的后台字段 -->
+              <!-- 隐藏域：提交所需后台字段，保持与只读列同步 -->
               {{ item_form.item_no(type="hidden") }}
               {{ item_form.material_id(type="hidden") }}
               {{ item_form.planned_quantity(type="hidden", class="planned-hidden") }}
@@ -102,7 +106,7 @@
       </table>
     </div>
 
-    <!-- 过账备注 -->
+    <!-- 整单过账备注：将附加到发货单备注（带前缀） -->
     <div class="p-3 border-top">
       <label class="form-label fw-bold">
         过账备注 <small class="text-muted">(若与计划数量不符请补充说明)</small>
@@ -110,7 +114,7 @@
       {{ form.remarks(class="form-control", rows="3", placeholder="将以 [过账备注] 前缀追加到发货单备注中") }}
     </div>
 
-    <!-- 按钮 -->
+    <!-- 表单操作按钮：取消返回详情 / 提交触发二次确认 -->
     <div class="p-3 d-flex justify-content-end gap-2 border-top">
       <a href="{{ url_for('delivery.delivery_detail', delivery_id=delivery.delivery_note_id) }}"
          class="btn btn-light">取消</a>
@@ -119,7 +123,7 @@
   </form>
 </div>
 
-<!-- 二次确认弹窗 -->
+<!-- 二次确认弹窗：避免误操作 -->
 <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content border-0 shadow">
@@ -139,24 +143,38 @@
     </div>
   </div>
 </div>
-
-
 {% endblock %}
 
 {% block scripts %}
 {{ super() }}
 <script>
+/**
+ * 过账页面前端脚本：
+ * - 行内校验实际数量（数字有效、非负、不超过计划）
+ * - 阻止直接提交，校验通过后弹出二次确认
+ * - 确认后再提交表单
+ */
 (function(){
+  // 基础 DOM 引用
   const form = document.querySelector('form');
   const submitBtn = document.getElementById('submitBtn');
   const rows = document.querySelectorAll('tr[data-row]');
+  // 初始化 Bootstrap 模态框；backdrop: false 避免遮罩拦截交互（根据需求可改为 true）
   const modal = new bootstrap.Modal(document.getElementById('confirmModal'), { backdrop: false });
   const modalConfirmBtn = document.getElementById('modalConfirmBtn');
 
+  // 工具：将字符串转换为数字；空串或 null 返回 NaN 以便 isNaN 判断
   function toNum(v){
     return v === '' || v === null ? NaN : Number(v);
   }
 
+  /**
+   * 校验单行：
+   * - 实际数量必须为有效数字
+   * - 不能为负数
+   * - 不得大于计划数量（基于 data-planned）
+   * 显示/隐藏错误信息，并切换输入框的 is-invalid 样式
+   */
   function validateRow(tr){
     const actualInput = tr.querySelector('.actual');
     const planned = toNum(actualInput.getAttribute('data-planned'));
@@ -180,6 +198,11 @@
     return ok;
   }
 
+  /**
+   * 校验所有行：
+   * - 逐行调用 validateRow
+   * - 根据汇总结果启用/禁用提交按钮
+   */
   function validateAll(){
     let allOk = true;
     rows.forEach(tr => { if(!validateRow(tr)) allOk = false; });
@@ -187,6 +210,7 @@
     return allOk;
   }
 
+  // 绑定输入与失焦事件：实时校验
   rows.forEach(tr => {
     const actual = tr.querySelector('.actual');
     if(actual){
@@ -195,30 +219,37 @@
     }
   });
 
-  // 拦截提交
-form.addEventListener('submit', function(e){
-    e.preventDefault(); // 先阻止默认提交
+  /**
+   * 拦截表单提交：
+   * - 先阻止默认提交
+   * - 校验不通过：直接返回
+   * - 校验通过：弹出二次确认模态框
+   */
+  form.addEventListener('submit', function(e){
+    e.preventDefault(); // 阻止默认提交流程
     if (!validateAll()) {
-      return; // 不弹窗，直接返回
+      return; // 不弹窗，等待用户修正输入
     }
-    // 只有校验通过才显示二次确认框
-    modal.show();
+    modal.show(); // 显示确认弹窗
   });
 
-// 二次确认按钮点击后才提交表单
-modalConfirmBtn.addEventListener('click', function(){
-  modal.hide();
-  // 用 setTimeout 避免 Bootstrap 动画阻塞提交
-  setTimeout(() => form.submit(), 200);
-});
-
-
-  // 模态框里的“确认过账”按钮
+  /**
+   * 二次确认按钮：
+   * - 隐藏模态框后正式提交表单
+   * - 使用 setTimeout 略延迟，避免关闭动画影响提交
+   */
   modalConfirmBtn.addEventListener('click', function(){
     modal.hide();
-    form.submit();
+    setTimeout(() => form.submit(), 200);
   });
 
+  // 注意：下面这段是重复的提交监听，会导致提交两次，建议删除保留上面带 setTimeout 的版本
+  // modalConfirmBtn.addEventListener('click', function(){
+  //   modal.hide();
+  //   form.submit();
+  // });
+
+  // 初始执行一次校验以设置按钮状态
   validateAll();
 })();
 </script>

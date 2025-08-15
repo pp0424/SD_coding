@@ -1,6 +1,8 @@
+{# 继承基础布局模板 #}
 {% extends "delivery/base.html" %}
 
 {% block content %}
+<!-- 标题 -->
 <div class="form-title-container">
   <h1 class="form-title">📝 创建发货单</h1>
 </div>
@@ -8,14 +10,18 @@
 <div class="container mt-4">
   <div class="card shadow-sm">
     <div class="card-body">
+      <!-- 拣货表单：提交到当前路由 -->
       <form method="post" id="pick-form">
-        {{ form.hidden_tag() }}
+        {{ form.hidden_tag() }} {# CSRF 等隐藏字段 #}
 
+        <!-- 顶部基础信息区域：销售订单、仓库、日期等 -->
         <div class="row mb-5">
           <div class="col-md-2">
             <label class="form-label fw-bold" for="sales_order_id">{{ form.sales_order_id.label.text }}</label>
             <div class="input-group">
+              <!-- 销售订单号输入（联动加载拣货行） -->
               {{ form.sales_order_id(class="form-control", id="sales_order_id") }}
+              <!-- 打开“销售订单助手”窗口以选择订单 -->
               <button type="button" class="btn btn-outline-secondary"
                       onclick="window.open('{{ url_for('delivery.sales_helper') }}', 'salesHelper', 'width=1080,height=720')">
                 <i class="bi bi-search"></i>
@@ -23,41 +29,50 @@
             </div>
           </div>
           
+          <!-- 仓库代码（会被自动填充） -->
           <div class="col-md-3">
             {{ form.warehouse_code.label(class="form-label fw-bold") }}
             {{ form.warehouse_code(class="form-control", id="warehouse_code") }}
           </div>
+
+          <!-- 订单日期（会被自动填充） -->
           <div class="col-md-2">
             {{ form.order_date.label(class="form-label fw-bold") }}
             {{ form.order_date(class="form-control", type="date", id="order_date") }}
           </div>
+
+          <!-- 要求发货日期（会被自动填充） -->
           <div class="col-md-2">
             {{ form.required_delivery_date.label(class="form-label fw-bold") }}
             {{ form.required_delivery_date(class="form-control", type="date", id="required_delivery_date") }}
           </div>
+
+          <!-- 预计发货日期（可手动调整） -->
           <div class="col-md-2">
             {{ form.expected_delivery_date.label(class="form-label fw-bold") }}
             {{ form.expected_delivery_date(class="form-control", type="date", id="expected_delivery_date") }}
           </div>
         </div>
 
+        <!-- 拣货行项目表格 -->
         <h5 class="mt-4 mb-3">拣货项目</h5>
         <div class="table-responsive">
           <table class="table table-hover align-middle">
             <thead class="thead-light">
               <tr>
                 <th>行号</th>
-                <th>物料编号</th>
+                <th>物料编号</th>         <!-- 注意：下方for循环里该列使用的是 sales_order_item_no -->
                 <th>物料描述</th>
                 <th>基本单位</th>
                 <th>存储位置</th>
                 <th>订单数量</th>
                 <th>未发数量</th>
-                <th>本次拣货数量</th>
+                <th>本次拣货数量</th>     <!-- 仅该列为可编辑 -->
               </tr>
             </thead>
             <tbody id="items-body">
               {% for item_form in form.items %}
+              <!-- 当后端已渲染存在 items 时的回显（通常首屏为空，交由 JS 动态渲染） -->
               <tr>
                 <td>{{ loop.index }}</td>
                 <td>{{ item_form.sales_order_item_no.data }}</td>
@@ -70,6 +85,7 @@
                 <td>{{ item_form.planned_delivery_quantity(class="form-control form-control-sm") }}</td>
               </tr>
               {% else %}
+              <!-- 没有可拣货行时的占位 -->
               <tr>
                 <td colspan="8" class="text-center text-muted">暂无可拣货的订单行</td>
               </tr>
@@ -78,14 +94,18 @@
           </table>
         </div>
 
-        <!-- 动态隐藏输入：用来提交除“本次拣货数量”外的字段 -->
+        <!-- 动态隐藏输入容器
+             用于把从接口返回的行字段（除“本次拣货数量”外）塞入隐藏域提交到后端。
+             这样只在表格里暴露数量输入，其他字段不直接可编辑，防止被误改。 -->
         <div id="dynamic-inputs"></div>
 
+        <!-- 备注 -->
         <div class="mt-3">
           {{ form.remarks.label(class="form-label fw-bold") }}
           {{ form.remarks(class="form-control", rows="2") }}
         </div>
 
+        <!-- 操作按钮 -->
         <div class="mt-4">
           <button type="submit" class="btn btn-primary">生成发货单</button>
           <a href="{{ url_for('delivery.delivery_home') }}" class="btn btn-secondary">取消</a>
@@ -95,29 +115,34 @@
   </div>
 </div>
 
-<!-- JS: 根据销售订单自动加载拣货行及仓库、日期 -->
+<!-- 交互逻辑：根据销售订单号自动加载拣货行及相关字段 -->
 <script>
 (function () {
-  const soInput = document.getElementById('sales_order_id');
-  const warehouseInput = document.getElementById('warehouse_code');
-  const orderDateInput = document.getElementById('order_date');
-  const requiredDeliveryInput = document.getElementById('required_delivery_date');
-  const itemsBody = document.getElementById('items-body');
-  const hiddenContainer = document.getElementById('dynamic-inputs');
+  // ---------- DOM 引用 ----------
+  const soInput = document.getElementById('sales_order_id');          // 销售订单号输入
+  const warehouseInput = document.getElementById('warehouse_code');   // 仓库代码
+  const orderDateInput = document.getElementById('order_date');       // 订单日期
+  const requiredDeliveryInput = document.getElementById('required_delivery_date'); // 要求发货日期
+  const itemsBody = document.getElementById('items-body');            // 表格 tbody
+  const hiddenContainer = document.getElementById('dynamic-inputs');  // 动态隐藏域容器
 
+  // API 地址模板（由后端生成，__SO__ 占位符将被替换为真实订单号）
   const apiBase = "{{ url_for('delivery.api_sales_order_items', sales_order_id='__SO__') }}";
 
+  // 清空表格和隐藏域，并显示占位行
   function clearRows() {
     itemsBody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">暂无可拣货的订单行</td></tr>`;
     hiddenContainer.innerHTML = '';
   }
 
+  // 简单转义，避免把接口返回的字符串直接插入 HTML 时造成 XSS
   function escapeHtml(s) {
     return String(s ?? '').replace(/[&<>"']/g, m => ({
       '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;'
     }[m]));
   }
 
+  // 向隐藏容器添加一个隐藏 input（name/value）
   function addHidden(name, value) {
     const input = document.createElement('input');
     input.type = 'hidden';
@@ -126,6 +151,7 @@
     hiddenContainer.appendChild(input);
   }
 
+  // 根据接口返回的 items 重绘表格行，并同步生成对应隐藏字段
   function buildRows(items) {
     itemsBody.innerHTML = '';
     hiddenContainer.innerHTML = '';
@@ -136,7 +162,10 @@
     }
 
     items.forEach((it, idx) => {
+      // 基本单位兼容字段名（后端可能返回 base_unit 或 unit）
       const baseUnit = it.base_unit || it.unit || '';
+
+      // 构建可视行（仅“本次拣货数量”可编辑）
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${idx + 1}</td>
@@ -151,7 +180,7 @@
             type="number"
             step="0.0001"
             min="0"
-            max="${escapeHtml(it.unshipped_quantity)}"
+            max="${escapeHtml(it.unshipped_quantity)}"  <!-- 限制不得超过未发数量 -->
             class="form-control form-control-sm"
             name="items-${idx}-planned_delivery_quantity"
             value="${escapeHtml(it.planned_delivery_quantity)}"
@@ -161,6 +190,7 @@
       `;
       itemsBody.appendChild(tr);
 
+      // 同步生成隐藏字段，确保提交时后端能获取完整行信息
       addHidden(`items-${idx}-sales_order_item_no`, it.sales_order_item_no ?? '');
       addHidden(`items-${idx}-material_id`, it.material_id ?? '');
       addHidden(`items-${idx}-material_desc`, it.material_desc ?? '');
@@ -172,9 +202,12 @@
     });
   }
 
+  // ---------- 触发加载（带简单防抖） ----------
   let debounceTimer = null;
   function triggerLoad() {
     const raw = (soInput.value || '').trim();
+
+    // 没填订单号则清空
     if (!raw) {
       clearRows();
       orderDateInput.value = '';
@@ -182,11 +215,18 @@
       requiredDeliveryInput.value = '';
       return;
     }
+
+    // 拼接实际请求地址
     const url = apiBase.replace('__SO__', encodeURIComponent(raw));
+
+    // 置为“加载中”占位
     itemsBody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">加载中...</td></tr>`;
+
+    // 请求后端接口，获取订单行与抬头信息
     fetch(url, { headers: { 'Accept': 'application/json' } })
       .then(r => r.json())
       .then(data => {
+        // 未找到对应销售订单
         if (!data.found) {
           itemsBody.innerHTML = `<tr><td colspan="8" class="text-center text-warning">未找到销售订单：${escapeHtml(raw)}</td></tr>`;
           hiddenContainer.innerHTML = '';
@@ -196,29 +236,31 @@
           return;
         }
 
-        // 自动填充仓库代码和日期
+        // 自动填充仓库代码和日期（存在则覆盖）
         warehouseInput.value = data.warehouse_code || '';
         orderDateInput.value = data.order_date || '';
         requiredDeliveryInput.value = data.required_delivery_date || '';
 
-
+        // 重绘拣货行
         buildRows(data.items || []);
       })
       .catch(err => {
+        // 简单的错误兜底提示（控制台打印详细错误便于排查）
         console.error(err);
         itemsBody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">加载失败，请稍后重试</td></tr>`;
         hiddenContainer.innerHTML = '';
       });
   }
 
+  // 监听订单号输入，防抖后触发加载
   ['change', 'blur', 'input'].forEach(evt =>
     soInput.addEventListener(evt, () => {
       clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(triggerLoad, 300);
+      debounceTimer = setTimeout(triggerLoad, 300); // 300ms 防抖
     })
   );
 
-  // 页面初始如果已有销售订单号，自动加载
+  // 页面初始如已有销售订单号（例如返回回显），则自动加载
   if ((soInput.value || '').trim()) {
     triggerLoad();
   }

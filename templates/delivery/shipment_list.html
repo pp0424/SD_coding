@@ -1,70 +1,75 @@
+{# 继承基础布局，统一导航/样式 #}
 {% extends 'delivery/base.html' %}
+
+{# 页面 <title> #}
 {% block title %}发货单列表{% endblock %}
 
 {% block head_extra %}
+{# 引入模块专用样式（可在此文件中放通用组件样式） #}
 <link rel="stylesheet" href="{{ url_for('static', filename='delivery/delivery_styles.css') }}">
 
 <style>
   /* 页面最大宽度与居中 */
   .page-container { max-width: 1180px; margin: 0 auto; padding: 16px; }
-  /* 卡片样式 */
+
+  /* 容器卡片：边框+阴影+圆角 */
   .delivery-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.04); overflow: hidden; }
-  /* 工具栏与标题 */
+
+  /* 顶部工具栏与标题区域 */
   .card-header { padding: 16px 18px 8px; background: linear-gradient(180deg, #fafbfc 0%, #ffffff 100%); border-bottom: 1px solid #e5e7eb; }
   .toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
   .stats-info { font-size: 0.9rem; color: #6b7280; }
-  /* 查询表单 */
+
+  /* 查询表单区域样式 */
   .query-form { padding: 12px 18px 8px; }
   .query-form .form-label { font-weight: 600; color: #374151; }
   .btn-search { background: #2563eb; border-color: #2563eb; color: white; }
   .btn-search:hover { background: #1e40af; border-color: #1e40af; color: white; }
-  /* 表格样式 */
+
+  /* 表格容器与表格样式 */
   .table-section { padding: 12px 18px 18px; }
   .table-responsive { max-height: 62vh; border: 1px solid #e5e7eb; border-radius: 8px; overflow: auto; }
   .delivery-table { width: 100%; border-collapse: separate; border-spacing: 0; }
   .delivery-table thead th { position: sticky; top: 0; background: #f8fafc; font-weight: 700; color: #374151; padding: 10px 12px; border-bottom: 1px solid #e5e7eb; }
   .delivery-table tbody td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; color: #1f2937; vertical-align: middle; }
   .delivery-table tbody tr:hover { background: #f9fafb; }
-  /* 徽章和按钮 */
+
+  /* 徽章和操作按钮样式 */
   .badge { border-radius: 999px; padding: 0.35rem 0.6rem; }
   .btn-action { padding: 6px 10px; border-radius: 8px; }
-  /* 空状态 */
+
+  /* 空数据状态样式 */
   .empty-state { text-align: center; color: #6b7280; }
   .empty-state .inner { display: flex; height: 200px; align-items: center; justify-content: center; flex-direction: column; gap: 6px; }
+
+  /*  table-layout 可在内容列宽不稳定时考虑 fixed 提升稳定性。 */
   .delivery-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  table-layout: auto; /* 或者 fixed，根据需要 */
-}
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: auto; /* 或 fixed，根据需要调整列宽分布 */
+  }
 
-.delivery-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  table-layout: auto; /* 或者 fixed，根据需要 */
-}
+  .delivery-table th,
+  .delivery-table td {
+    white-space: nowrap; /* 不换行，搭配外层横向滚动以避免拥挤 */
+  }
 
-.delivery-table th,
-.delivery-table td {
-  white-space: nowrap; /* 不换行 */
-}
-
-.table-responsive {
-  overflow-x: auto; /* 横向滚动 */
-}
-
+  .table-responsive {
+    overflow-x: auto; /* 列较多时允许横向滚动 */
+  }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="page-container">
   <div class="form-title-container">
+    {# 页面主标题（与浏览器标题分开） #}
     <h1 class="form-title">🚚 执行发货</h1>
   </div>
 
   <div class="delivery-card animate-fade">
-    <!-- 顶部工具栏 -->
+    {# 顶部工具栏：左侧列表统计，右侧快捷操作 #}
     <div class="card-header">
       <div class="toolbar">
         <div>
@@ -73,18 +78,22 @@
           <span class="stats-info ms-3">共找到 {{ deliveries|length }} 条记录</span>
         </div>
         <div class="d-flex gap-2">
+          {# 新建发货单按钮 #}
           <a href="{{ url_for('delivery.create_delivery') }}" class="btn btn-primary btn-sm">
             <i class="bi bi-plus-circle me-1"></i> 新建发货单
           </a>
+          {# 打印当前页面（浏览器打印） #}
           <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
             <i class="bi bi-printer me-1"></i> 打印
           </button>
         </div>
       </div>
 
-      <!-- 查询表单 -->
+      {# 查询表单：POST 提交，包含 CSRF；支持按发货单、销售订单、日期范围过滤 #}
       <form method="post" class="row g-3 query-form align-items-end">
         {{ form.csrf_token }}
+
+        {# 发货单号输入 + 辅助选择器弹窗 #}
         <div class="col-md-2">
             <label class="form-label" for="delivery_id">{{ form.delivery_id.label.text }}</label>
             <div class="input-group">
@@ -96,7 +105,7 @@
             </div>
           </div>
 
-          <!-- 销售订单 ID -->
+          {# 销售订单 ID 输入 + 辅助选择器弹窗 #}
           <div class="col-md-2">
             <label class="form-label" for="sales_order_id">{{ form.sales_order_id.label.text }}</label>
             <div class="input-group">
@@ -107,21 +116,27 @@
               </button>
             </div>
           </div>
+
+        {# 日期范围：起始日期 #}
         <div class="col-md-2">
           {{ form.start_date.label(class="form-label") }}
           {{ form.start_date(class="form-control", type="date") }}
         </div>
+
+        {# 日期范围：结束日期 #}
         <div class="col-md-2">
           {{ form.end_date.label(class="form-label") }}
           {{ form.end_date(class="form-control", type="date") }}
         </div>
+
+        {# 提交按钮（全宽便于触控） #}
         <div class="col-md-2">
           {{ form.submit(class="btn btn-search w-100") }}
         </div>
       </form>
     </div>
 
-    <!-- 表格区域 -->
+    {# 表格列表区域 #}
     <div class="table-section">
       <div class="table-responsive">
         <table class="delivery-table table-hover">
@@ -139,19 +154,31 @@
             </tr>
           </thead>
           <tbody>
+            {# 迭代列表：deliveries 为 (dn, pt) 二元组，dn=发货单对象，pt=拣货任务对象 #}
             {% for dn, pt in deliveries %}
             <tr>
+              {# 发货单号：可点击进入详情页 #}
               <td>
                 <a href="{{ url_for('delivery.delivery_detail', delivery_id=dn.delivery_note_id) }}"
                    class="text-decoration-none fw-bold text-primary">{{ dn.delivery_note_id }}</a>
               </td>
+
+              {# 拣货任务号：可点击进入拣货任务详情 #}
               <td>
                 <a href="{{ url_for('delivery.picking_task_detail', task_id=dn.picking_task_id) }}"
                    class="text-decoration-none fw-bold text-primary">{{ dn.picking_task_id }}</a>
               </td>
+
+              {# 销售订单号（弱化文字颜色） #}
               <td><span class="text-muted">{{ dn.sales_order_id }}</span></td>
+
+              {# 发货日期：空值显示 '-' #}
               <td>{{ dn.delivery_date.strftime('%Y-%m-%d') if dn.delivery_date else '-' }}</td>
+
+              {# 仓库代码：用浅底徽章显示 #}
               <td><span class="badge bg-light text-dark">{{ dn.warehouse_code }}</span></td>
+
+              {# 状态徽章：按不同状态给不同颜色 #}
               <td>
                 <span class="badge 
                   {% if dn.status == '已创建' %}bg-primary
@@ -164,10 +191,17 @@
                   {{ dn.status }}
                 </span>
               </td>
+
+              {# 拣货员来自拣货任务对象，空值显示 '-' #}
               <td><small class="text-muted">{{ pt.picker or '-' }}</small></td>
+
+              {# 备注 #}
               <td><small class="text-muted">{{ dn.remarks or '-' }}</small></td>
+
+              {# 操作区：根据状态显示可执行动作 #}
               <td>
                 <div class="d-flex flex-wrap gap-1">
+                  {# 仅“已拣货”状态显示“发货”按钮；表单携带 CSRF 令牌 #}
                   {% if dn.status == '已拣货' %}
                   <form action="{{ url_for('delivery.shipment', delivery_id=dn.delivery_note_id) }}" method="POST">
                     {{ form.csrf_token }}
@@ -176,6 +210,8 @@
                     </button>
                   </form>
                   {% endif %}
+
+                  {# 详情按钮：随时可见 #}
                   <a href="{{ url_for('delivery.delivery_detail', delivery_id=dn.delivery_note_id) }}"
                      class="btn btn-outline-secondary btn-action" title="详情">
                     <i class="bi bi-eye"></i>
@@ -184,6 +220,7 @@
               </td>
             </tr>
             {% else %}
+            {# 空数据状态：合并全部 9 列 #}
             <tr>
               <td colspan="9" class="empty-state">
                 <div class="inner">

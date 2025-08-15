@@ -252,8 +252,3 @@ UPDATE Inventory SET
     pending_outbound = 100.0
 WHERE material_id = 'MAT-10002';
 
--- 验证不同步
-SELECT 'Test 5: Inventory Unique Field Update -> No Sync' AS test_case;
-SELECT 
-    (SELECT physical_stock FROM Material) AS mat_physical,  -- 应返回NULL
-    (SELECT available_stock FROM Material) AS mat_available; -- 应返回NULL

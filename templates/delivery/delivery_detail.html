@@ -1,8 +1,14 @@
+{# 
+  模板功能：发货单详情页
+  继承：delivery/base.html 提供的基础布局
+#}
 {% extends 'delivery/base.html' %}
 {% block title %}发货详情{% endblock %}
 
 {% block head_extra %}
+{# ===== 页面样式定义 ===== #}
 <style>
+  /* 发货详情卡片样式 */
   .card-detail {
     border-radius: 14px;
     background: linear-gradient(180deg, #ffffff, #f9fbff);
@@ -16,6 +22,7 @@
     margin-bottom: 0.5rem;
   }
 
+  /* 发货元信息样式 */
   .delivery-meta {
     font-size: 0.95rem;
     color: #556;
@@ -27,6 +34,7 @@
     padding: 0.4em 0.6em;
   }
 
+  /* 备注区域样式 */
   .delivery-remarks {
     background-color: #f8fbff;
     border-left: 4px solid var(--brand-1);
@@ -37,6 +45,7 @@
     margin-bottom: 1rem;
   }
 
+  /* 表格样式 */
   .table th {
     background-color: #f1f6ff;
     font-weight: 600;
@@ -64,40 +73,47 @@
 {% endblock %}
 
 {% block content %}
+{# ===== 页面标题 ===== #}
 <div class="form-title-container">
-    <h1 class="form-title">
-      🧾 发货单 #{{ delivery.delivery_note_id }}
-    </h1>
-  </div>
-  
+  <h1 class="form-title">
+    🧾 发货单 #{{ delivery.delivery_note_id }}
+  </h1>
+</div>
 
+{# ===== 发货详情卡片 ===== #}
 <div class="card-detail">
+  {# ===== 顶部操作按钮区域，根据发货状态显示不同操作 ===== #}
   <div class="d-flex justify-content-between align-items-center mb-2">
-  <div class="btn-toolbar">
+    <div class="btn-toolbar">
       {% if delivery.status == '已创建' %}
+        <!-- 编辑、查看拣货任务、取消发货单 -->
         <a href="{{ url_for('delivery.edit_delivery', delivery_id=delivery.delivery_note_id) }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i>编辑发货单</a>
         <a href="{{ url_for('delivery.picking_task_detail', task_id=delivery.picking_task_id) }}" class="btn btn-warning btn-sm"><i class="bi bi-box-seam"></i> 拣货任务详情</a>
         <a href="{{ url_for('delivery.cancel_delivery', delivery_id=delivery.delivery_note_id) }}" class="btn btn-outline-danger btn-sm"><i class="bi bi-x-circle"></i>取消发货单</a>
 
       {% elif delivery.status == '已拣货' %}
+        <!-- 准备发货、取消 -->
         <form action="{{ url_for('delivery.shipment', delivery_id=delivery.delivery_note_id) }}" method="POST" style="display: inline;">
           <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-box-arrow-up"></i> 准备发货</button>
         </form>
         <a href="{{ url_for('delivery.cancel_delivery', delivery_id=delivery.delivery_note_id) }}" class="btn btn-outline-danger btn-sm"><i class="bi bi-x-circle"></i> 取消</a>
 
       {% elif delivery.status == '已发货' %}
-      <a href="{{ url_for('delivery.post_delivery', delivery_id=delivery.delivery_note_id) }}" class="btn btn-success btn-sm">
-        <i class="bi bi-check2-circle"></i> 过账
-      </a>
+        <!-- 发货完成后可进行过账 -->
+        <a href="{{ url_for('delivery.post_delivery', delivery_id=delivery.delivery_note_id) }}" class="btn btn-success btn-sm">
+          <i class="bi bi-check2-circle"></i> 过账
+        </a>
       {% endif %}
     </div>
   </div>
 
+  {# ===== 发货元信息展示 ===== #}
   <div class="delivery-meta">
     <span><i class="bi bi-file-earmark-text"></i> 销售订单：<strong>{{ delivery.sales_order_id }}</strong></span> |
     <span><i class="bi bi-geo-alt"></i> 仓库：{{ delivery.warehouse_code }}</span> |
     <span><i class="bi bi-calendar"></i> 发货日期：{{ delivery.delivery_date.strftime('%Y-%m-%d') }}</span> |
     <span>状态：
+      {# 状态徽章样式根据状态不同而变化 #}
       {% if delivery.status == '已过账' or delivery.status == '已完成' %}
         <span class="badge bg-success">{{ delivery.status }}</span>
       {% elif delivery.status == '已创建' %}
@@ -118,10 +134,12 @@
     </span>
   </div>
 
+  {# ===== 备注信息展示 ===== #}
   <div class="delivery-remarks">
     <i class="bi bi-chat-dots"></i> {{ delivery.remarks or '无备注信息' }}
   </div>
 
+  {# ===== 发货行项目表格 ===== #}
   <div class="table-responsive">
     <table class="table table-sm table-bordered">
       <thead>
@@ -139,6 +157,7 @@
         {% for l in delivery.items %}
         {% set material = l.material %}
         <tr>
+          <!-- 行项目基本信息 -->
           <td>{{ l.item_no }}</td>
           <td>{{ l.material_id }}</td>
           <td>{{ material.description if material else '' }}</td>
@@ -148,6 +167,7 @@
           <td>{{ material.base_unit if material else l.unit }}</td>
         </tr>
         {% if material %}
+        <!-- 附加库存信息展示行 -->
         <tr>
           <td colspan="7" style="padding: 0.3rem 1rem; background-color: #f8f9fa;">
             <div class="d-flex justify-content-between">

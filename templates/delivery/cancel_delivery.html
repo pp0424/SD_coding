@@ -1,12 +1,16 @@
+{# 继承基础页面框架 #}
 {% extends 'delivery/base.html' %}
+
+{# 页面 title（浏览器标签） #}
 {% block title %}取消发货单{% endblock %}
 
 {% block head_extra %}
 <style>
-  /* 确保模态框永远在最上层 */
+  /* 提升模态框层级，确保不被其他元素（如固定导航栏、Toast）遮挡 */
   #confirmCancelModal {
     z-index: 9999 !important;
   }
+  /* 同步提升遮罩层级（若启用 backdrop 时生效） */
   .modal-backdrop {
     z-index: 9998 !important;
   }
@@ -16,16 +20,20 @@
 {% block content %}
 <div class="container mt-4">
   <div class="card border-0 shadow-sm">
+    <!-- 卡片头部：红色渐变，突出危险操作语义 -->
     <div class="card-header text-white text-center"
          style="background: linear-gradient(135deg, #dc3545, #ff6b6b); border-radius: 0.5rem 0.5rem 0 0;">
       <h4 class="mb-0 text-center">🗑️ 取消发货单</h4>
     </div>
+
     <div class="card-body">
+      <!-- 强提醒：取消不可逆 -->
       <div class="alert alert-warning">
         <i class="bi bi-exclamation-triangle me-2"></i>
         <strong>警告：</strong>取消发货单是不可逆操作，请谨慎操作！
       </div>
       
+      <!-- 发货单关键信息展示，便于确认当前操作对象 -->
       <div class="delivery-info mb-4">
         <h5>发货单信息</h5>
         <ul class="list-group">
@@ -46,6 +54,7 @@
         </ul>
       </div>
       
+      <!-- 取消表单：仅包含 CSRF 与取消原因。提交由 JS 控制，noscript 下允许直接提交 -->
       <form id="cancel-delivery-form" method="post" novalidate>
         {{ form.csrf_token }}
         <div class="mb-3">
@@ -54,6 +63,7 @@
           <small class="form-text text-muted">请详细说明取消原因，以便后续追踪</small>
         </div>
         
+        <!-- 操作按钮：返回详情 / 发起取消（弹出二次确认模态框） -->
         <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
           <a href="{{ url_for('delivery.delivery_detail', delivery_id=delivery.delivery_note_id) }}" 
              class="btn btn-secondary me-md-2">
@@ -64,6 +74,7 @@
           </button>
         </div>
 
+        <!-- 无 JS 场景的降级提示与按钮 -->
         <noscript>
           <div class="alert alert-info mt-3">浏览器未启用 JavaScript，可直接提交表单进行取消。</div>
           <button type="submit" class="btn btn-danger">提交取消</button>
@@ -73,7 +84,7 @@
   </div>
 </div>
 
-<!-- 二次确认模态框 -->
+<!-- 二次确认模态框：防误操作，展示即将取消的对象与原因预览 -->
 <div class="modal fade" id="confirmCancelModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content border-0 shadow">
@@ -87,10 +98,12 @@
         <p class="mb-0">你即将取消 <strong>发货单 {{ delivery.delivery_note_id }}</strong>，此操作不可撤销，请确认已填写取消原因。</p>
         <div class="alert alert-secondary small mt-3">
           <strong>当前状态：</strong> {{ delivery.status }}<br>
+          <!-- 取消原因预览：由 JS 在打开模态框前写入 -->
           <div id="cancel_reason_preview" class="small-muted mt-1"></div>
         </div>
       </div>
       <div class="modal-footer">
+        <!-- 确认取消：触发真正的提交逻辑 -->
         <button type="button" id="confirm-cancel-btn" class="btn btn-danger">确认取消</button>
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
       </div>
@@ -102,14 +115,18 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+  // 绑定 Bootstrap 模态框实例
   const modalEl = document.getElementById('confirmCancelModal');
+  // 这里设置 { backdrop: false } 表示不显示遮罩层，如需遮罩可改为 true 或移除此项
   const modal = bootstrap.Modal.getOrCreateInstance(modalEl, { backdrop: false });
-  const btnCancel = document.getElementById('btn-cancel-delivery');
-  const confirmBtn = document.getElementById('confirm-cancel-btn');
-  const reasonField = document.querySelector('textarea[name="cancel_reason"]');
-  const csrfInput = document.querySelector('input[name="csrf_token"]');
 
-  // 点击“取消发货单” → 校验原因 → 弹出模态框
+  // 关键节点引用
+  const btnCancel = document.getElementById('btn-cancel-delivery'); // 页面“取消发货单”按钮
+  const confirmBtn = document.getElementById('confirm-cancel-btn'); // 模态框“确认取消”按钮
+  const reasonField = document.querySelector('textarea[name="cancel_reason"]'); // 取消原因输入框
+  const csrfInput = document.querySelector('input[name="csrf_token"]'); // CSRF 隐藏域
+
+  // 点击“取消发货单”：先本地校验原因长度，再弹出确认模态框
   btnCancel?.addEventListener('click', () => {
     const reason = reasonField?.value.trim() || '';
     if (reason.length < 5) {
@@ -117,17 +134,19 @@ document.addEventListener('DOMContentLoaded', () => {
       reasonField?.focus();
       return;
     }
+    // 将用户输入的原因预览展示在模态框中，帮助确认
     document.getElementById('cancel_reason_preview').textContent = reason;
     modal.show();
   });
 
-  // 模态框“确认取消” → 关闭模态框 → 延迟执行取消请求
+  // 模态框“确认取消”：关闭模态框后发起请求（延迟 200ms，确保关闭动画与遮罩处理完成）
   confirmBtn?.addEventListener('click', () => {
     modal.hide();
     setTimeout(async () => {
       confirmBtn.disabled = true;
       confirmBtn.textContent = '处理中...';
       try {
+        // 后端取消接口地址：POST 表单（FormData）便于携带 CSRF 与字段
         const url = "{{ url_for('delivery.cancel_delivery', delivery_id=delivery.delivery_note_id) }}";
         const formData = new FormData();
         formData.append('cancel_reason', reasonField?.value || '');
@@ -136,30 +155,35 @@ document.addEventListener('DOMContentLoaded', () => {
         const res = await fetch(url, {
           method: 'POST',
           body: formData,
-          credentials: 'same-origin',
-          headers: { 'Accept': 'application/json' }
+          credentials: 'same-origin', // 携带同源 Cookie（CSRF/登录态）
+          headers: { 'Accept': 'application/json' } // 期望后端返回 JSON
         });
 
+        // 解析后端返回（容错处理：非 JSON 不抛出）
         let data = {};
         try { data = await res.json(); } catch {}
 
         if (res.ok && data.success) {
+          // 优先使用后端给定跳转地址，否则刷新当前页
           if (data.redirect) {
             window.location.href = data.redirect;
           } else {
             window.location.reload();
           }
         } else {
+          // 汇总错误信息：优先显示后端 message，其次回退到 HTTP 状态
           alert((data && data.message) || `取消失败（${res.status} ${res.statusText}）`);
         }
       } catch (err) {
+        // 网络异常或跨域等错误
         console.error(err);
         alert('网络或服务器错误，取消失败');
       } finally {
+        // 恢复按钮状态，允许用户重试
         confirmBtn.disabled = false;
         confirmBtn.textContent = '确认取消';
       }
-    }, 200); // 延迟保证遮罩消失
+    }, 200);
   });
 });
 </script>
