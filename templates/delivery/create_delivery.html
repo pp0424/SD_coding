@@ -152,55 +152,82 @@
   }
 
   // 根据接口返回的 items 重绘表格行，并同步生成对应隐藏字段
-  function buildRows(items) {
-    itemsBody.innerHTML = '';
-    hiddenContainer.innerHTML = '';
+function buildRows(items) {
+  itemsBody.innerHTML = '';
+  hiddenContainer.innerHTML = '';
 
-    if (!items || !items.length) {
-      clearRows();
-      return;
-    }
-
-    items.forEach((it, idx) => {
-      // 基本单位兼容字段名（后端可能返回 base_unit 或 unit）
-      const baseUnit = it.base_unit || it.unit || '';
-
-      // 构建可视行（仅“本次拣货数量”可编辑）
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${idx + 1}</td>
-        <td>${escapeHtml(it.material_id)}</td>
-        <td>${escapeHtml(it.material_desc || '')}</td>
-        <td>${escapeHtml(baseUnit)}</td>
-        <td>${escapeHtml(it.storage_location || '')}</td>
-        <td>${escapeHtml(it.order_quantity)}</td>
-        <td>${escapeHtml(it.unshipped_quantity)}</td>
-        <td>
-          <input
-            type="number"
-            step="0.0001"
-            min="0"
-            max="${escapeHtml(it.unshipped_quantity)}"  <!-- 限制不得超过未发数量 -->
-            class="form-control form-control-sm"
-            name="items-${idx}-planned_delivery_quantity"
-            value="${escapeHtml(it.planned_delivery_quantity)}"
-            required
-          />
-        </td>
-      `;
-      itemsBody.appendChild(tr);
-
-      // 同步生成隐藏字段，确保提交时后端能获取完整行信息
-      addHidden(`items-${idx}-sales_order_item_no`, it.sales_order_item_no ?? '');
-      addHidden(`items-${idx}-material_id`, it.material_id ?? '');
-      addHidden(`items-${idx}-material_desc`, it.material_desc ?? '');
-      addHidden(`items-${idx}-base_unit`, baseUnit);
-      addHidden(`items-${idx}-unit`, it.unit ?? '');
-      addHidden(`items-${idx}-storage_location`, it.storage_location ?? '');
-      addHidden(`items-${idx}-order_quantity`, it.order_quantity ?? '0');
-      addHidden(`items-${idx}-unshipped_quantity`, it.unshipped_quantity ?? '0');
-    });
+  if (!items || !items.length) {
+    clearRows();
+    return;
   }
+
+  items.forEach((it, idx) => {
+    const baseUnit = it.base_unit || it.unit || '';
+    const tr = document.createElement('tr');
+
+    // 行号
+    const tdIndex = document.createElement('td');
+    tdIndex.textContent = idx + 1;
+    tr.appendChild(tdIndex);
+
+    // 物料编号
+    const tdMaterialId = document.createElement('td');
+    tdMaterialId.textContent = it.material_id || '';
+    tr.appendChild(tdMaterialId);
+
+    // 物料描述
+    const tdDesc = document.createElement('td');
+    tdDesc.textContent = it.material_desc || '';
+    tr.appendChild(tdDesc);
+
+    // 基本单位
+    const tdUnit = document.createElement('td');
+    tdUnit.textContent = baseUnit;
+    tr.appendChild(tdUnit);
+
+    // 存储位置
+    const tdLocation = document.createElement('td');
+    tdLocation.textContent = it.storage_location || '';
+    tr.appendChild(tdLocation);
+
+    // 订单数量
+    const tdOrderQty = document.createElement('td');
+    tdOrderQty.textContent = it.order_quantity;
+    tr.appendChild(tdOrderQty);
+
+    // 未发数量
+    const tdUnshippedQty = document.createElement('td');
+    tdUnshippedQty.textContent = it.unshipped_quantity;
+    tr.appendChild(tdUnshippedQty);
+
+    // 本次拣货数量（输入框）
+    const tdInput = document.createElement('td');
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.step = '0.0001';
+    input.min = '0';
+    input.max = it.unshipped_quantity;
+    input.className = 'form-control form-control-sm';
+    input.name = `items-${idx}-planned_delivery_quantity`;
+    input.value = it.planned_delivery_quantity ?? '';
+    input.required = true;
+    tdInput.appendChild(input);
+    tr.appendChild(tdInput);
+
+    itemsBody.appendChild(tr);
+
+    // 同步隐藏字段
+    addHidden(`items-${idx}-sales_order_item_no`, it.sales_order_item_no ?? '');
+    addHidden(`items-${idx}-material_id`, it.material_id ?? '');
+    addHidden(`items-${idx}-material_desc`, it.material_desc ?? '');
+    addHidden(`items-${idx}-base_unit`, baseUnit);
+    addHidden(`items-${idx}-unit`, it.unit ?? '');
+    addHidden(`items-${idx}-storage_location`, it.storage_location ?? '');
+    addHidden(`items-${idx}-order_quantity`, it.order_quantity ?? '0');
+    addHidden(`items-${idx}-unshipped_quantity`, it.unshipped_quantity ?? '0');
+  });
+}
+
 
   // ---------- 触发加载（带简单防抖） ----------
   let debounceTimer = null;
