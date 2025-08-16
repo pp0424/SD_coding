@@ -45,12 +45,11 @@ def delivery_home():
 
     # 今日发货量
     today = date.today()
-    ship_date = func.coalesce(DeliveryNote.delivery_date, DeliveryNote.posted_at)
     today_delivery_count = (
         db.session.query(func.count(DeliveryNote.delivery_note_id))
         .filter(
-            DeliveryNote.status.in_(('已过账', '已发货')),
-            func.date(ship_date) == today
+            DeliveryNote.status == '已发货',
+            func.date(DeliveryNote.delivery_date) == today
         )
         .scalar() or 0
     )
@@ -79,7 +78,7 @@ def delivery_home():
     late_rate = round(max(0.0, 100.0 - on_time_rate), 1)
 
     # 待处理订单
-    pending_orders = counts_dict.get('已创建', 0) + counts_dict.get('已拣货', 0)
+    pending_orders = counts_dict.get('已创建', 0) + counts_dict.get('已拣货', 0)+counts_dict.get('已发货', 0)
 
     # 省级坐标表 - 用于地图显示
     province_coords = {
@@ -547,10 +546,30 @@ def create_delivery():
                 flash(header_err, 'danger')
                 return render_template('delivery/create_delivery.html', form=form, order_items=form.items.entries)
 
-            # 仅允许“已审核/部分发货”的订单创建发货单
-            if sales_order.status not in ['已审核', '部分发货']:
-                flash('只有“已审核”或“部分发货”的订单允许创建发货单', 'danger')
-                return render_template('delivery/create_delivery.html', form=form, order_items=form.items.entries)
+            # 查询是否存在关联的发货单，并且状态在限制列表内
+            has_blocking_delivery = (
+                db.session.query(
+                    exists().where(
+                        (DeliveryNote.sales_order_id == sales_order.sales_order_id) &
+                        (DeliveryNote.status.in_(['已创建', '已拣货', '已发货', '已过账']))
+                    )
+                ).scalar()
+            )
+
+            # 原有的状态检查 + 新的发货单检查
+            if (
+                sales_order.status not in ['已审核', '部分发货']
+                or has_blocking_delivery
+            ):
+                flash(
+                    '该销售订单已创建发货单，不允许重复创建发货单',
+                    'danger'
+                )
+                return render_template(
+                    'delivery/create_delivery.html',
+                    form=form,
+                    order_items=form.items.entries
+                )
 
             # 3) 收集并验证发货行项目
             # - 检查计划发货量是否超过剩余可发货量
