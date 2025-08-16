@@ -728,8 +728,6 @@ def search_payment():
 # routes.py (或你的 blueprint 文件)
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash
 from sqlalchemy import or_
-# 假设下面这些模型已在你的项目中定义并导入
-# from .models import CustomerInvoice, InvoiceItem, CustomerPayment, SalesOrder, DeliveryNote, DeliveryItem, Inquiry, Quotation
 
 from jinja2.runtime import Undefined
 
@@ -761,7 +759,7 @@ def document_flow():
     注：页面内的查询主要通过 /api/document-flow 异步获取数据；保留 POST 的传统渲染（可选）。
     """
     flow_info = {}
-    # 保留原始 POST 渲染逻辑以兼容旧表单提交（如果你愿意）
+    # 保留原始 POST 渲染逻辑以兼容旧表单提交
     if request.method == 'POST' and not request.is_json:
         invoice_id = request.form.get('invoice_id', '').strip()
         sales_order_id = request.form.get('sales_order_id', '').strip()
@@ -900,7 +898,7 @@ def api_document_flow():
     except Exception:
         pass
 
-    # 可选：按日期降序排序（如果 date 是 'YYYY-MM-DD' 格式字符串）
+    # 按日期降序排序（如果 date 是 'YYYY-MM-DD' 格式字符串）
     try:
         results.sort(key=lambda r: r.get('date') or '', reverse=True)
     except Exception:
@@ -947,7 +945,7 @@ def flowinfo(doc_id):
     if sales_order:
         invoices = CustomerInvoice.query.filter_by(sales_order_id=sales_order.sales_order_id).all()
         delivery_notes = DeliveryNote.query.filter_by(sales_order_id=sales_order.sales_order_id).all()
-        # 这里可以渲染专门的订单详情模板，若没有则渲染通用模板
+        # 渲染通用模板
         return render_template('finance/flowinfo.html',
                                sales_order=sales_order,
                                invoices=invoices,
@@ -957,7 +955,7 @@ def flowinfo(doc_id):
     delivery = DeliveryNote.query.filter_by(delivery_note_id=doc_id).first()
     if delivery:
         delivery_items = DeliveryItem.query.filter_by(delivery_note_id=delivery.delivery_note_id).all()
-        # 可以在此查找关联发票/订单
+        # 查找关联发票/订单
         related_invoices = CustomerInvoice.query.filter(CustomerInvoice.delivery_note_ids.like(f"%{delivery.delivery_note_id}%")).all()
         return render_template('finance/flowinfo.html',
                                delivery=delivery,
@@ -968,7 +966,7 @@ def flowinfo(doc_id):
     try:
         inquiry = Inquiry.query.filter_by(inquiry_id=doc_id).first()
         if inquiry:
-            # 若你有询价明细模型，可查询并渲染
+            # 查询询价明细模型并渲染
             return render_template('finance/flowinfo.html', inquiry=inquiry)
     except Exception:
         pass

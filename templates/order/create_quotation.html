@@ -1,9 +1,47 @@
 <!DOCTYPE html>
+<!-- 
+文件：create_quotation.html
+功能：创建报价单，支持从询价单复制明细信息
+特色功能：询价单信息复制、动态明细管理、状态控制
+技术依赖：Bootstrap 5.3.0, Fetch API, 原生JavaScript
+-->
 <html lang="zh">
 <head>
   <meta charset="UTF-8">
   <title>创建报价单</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!--
+  <style>
+    /* ==========页面主题样式========== */
+    body {
+      /* 背景：订单主题背景图，固定全屏覆盖 */
+      /* 字体：Segoe UI字体栈，现代化外观 */
+    }
+    
+    /* ==========主卡片容器========== */
+    .main-card {
+      /* 白色背景，1rem圆角 */
+      /* 阴影效果：0 0 15px，增加深度 */
+      /* 内边距2rem，宽松布局 */
+    }
+    
+    /* ==========标题样式========== */
+    h2 {
+      /* Segoe UI Semibold字体 */
+      /* 文字阴影：1px 1px 2px #ccc */
+    }
+    
+    /* ==========高亮按钮========== */
+    .btn-highlight {
+      /* 蓝色渐变背景：#2563eb */
+      /* 发光效果：0 0 6px rgba(37,99,235,0.4) */
+    }
+    
+    /* ==========表格输入框========== */
+    table input {
+      /* 最小宽度120px，确保可操作性 */
+    }
+  </style>-->
   <style>
     body {
       padding-top: 70px; /* 给导航栏让出空间 */
@@ -51,6 +89,7 @@
 <div class="container py-5">
   <div class="main-card mx-auto" style="max-width: 1000px;">
     <h2 class="text-center mb-4">创建报价单</h2>
+     <!-- ==========询价单复制功能区========== -->
     <div class="copy-section">
       <h6>📋 从询价单复制行项信息</h6>
       <div class="row align-items-end">
@@ -72,7 +111,8 @@
       </div>
     </div>
     <form method="POST">
-
+<!-- ==========报价单基本信息========== -->
+        <!-- 使用Bootstrap栅格系统，6列布局 -->
      <!-- 主信息 -->
 <div class="row g-3">
   <div class="col-md-6">
@@ -157,12 +197,21 @@
 
 <script>
   function addRow() {
+     /*
+      功能：添加新的报价明细行
+      实现：克隆第一行作为模板，清空输入值
+      */
     const table = document.getElementById('itemTable').querySelector('tbody');
     const newRow = table.rows[0].cloneNode(true);
     newRow.querySelectorAll('input').forEach(input => input.value = '');
     table.appendChild(newRow);
   }
   function removeRow(button) {
+     /*
+      功能：删除指定的明细行
+      限制：至少保留一行，防止表格为空
+      参数：button - 触发删除的按钮元素
+      */
     const row = button.closest('tr');
     const table = row.closest('tbody');
     if (table.rows.length > 1) {
@@ -171,6 +220,20 @@
   }
    // 新增功能：从询价单复制信息
   async function copyFromInquiry() {
+     /*
+      功能：从指定询价单复制信息到当前报价表单
+      流程详解：
+      1. 输入验证：检查询价单号是否为空
+      2. UI状态：显示加载动画，隐藏结果区
+      3. API调用：发送GET请求获取询价详情
+      4. 数据处理：
+         - 填充主表信息（客户、销售员、备注、总金额）
+         - 清空现有明细行（保留第一行作模板）
+         - 遍历询价明细，创建对应报价行
+         - 数据映射：询价数量→报价数量，预期单价→报价单价
+      5. 结果反馈：显示成功消息和复制行数
+      6. 异常处理：网络错误、数据错误的用户提示
+      */
     const inquiryId = document.getElementById('copyInquiryId').value.trim();
     const resultDiv = document.getElementById('copyResult');
     const spinner = document.getElementById('loadingSpinner');

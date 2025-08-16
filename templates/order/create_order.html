@@ -1,9 +1,40 @@
 <!DOCTYPE html>
+<!-- 
+文件：create_order.html
+功能：创建销售订单，支持从报价单复制数据
+技术栈：Bootstrap 5.3.3, 原生JavaScript, Fetch API
+数据流：报价单 → API获取 → 表单填充 → 订单创建
+-->
 <html lang="zh">
 <head>
   <meta charset="UTF-8">
   <title>创建销售订单</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+   <!-- <style>
+    /* ==========页面布局========== */
+    body {
+      padding-top: 70px; /* 导航栏高度补偿 */
+      /* 背景图片：订单主题背景，全屏固定 */
+    }
+    
+    /* ==========卡片容器========== */
+    .card {
+      /* 最大宽度1100px，适应大屏显示 */
+      /* 圆角15px，现代化设计风格 */
+      /* 阴影效果，增加层次感 */
+    }
+    
+    /* ==========按钮效果========== */
+    .btn-glow {
+      /* 发光效果，增强交互反馈 */
+    }
+    
+    /* ==========表格输入框========== */
+    .table input {
+      /* 100%宽度，填满单元格 */
+      /* 边框和圆角统一样式 */
+    }
+  </style>-->
   <style>
     body {
       padding-top: 70px; /* 给导航栏让出空间 */
@@ -45,17 +76,20 @@
     <div class="card p-4">
       <h3 class="text-center mb-4">📦 创建销售订单</h3>
       <form method="POST" action="{{ url_for('order.create_order') }}">
-  <input type="hidden" name="save_type" id="save_type" value="create">
+  <!-- 隐藏字段：区分创建/草稿保存 -->
+        <input type="hidden" name="save_type" id="save_type" value="create">
   <div class="row mb-3">
     <div class="col-md-8">
       <label class="form-label">报价单号</label>
       <input type="text" class="form-control" name="quotation_id" id="quotation_id">
     </div>
     <div class="col-md-4 d-flex align-items-end">
+      <!-- 复制按钮，调用copyQuotation()函数 -->
       <button type="button" class="btn btn-outline-primary w-100" onclick="copyQuotation()">📋 复制报价内容</button>
     </div>
   </div>
-
+ <!-- ==========订单基本信息========== -->
+<!-- 使用Bootstrap栅格系统，响应式布局 -->
   <div class="row mb-3">
     <div class="col-md-6">
       <label class="form-label">客户编号</label>
@@ -83,6 +117,7 @@
     <input class="form-control" name="remarks">
   </div>
 
+       <!-- ==========动态行项目表格========== -->
   <h5 class="mt-4">🧾 行项目</h5>
   <table class="table table-bordered">
     <thead class="table-light">
@@ -115,27 +150,40 @@
 
 
 <script>
+  /* ==========异步复制报价单数据========== */
 async function copyQuotation() {
+  /*
+      功能：从报价单复制数据到当前订单表单
+      流程：
+      1. 获取并验证报价单号
+      2. 发送API请求获取报价详情
+      3. 解析响应数据
+      4. 填充主表信息（客户、销售员、备注）
+      5. 清空现有行项目表格
+      6. 循环创建新的行项目行
+      7. 填充每行的详细数据
+      异常处理：网络错误、数据格式错误
+      */
   const qid = document.getElementById("quotation_id").value.trim();
   if (!qid) return alert("请输入报价单号");
 
-  try {
+  try {// API调用：获取报价单详情
     const res = await fetch(`/order/api/quotation/${qid}`);
     const result = await res.json();
-
+// 响应验证
     if (!result.success) {
       alert(result.message || "获取报价失败");
       return;
     }
 
-    const data = result.data;
+    const data = result.data;// 数据解构和表单填充
     document.getElementById('customer_id').value = data.customer_id;
     document.getElementById('salesperson_id').value = data.salesperson_id;
     document.querySelector('[name="remarks"]').value = data.remarks;
-
+// 清空并重建行项目表格
     const table = document.getElementById("items-table");
     table.innerHTML = "";
-
+     // 遍历报价明细，创建订单行项目
     data.items.forEach((item, idx) => {
       const row = document.createElement("tr");
       row.innerHTML = `
@@ -154,8 +202,12 @@ async function copyQuotation() {
     console.error(err);
   }
 }
-
+ /* ==========添加新行项目========== */
 function addRow() {
+        /*
+      功能：手动添加空白行项目
+      用途：补充报价单未包含的物料
+      */
   const table = document.getElementById("items-table");
   const row = document.createElement("tr");
   row.innerHTML = `
@@ -169,15 +221,29 @@ function addRow() {
   `;
   table.appendChild(row);
 }
-
+/* ==========金额重算函数========== */
 function recalcAmount(elem) {
+  /*
+      功能：根据数量和单价自动计算行金额
+      触发：数量或单价输入框失焦时
+      计算公式：金额 = 数量 × 单价
+      */
   const row = elem.closest('tr');
   const qty = parseFloat(row.querySelector('[name="order_quantity"]').value) || 0;
   const price = parseFloat(row.querySelector('[name="sales_unit_price"]').value) || 0;
   row.querySelector('[name="item_amount"]').value = (qty * price).toFixed(2);
 }
 
+ /* ==========物料存在性验证========== */
 async function validateMaterial(input) {
+   /*
+      功能：验证物料编号是否存在于系统中
+      流程：
+      1. 获取用户输入的物料编号
+      2. 调用验证API
+      3. 根据结果添加/移除错误样式
+      4. 显示验证反馈
+      */
   const id = input.value.trim();
   if (!id) return;
   const res = await fetch(`/order/api/check-material/${id}`);

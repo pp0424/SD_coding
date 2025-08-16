@@ -1,4 +1,10 @@
 <!DOCTYPE html>
+<!-- 
+文件：edit_inquiry_form.html
+功能：询价单编辑表单，支持只读模式控制
+状态管理：根据审核状态（已评审）控制字段可编辑性
+表单特性：动态明细行管理、数据验证、响应式布局
+-->
 <html lang="zh">
 <head>
   <meta charset="UTF-8" />
@@ -146,6 +152,14 @@
 </nav>
   <div class="card-container">
     <h3>修改询价单：{{ inquiry.inquiry_id }}</h3>
+     <!-- ==========只读状态判断========== -->
+    <!-- 
+    只读逻辑：
+    - 当询价单状态为'已评审'时，设置只读模式
+    - 影响：所有输入框添加readonly属性
+    - 影响：禁用添加/删除按钮
+    - 目的：防止已评审单据被误修改
+    -->
     {% set read_only = inquiry.status == '已评审' %}
     <form method="POST" action="/order/edit-inquiry/save" id="editInquiryForm" class="mb-0">
       <input type="hidden" name="inquiry_id" value="{{ inquiry.inquiry_id }}" />
@@ -163,6 +177,12 @@
           />
         </div>
         <div class="col-md-6">
+          <!-- 
+          日期格式化：
+          - 使用Jinja2的strftime过滤器
+          - 格式：'%Y-%m-%d'，适配HTML5日期输入框
+          - 空值处理：if inquiry.inquiry_date else ''
+          -->
           <label class="form-label" for="inquiry_date">询价日期</label>
           <input
             type="date"
@@ -208,6 +228,12 @@
           />
         </div>
         <div class="col-12">
+           <!-- 
+          文本域特殊处理：
+          - 使用textarea标签，支持多行输入
+          - rows="3"：默认3行高度
+          - 内容在开闭标签之间，不使用value属性
+          -->
           <label class="form-label" for="remarks">备注</label>
           <textarea
             id="remarks"
@@ -233,6 +259,12 @@
           </tr>
         </thead>
         <tbody>
+           <!-- 
+          明细行循环：
+          - 使用Jinja2 for循环遍历inquiry.items
+          - 每行包含所有明细字段的输入框
+          - 删除按钮：类名remove-row-btn，便于JavaScript识别
+          -->
           {% for item in inquiry.items %}
           <tr>
             <td>
@@ -271,7 +303,12 @@
 
       </div>
     </form>
-
+<!-- 
+    分离设计原因：
+    - 保存和审核是不同的业务操作
+    - 需要提交到不同的后端端点
+    - 便于权限控制和状态管理
+    -->
     <form method="POST" action="/order/edit-inquiry/approve" class="btn-group-custom mt-3">
       <input type="hidden" name="inquiry_id" value="{{ inquiry.inquiry_id }}" />
       <button type="submit" class="btn btn-success w-100">审核通过</button>
@@ -279,16 +316,24 @@
   </div>
 
 <script>
+  /* ==========只读状态控制========== */
+    /*
+    只读状态JavaScript控制：
+    - 从后端传递只读标志到前端
+    - 禁用动态操作按钮和事件
+    - 确保数据一致性
+    */
   const readOnly = "{{ 'true' if read_only else 'false' }}" === "true";
 
   if (readOnly) {
+     // 禁用添加按钮
     const addBtn = document.getElementById('addRowBtn');
     if (addBtn) addBtn.disabled = true;
-
+ // 禁用所有删除按钮
     document.querySelectorAll('.remove-row-btn').forEach(btn => {
       btn.disabled = true;
     });
-
+// 禁用审核按钮
     const approveForm = document.querySelector('form[action="/order/edit-inquiry/approve"]');
     if (approveForm) {
       const approveBtn = approveForm.querySelector('button[type="submit"]');
@@ -297,7 +342,17 @@
   }
 
   document.getElementById('addRowBtn').addEventListener('click', () => {
-    if (readOnly) return;
+     /*
+      功能：添加新的询价明细行
+      限制：只读模式下不可操作
+      实现：
+      1. 检查只读状态
+      2. 获取tbody容器
+      3. 创建新行元素
+      4. 设置行HTML结构
+      5. 添加到表格末尾
+      */
+    if (readOnly) return;// 只读模式直接返回
 
     const tbody = document.querySelector('#itemsTable tbody');
     const newRow = document.createElement('tr');

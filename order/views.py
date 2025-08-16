@@ -1,3 +1,10 @@
+#flask 模块（说明 Blueprint、渲染模板、表单请求处理、页面跳转等用途）。
+#forms 表单类（说明 InquiryForm/QuotationSearchForm 的作用）。
+#models 模型（Inquiry、Quotation、SalesOrder、Material 等 ORM 对象的作用）。
+#sqlalchemy 相关（说明用于数据库查询优化、条件筛选）。
+#datetime（用于日期处理）。
+#math.ceil（用于分页）。
+#random, decimal（用于生成订单号、金额处理）。
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify,session
 from .forms import InquiryForm
 from .forms import InquirySearchForm
@@ -14,24 +21,39 @@ from math import ceil
 import random
 import decimal
 
+# =============================
+# 定义蓝图（订单模块的统一入口）
+# =============================
 order_bp = Blueprint('order', __name__, template_folder='templates')
+#这是一个订单相关功能的蓝图，所有路由都挂载在该蓝图下
 
+
+# =============================
+# 首页：订单模块首页
+# =============================
 @order_bp.route('/')
 def order_home():
+    # 渲染订单首页模板
     return render_template('order/index.html')
 
 #创建询价单
+'''注释逻辑：
+GET 渲染空表单
+POST 校验是否存在相同 inquiry_id
+保存主表 + 明细行数据
+根据是否草稿/已评审给出不同反馈'''
 @order_bp.route('/create-inquiry',methods=['GET', 'POST'])
 def create_inquiry():
     
     form = InquiryForm()
     if request.method == 'POST':
+        # 校验是否重复（防止相同的 inquiry_id）
         existing = Inquiry.query.filter_by(inquiry_id=form.inquiry_id.data).first()
         if existing:
             flash('该询价单号存在，无法创建')
             return render_template('order/create_Inquiry_with_items.html', form=form)
 
-        # 获取状态
+        # 判断状态：保存为草稿 or 已评审
         status = '草稿' if 'save' in request.form else '已评审'
 
         # 保存主表数据
@@ -47,7 +69,7 @@ def create_inquiry():
         )
         db.session.add(inquiry)
 
-        # 明细
+        # 保存明细 InquiryItem 数据
         item_count = int(request.form['item_count'])
         for i in range(item_count):
             item = InquiryItem(
@@ -62,9 +84,10 @@ def create_inquiry():
             db.session.add(item)
 
         db.session.commit()
+        # 提交事务
 
 
-
+        # 提示信息 + 跳转逻辑
         if status == '已评审':
             flash('提交成功！询价状态为：已评审')
             return redirect(url_for('order.create_inquiry'))
@@ -75,12 +98,16 @@ def create_inquiry():
     return render_template('order/create_Inquiry_with_items.html', form=form)
 
 #获得询价单ID
+# 工具函数：根据 ID 获取询价单（带明细）
 def get_inquiry_by_id(inquiry_id):
     return Inquiry.query.options(joinedload(Inquiry.items)).filter_by(inquiry_id=inquiry_id).first()
 
-#修改询价单
+# 修改询价单 - 输入询价单号
 @order_bp.route('/edit-inquiry', methods=['GET', 'POST'])
 def edit_prompt():
+    '''
+    第一步：输入询价单号，系统返回对应数据以便编辑
+    '''
     if request.method == 'POST':
         inquiry_id = request.form.get('inquiry_id')
         inquiry = get_inquiry_by_id(inquiry_id)
@@ -90,9 +117,14 @@ def edit_prompt():
             flash("未找到对应的询价单")
     return render_template('order/edit_inquiry_input.html')
 
-# 2️⃣ 保存更新
+# 修改询价单——2️⃣ 保存更新
 @order_bp.route('/edit-inquiry/save', methods=['POST'])
 def edit_save():
+    '''
+    第二步：保存询价单更新
+    如果已评审，只能修改备注
+    如果草稿，允许修改所有字段和明细
+    '''
     inquiry_id = request.form.get('inquiry_id')
     inquiry = Inquiry.query.options(joinedload(Inquiry.items)).filter_by(inquiry_id=inquiry_id).first()
 
@@ -100,7 +132,9 @@ def edit_save():
         flash('未找到该询价单')
         return redirect(url_for('order.edit_prompt'))
 
-    # ===== 原始数据（用于对比） =====
+    # ====================
+    # 保存旧数据（用于前端比对显示）
+    # ====================
     old_data = {
         'customer_id': inquiry.customer_id,
         'inquiry_date': inquiry.inquiry_date.strftime('%Y-%m-%d') if inquiry.inquiry_date else '',
@@ -161,7 +195,9 @@ def edit_save():
     }
 
         return render_template('order/edit_inquiry_confirm_update.html', old=old_data, new=new_data, min=min)
-
+    # ====================
+    # 草稿状态：允许修改全部
+    # ====================
 
     # ===== 更新主表 Inquiry =====
     inquiry.customer_id = request.form.get('customer_id')
@@ -194,6 +230,7 @@ def edit_save():
         })
 
     # ========== 行项同步处理 ==========
+    # 同步行项：新增 / 更新 / 删除
     # 已存在 item_no 的映射
     existing_items = {item.item_no: item for item in inquiry.items}
 
@@ -256,7 +293,8 @@ def edit_save():
 
     return render_template('order/edit_inquiry_confirm_update.html', old=old_data, new=new_data,min=min)
 
-# 3️⃣ 确认更新
+# 修改询价单——3️⃣ 确认更新
+'''第三步：确认是否更新询价单'''
 @order_bp.route('/edit-inquiry/confirm_update', methods=['POST'])
 def confirm_update():
     confirmed = request.form.get('confirm')
@@ -272,7 +310,7 @@ def confirm_update():
     return redirect(url_for('order.edit_prompt'))
 
 
-# 4️⃣ 审核状态更新
+# 修改询价单——4️⃣ 审核状态更新
 @order_bp.route('/edit-inquiry/approve', methods=['POST'])
 def approve_inquiry():
     inquiry_id = request.form.get('inquiry_id')
@@ -348,6 +386,11 @@ def get_inquiry_data(inquiry_id):
     })
 
 #复制询价单内容或自主创建报价单
+'''
+功能：创建新的报价单
+GET：渲染空表单
+POST：保存主表数据 + 明细行（支持从询价单复制数据）
+'''
 @order_bp.route('/create-quote', methods=['GET', 'POST'])
 def create_quotation():
     if request.method == 'POST':
@@ -414,9 +457,12 @@ def create_quotation():
 
     return render_template('order/create_quotation.html')
 
-#修改报价单前先查询
+# 修改报价单 - 输入 ID 进入编辑
 @order_bp.route('/edit-quote', methods=['GET', 'POST'])
 def edit_quote_prompt():
+    '''
+    功能：输入报价单编号后，进入编辑界面
+    '''
     if request.method == 'POST':
         quote_id = request.form.get('quotation_id')
         quotation = Quotation.query.options(joinedload(Quotation.items)).filter_by(quotation_id=quote_id).first()
@@ -426,7 +472,12 @@ def edit_quote_prompt():
             flash("未找到该报价单")
     return render_template('order/edit_quote_input.html')
 
-
+# 修改报价单 - 保存更新
+    """
+    功能：保存报价单修改
+    特殊逻辑：如果状态是“已发送”，仅允许修改有效期/备注
+    否则允许修改所有字段和明细
+    """
 @order_bp.route('/edit-quote/save', methods=['GET','POST'])
 def edit_quote_save():
     quote_id = request.form.get('quotation_id')
@@ -605,6 +656,10 @@ def approve_quotation():
     return redirect(url_for('order.edit_quote_prompt'))
 
 #查询报价单
+    """
+    功能：查询报价单
+    支持条件筛选（编号、客户、日期、物料）以及“显示全部”
+    """
 @order_bp.route('/query-quote', methods=['GET', 'POST'])
 def query_quotation():
     form = QuotationSearchForm()
@@ -616,7 +671,7 @@ def query_quotation():
             results = Quotation.query.options(joinedload(Quotation.items)).all()
         elif form.submit.data:
             query = Quotation.query
-
+ # 动态拼接查询条件
             if form.quotation_id.data:
                 query = query.filter(Quotation.quotation_id.like(f"%{form.quotation_id.data}%"))
             if form.customer_id.data:
@@ -632,12 +687,13 @@ def query_quotation():
 
     return render_template('order/query_quotation.html', form=form, results=results)
 
+# 报价单数据接口（JSON，用于订单创建时复制）
 @order_bp.route('/api/quotation/<quotation_id>')
 def get_quotation_data(quotation_id):
     quotation = Quotation.query.options(joinedload(Quotation.items)).filter_by(quotation_id=quotation_id).first()
     if not quotation:
         return jsonify({'success': False, 'message': '报价单不存在'}), 404
-
+ # 返回包含主表和明细的数据
     return jsonify({
         'success': True,
         'data': {
@@ -664,14 +720,26 @@ def api_check_material(mat_id):
     return {'exists': exists}
 
 #创建订单（复制报价单）
+    """
+    功能：创建销售订单
+    GET：显示创建页面
+    POST：保存主表 + 明细，生成唯一订单号
+    特点：
+    1. 自动生成订单号（格式 SO-日期时间+随机数，保证唯一性）
+    2. 根据保存类型区分“草稿”和“已创建”两种状态
+    3. 保存订单明细行数据（逐行读取表单数据）
+    4. 自动计算订单总金额
+    """
 @order_bp.route('/create-order', methods=['GET', 'POST'])
 def create_order():
     if request.method == 'GET':
+        # 初始访问时，直接渲染订单创建页面
         return render_template('order/create_order.html')
 
-    # POST 创建逻辑
+    # POST：生成订单号（带时间戳 + 随机数）
     order_id = f"SO-{datetime.now().strftime('%Y%m%d-%H%M%S')}{random.randint(100,999)}"#订单编号创建逻辑
     save_type = request.form.get('save_type')
+    # 保存主表
     order = SalesOrder(
         sales_order_id=order_id,
         customer_id=request.form.get('customer_id'),
@@ -684,7 +752,7 @@ def create_order():
     )
 
     db.session.add(order)
-
+ # 保存明细行（逐行读取）
     item_nos = request.form.getlist('item_no')
     material_ids = request.form.getlist('material_id')
     quantities = request.form.getlist('order_quantity')
@@ -708,6 +776,7 @@ def create_order():
         )
         db.session.add(item)
         total += amt
+        # 汇总金额，提交事务
 
     order.total_amount = total
     db.session.commit()
@@ -716,6 +785,9 @@ def create_order():
     return redirect(url_for('order.order_detail', sales_order_id=order_id))
 
 #订单详情页
+    """ 根据订单号显示订单详情，包括明细和物料信息 
+    包含：主表数据 + 明细行数据 + 物料信息（通过 joinedload 优化查询）
+    """
 @order_bp.route('/order-detail/<sales_order_id>')
 def order_detail(sales_order_id):
     order = SalesOrder.query.options(
@@ -730,6 +802,7 @@ def order_detail(sales_order_id):
 
 
 
+# 编辑订单（入口，先输入订单号）
 @order_bp.route('/edit-order', methods=['GET', 'POST'])
 def edit_order():
     order = None
@@ -744,6 +817,10 @@ def edit_order():
     return render_template('order/edit_order.html', order=order, searched=searched)
 
 #修改订单基本信息
+    """
+    功能：修改订单主表信息（客户、日期、状态、金额、备注等）
+    修改先暂存到 session['temp_update']，再进入预览页
+    """
 @order_bp.route('/edit-order/basic/<order_id>', methods=['GET', 'POST'])
 def edit_order_basic(order_id):
     order = SalesOrder.query.get_or_404(order_id)
@@ -762,6 +839,7 @@ def edit_order_basic(order_id):
         }
 
         # 将旧值与新值打包送入预览页面
+        # 临时存储到 session，用于预览对比
         session['temp_update'] = {
             'order_id': order_id,
             'step': 'basic',
@@ -773,6 +851,13 @@ def edit_order_basic(order_id):
     return render_template('order/edit_order_basic.html', order=order)
 
 #修改订单具体行项信息
+    """
+    功能：修改订单行项（新增/修改/删除）
+    修改内容先存入 session['temp_update']，再进入预览页
+    - 逐行解析表单中的明细行数据
+    - 根据 item_no 判断是“新增”还是“修改”
+    - 暂存修改到 session['temp_update']，再进入预览页
+    """
 @order_bp.route('/edit-order/items/<order_id>', methods=['GET', 'POST'])
 def edit_order_items(order_id):
     order = SalesOrder.query.get_or_404(order_id)
@@ -800,13 +885,13 @@ def edit_order_items(order_id):
             }
 
             if item_no == 'new':
-                update_data['action'] = 'add'
+                update_data['action'] = 'add' # 新增行
             else:
-                update_data['action'] = 'update'
+                update_data['action'] = 'update'# 更新行
                 update_data['item_no'] = item_no
 
             updates.append(update_data)
-
+# 暂存修改到 session
         session['temp_update'] = {
             'order_id': order_id,
             'updates': updates,
@@ -816,7 +901,14 @@ def edit_order_items(order_id):
 
     return render_template('order/edit_order_items.html', order=order)
 
-
+    """
+    功能：预览订单主表的修改内容
+    逻辑：
+    1. 从 session 读取临时修改数据
+    2. 构建旧数据和新数据的对比
+    3. 用户点击“确认” → 写入数据库
+       用户点击“取消” → 返回编辑页面
+    """
 @order_bp.route('/preview-salesorder-changes', methods=['GET', 'POST']) 
 def preview_salesorder_changes():  #订单基本信息更新预览页
     temp_update = session.get('temp_update')
@@ -829,6 +921,7 @@ def preview_salesorder_changes():  #订单基本信息更新预览页
 
     if request.method == 'POST':
         if 'confirm' in request.form:
+             # 确认更新 → 写入数据库
             # 执行数据库更新
             for field, new_val in updates.items():
                 if hasattr(order, field):
@@ -838,7 +931,7 @@ def preview_salesorder_changes():  #订单基本信息更新预览页
             return redirect(url_for('order.order_detail', sales_order_id=order_id))
         elif 'cancel' in request.form:
             return redirect(url_for('order.edit_order_basic', order_id=order_id))
-
+   # 构造旧数据字典，用于对比
     old_data = {
         'customer_id': order.customer_id,
         'quotation_id': order.quotation_id or '',
@@ -853,7 +946,15 @@ def preview_salesorder_changes():  #订单基本信息更新预览页
     return render_template('order/preview_salesorder.html', order=order, old_data=old_data, new_data=updates)
 
 
-
+# 预览订单明细修改
+    """
+    功能：预览订单行项修改
+    逻辑：
+    1. 从 session 读取临时修改数据
+    2. 根据 action 区分新增 / 修改 / 删除
+    3. 构造旧数据和新数据对比
+    4. 用户确认 → 执行数据库更新
+    """
 @order_bp.route('/preview-changes', methods=['GET', 'POST'])  # 订单具体行项信息更新预览页
 def preview_changes():
     temp_update = session.get('temp_update')
@@ -867,11 +968,12 @@ def preview_changes():
     order = SalesOrder.query.get_or_404(order_id)
 
     if request.method == 'POST':
+         # 确认修改 → 遍历 updates 执行数据库操作
         if 'confirm' in request.form:
             for u in updates:
                 action = u.get('action')
 
-                if action == 'update':
+                if action == 'update':# 更新已有行
                     try:
                         item_no = int(u['item_no'])
                     except (KeyError, ValueError, TypeError):
@@ -887,7 +989,7 @@ def preview_changes():
                         item.item_amount = u['item_amount']
                         item.unit = u['unit']
 
-                elif action == 'delete':
+                elif action == 'delete':# 删除行
                     try:
                         item_no = int(u['item_no'])
                         OrderItem.query.filter_by(sales_order_id=order_id, item_no=item_no).delete()
@@ -895,6 +997,7 @@ def preview_changes():
                         continue
 
                 elif action == 'add':
+                     # 新增行 → 获取当前最大 item_no，自增 1
                     max_item_no = db.session.query(
                         db.func.max(OrderItem.item_no)
                     ).filter_by(sales_order_id=order_id).scalar() or 0
@@ -924,6 +1027,7 @@ def preview_changes():
                 return redirect(url_for('order.edit_order_items'))
 
     # ----------- 构造比较数据 -----------
+     # 构造对比数据（old vs new）
     old_items = {int(item.item_no): item for item in order.items}
     compare_list = []
 
@@ -938,7 +1042,7 @@ def preview_changes():
                     continue
             except Exception:
                 continue
-
+ # 构造旧数据字典
             old_data = {
                 'material_id': old.material_id,
                 'order_quantity': float(old.order_quantity or 0),
@@ -948,7 +1052,7 @@ def preview_changes():
                 'item_amount': float(old.item_amount or 0),
                 'unit': old.unit or ''
             }
-
+ # 构造新数据字典
             if action == 'update':
                 new_data = {
                     'material_id': u['material_id'],
@@ -1000,7 +1104,14 @@ def preview_changes():
 
 
 
-#查询订单
+#查询订单（带分页）
+    """
+    功能：查询销售订单
+    特点：
+    1. 支持条件过滤（订单号、客户、状态、日期、金额范围、物料关键词）
+    2. 支持“显示全部”
+    3. 内置分页功能，每页显示 10 条记录
+    """
 @order_bp.route('/query-order', methods=['GET', 'POST'])
 def query_order():
     page = int(request.args.get('page', 1))

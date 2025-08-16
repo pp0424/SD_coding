@@ -5,7 +5,7 @@ from decimal import Decimal
 from app import app, db  # ❗替换为你项目实际的 Flask 应用上下文
 from order.models import Inquiry, InquiryItem, Quotation, QuotationItem, Material, SalesOrder, OrderItem
 
-# 该脚本为订单模块导入数据库文件，如果修改请告知具体细节，方便该模块同学同时后续操作，谢谢。
+# 该脚本为订单模块导入数据库文件。
 def parse_date(date_str):
     if not date_str:
         return None

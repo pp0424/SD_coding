@@ -1,10 +1,19 @@
 <!DOCTYPE html>
+<!-- 
+文件：create_Inquiry_with_items.html
+功能：创建询价单及其明细项的表单页面
+依赖：Bootstrap 5.3.3, Google Fonts, jQuery
+-->
 <html lang="zh">
 <head>
+  <!-- 页面编码和标题设置 -->
+  <!-- Google字体引入：Roboto（英文）+ ZCOOL XiaoWei（中文标题） -->
   <meta charset="UTF-8">
   <title>创建询价</title>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;500&family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
   <style>
+/* ==========样式重置和基础设置========== */
+
     body {
       padding-top: 70px; /* 给导航栏让出空间 */
       margin: 0;
@@ -12,8 +21,12 @@
       font-family: 'Roboto', sans-serif;
       background: url('/static/order_background.png') no-repeat center center fixed;
       background-size: cover;
+      /* 背景图片设置：全屏覆盖，固定定位 */
     }
-
+/* ==========主容器样式========== */
+ /* 半透明白色背景，增强可读性 */
+      /* 最大宽度900px，居中显示 */
+      /* 圆角和阴影效果，提升视觉层次 */
     .container {
       background-color: rgba(255, 255, 255, 0.95);
       max-width: 900px;
@@ -22,20 +35,25 @@
       border-radius: 16px;
       box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
     }
-
+  /* ==========标题样式========== */
+        /* 使用中文字体，居中对齐 */
+      /* 颜色和间距设置 */
     h2, h3 {
       text-align: center;
       font-family: 'ZCOOL XiaoWei', serif;
       color: #2c3e50;
       margin-bottom: 20px;
     }
-
+  /* ==========表单元素样式========== */
     label {
+        /* 标签加粗显示，增强识别度 */
       display: block;
       margin: 15px 0 5px;
       font-weight: bold;
     }
 
+     /* 统一输入框样式：内边距、边框、圆角 */
+      /* 盒模型设置为border-box，便于尺寸控制 */
     input[type="text"], input[type="date"], input[type="number"], select, textarea {
       width: 100%;
       padding: 10px 14px;
@@ -103,7 +121,12 @@
 </head>
 <body>
   <nav style="position: fixed; top: 0; left: 0; right: 0; height: 56px; background: #1b5899; color: white; display: flex; align-items: center; justify-content: space-around; z-index: 9999; font-family: 'Segoe UI', sans-serif; font-size: 15px;">
-  <a href="/dashboard" style="color: white; text-decoration: none;">系统首页</a>
+ <!-- 
+    固定定位导航栏，z-index确保在最上层
+    包含所有订单管理模块的快速导航链接
+    使用flex布局，均匀分布导航项
+    -->
+    <a href="/dashboard" style="color: white; text-decoration: none;">系统首页</a>
   <a href="/order/create-inquiry" style="color: white; text-decoration: none;">📝 创建询价</a>
   <a href="/order/edit-inquiry" style="color: white; text-decoration: none;">✏️ 修改询价</a>
   <a href="/order/query-inquiry" style="color: white; text-decoration: none;">🔍 查询询价</a>
@@ -117,7 +140,7 @@
   <div class="container">
     <h2>创建询价</h2>
 
-    <form method="POST">
+    <form method="POST"><!-- CSRF令牌，防止跨站请求伪造 -->
       {{ form.hidden_tag() }}
 
       <div class="form-group">
@@ -174,10 +197,13 @@
         </thead>
         <tbody id="items-body">
           <!-- JS 动态插入 -->
+           <!-- JavaScript动态插入询价明细行 -->
         </tbody>
       </table>
 
       <button type="button" class="add-btn" onclick="addItemRow()">➕ 添加物品</button>
+            <!-- ==========操作按钮区域========== -->
+      <!-- 隐藏字段记录当前明细行数，用于后端处理 -->
       <input type="hidden" name="item_count" id="item-count" value="0">
 
       <br><br>
@@ -197,10 +223,22 @@
   </div>
 
   <script>
-    let itemIndex = 0;
+    /* ==========全局变量========== */
+    let itemIndex = 0;// 明细行索引计数器
     function addItemRow() {
+          /*
+      功能：动态添加询价明细行
+      流程：
+      1. 获取tbody容器
+      2. 创建新行元素
+      3. 设置行内HTML结构（输入框+删除按钮）
+      4. 使用当前索引为输入框命名
+      5. 递增索引计数器
+      6. 更新隐藏字段值
+      */
       const tbody = document.getElementById('items-body');
       const row = document.createElement('tr');
+        // 行HTML模板，包含各种输入类型
       row.innerHTML = `
         <td><input type="text" name="material_id_${itemIndex}" required></td>
         <td><input type="number" name="inquiry_quantity_${itemIndex}" required></td>
@@ -210,7 +248,7 @@
         <td><button type="button" class="remove-btn" onclick="this.parentElement.parentElement.remove()">❌</button></td>
       `;
       tbody.appendChild(row);
-      itemIndex++;
+      itemIndex++;// 索引递增，确保字段名唯一
       document.getElementById('item-count').value = itemIndex;
     }
   </script>

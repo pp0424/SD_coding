@@ -3,14 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <title>预览订单行项修改 - 订单号：{{ order.sales_order_id }}</title>
+
+  <!-- 引入 Bootstrap 样式库，方便使用现成的 UI 组件 -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+
   <style>
+    /* 页面整体样式设置 */
     body {
-      background: url('/static/order_background.png') no-repeat center center fixed;
+      background: url('/static/order_background.png') no-repeat center center fixed; /* 背景图 */
       background-size: cover;
-      background: #f4f7fc;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f4f7fc;  /* 背景颜色 */
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* 字体 */
     }
+
+    /* 页面内容居中显示，带圆角与阴影 */
     .container {
       max-width: 1200px;
       margin: 40px auto;
@@ -19,10 +25,14 @@
       border-radius: 14px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.08);
     }
+
+    /* 表格样式（全宽度、边框） */
     table {
       width: 100%;
       border-collapse: collapse;
     }
+
+    /* 单元格样式 */
     th, td {
       border: 1px solid #ddd;
       padding: 10px 12px;
@@ -30,24 +40,33 @@
       vertical-align: middle;
       font-size: 0.95rem;
     }
+
     th {
       background-color: #f8f9fa;
       font-weight: 600;
     }
+
+    /* 值有变化的单元格高亮显示 */
     .diff {
       background-color: #fffbdd;
       font-weight: 700;
-      color: #d9534f; /* 红色 */
+      color: #d9534f; /* 红色字体 */
     }
+
+    /* 操作标记的小标签 */
     .action-badge {
       font-size: 0.85rem;
       padding: 0.3em 0.6em;
       border-radius: 0.375rem;
     }
+
+    /* 新增标记（绿色） */
     .add {
       background-color: #d4edda;
       color: #155724;
     }
+
+    /* 删除标记（红色） */
     .delete {
       background-color: #f8d7da;
       color: #721c24;
@@ -55,6 +74,7 @@
   </style>
 </head>
 <body>
+<!-- 固定顶部导航栏，提供系统各功能入口 -->
 <nav style="position: fixed; top: 0; left: 0; right: 0; height: 56px; background: #1b5899; color: white; display: flex; align-items: center; justify-content: space-around; z-index: 9999; font-family: 'Segoe UI', sans-serif; font-size: 15px;">
   <a href="/dashboard" style="color: white; text-decoration: none;">系统首页</a>
   <a href="/order/create-inquiry" style="color: white; text-decoration: none;">📝 创建询价</a>
@@ -67,34 +87,43 @@
   <a href="/order/edit-order" style="color: white; text-decoration: none;">🔁 修改订单</a>
   <a href="/order/query-order" style="color: white; text-decoration: none;">💾 查询订单</a>
 </nav>
+
+<!-- 页面主体内容 -->
 <div class="container">
   <h3>📝 订单行项修改预览 - 订单号：{{ order.sales_order_id }}</h3>
+
+  <!-- 提交表单：确认或取消修改 -->
   <form method="POST">
     <table>
       <thead>
         <tr>
-          <th>项号</th>
-          <th>操作</th>
-          <th>字段</th>
-          <th>旧值</th>
-          <th>新值</th>
+          <th>项号</th>   <!-- 行项编号 -->
+          <th>操作</th>   <!-- 新增 / 修改 / 删除 -->
+          <th>字段</th>   <!-- 字段名称 -->
+          <th>旧值</th>   <!-- 修改前 -->
+          <th>新值</th>   <!-- 修改后 -->
         </tr>
       </thead>
       <tbody>
         {% for item in compare_list %}
+          {# 修改操作：显示字段逐一对比 #}
           {% if item.action == 'update' %}
             {% for field, old_val in item.old.items() %}
               {% set new_val = item.new[field] %}
               <tr>
                 {% if loop.first %}
+                  <!-- 多行合并单元格，第一行显示项号和“修改”标记 -->
                   <td rowspan="{{ item.old|length }}">{{ item.item_no }}</td>
                   <td rowspan="{{ item.old|length }}"><span class="action-badge bg-info text-white">修改</span></td>
                 {% endif %}
                 <td>{{ field.replace('_', ' ') }}</td>
+                <!-- 值不同则高亮标注 -->
                 <td class="{% if old_val != new_val %}diff{% endif %}">{{ old_val }}</td>
                 <td class="{% if old_val != new_val %}diff{% endif %}">{{ new_val }}</td>
               </tr>
             {% endfor %}
+
+          {# 删除操作：显示原有字段及值，新值固定为 “-” #}
           {% elif item.action == 'delete' %}
             {% for field, val in item.old.items() %}
               <tr>
@@ -107,6 +136,8 @@
                 <td>-</td>
               </tr>
             {% endfor %}
+
+          {# 新增操作：显示新字段及值，旧值固定为 “-” #}
           {% elif item.action == 'add' %}
             {% for field, val in item.new.items() %}
               <tr>
@@ -121,11 +152,13 @@
             {% endfor %}
           {% endif %}
         {% else %}
+          <!-- 如果没有任何修改，显示提示行 -->
           <tr><td colspan="5" class="text-center">无修改内容</td></tr>
         {% endfor %}
       </tbody>
     </table>
 
+    <!-- 底部按钮：确认或取消返回 -->
     <div class="d-flex justify-content-end mt-4 gap-3">
       <button type="submit" name="confirm" class="btn btn-success">确认修改</button>
       <button type="submit" name="cancel" class="btn btn-secondary">取消返回编辑</button>
